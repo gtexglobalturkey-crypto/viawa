@@ -1,10 +1,7 @@
 import { AIContextCard } from "../../components/today/AIContextCard";
 import { ContinueWorkingCard } from "../../components/today/ContinueWorkingCard";
 import { DraftEmailsCard } from "../../components/today/DraftEmailsCard";
-import { EmailFirstCard } from "../../components/today/EmailFirstCard";
-import { NeedsAttentionCard } from "../../components/today/NeedsAttentionCard";
 import { NextActionsCard } from "../../components/today/NextActionsCard";
-import { PlannedCallsCard } from "../../components/today/PlannedCallsCard";
 import { RiskSignalsCard } from "../../components/today/RiskSignalsCard";
 import { PageHeader } from "../../components/ui/PageHeader";
 
@@ -62,23 +59,11 @@ export function TodayPage() {
       </section>
 
       <section className="today-grid">
-        <EmailFirstCard
-          data={today}
-        />
-
-        <PlannedCallsCard
-          data={today}
-        />
-
         <NextActionsCard
           data={today}
         />
 
         <AIContextCard
-          data={today}
-        />
-
-        <NeedsAttentionCard
           data={today}
         />
 
