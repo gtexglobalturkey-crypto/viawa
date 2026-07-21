@@ -1,0 +1,33 @@
+import { Panel } from "../../../components/ui/Panel";
+
+import { AttachmentPanel } from "./AttachmentPanel";
+
+type Props = {
+  attachments: string[];
+};
+
+export function AttachmentCard({
+  attachments,
+}: Props) {
+  return (
+    <Panel>
+      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+        <p className="eyebrow" style={{ margin: 0 }}>
+          Satış Kiti
+        </p>
+
+        <AttachmentPanel
+          attachments={attachments}
+        />
+
+        {attachments.length === 0 && (
+          <div style={{ padding: "10px 12px", borderRadius: "8px", background: "var(--atlas-soft)", border: "1px solid var(--atlas-border)" }}>
+            <p className="muted" style={{ margin: 0, fontSize: "10px", lineHeight: 1.3 }}>
+              Bu şablon için ek gerekmiyor.
+            </p>
+          </div>
+        )}
+      </div>
+    </Panel>
+  );
+}
