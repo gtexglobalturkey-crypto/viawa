@@ -449,6 +449,7 @@ export function initializeExecutionListeners() {
     if (nextTask) {
       addWorkQueueItem(
         nextTask,
+        payload.companyId,
       );
     }
 

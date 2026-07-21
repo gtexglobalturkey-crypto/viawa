@@ -135,8 +135,11 @@ export function CallWorkspacePage() {
   ] = useState(false);
 
   const workQueueItems = useMemo(
-    () => getWorkQueue(),
-    [refreshVersion],
+    () =>
+      getWorkQueue(companyId).map(
+        (item) => item.title,
+      ),
+    [refreshVersion, companyId],
   );
 
   const selectedOpportunity = useMemo(() => {
