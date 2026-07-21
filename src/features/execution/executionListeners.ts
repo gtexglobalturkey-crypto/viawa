@@ -1,6 +1,4 @@
 import { subscribe } from "./eventBus";
-import { addMemoryEntry } from "./memoryStore";
-import { addTimelineEvent } from "./timelineStore";
 import { addWorkQueueItem } from "./workQueueStore";
 
 import type {
@@ -407,18 +405,6 @@ export function initializeExecutionListeners() {
 
     if (!payload) {
       return;
-    }
-
-    if (payload.timeline) {
-      addTimelineEvent(
-        payload.timeline,
-      );
-    }
-
-    if (payload.memory) {
-      addMemoryEntry(
-        payload.memory,
-      );
     }
 
     if (payload.reminderId) {

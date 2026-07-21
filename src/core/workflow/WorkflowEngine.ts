@@ -568,7 +568,7 @@ export class WorkflowEngine {
             route:
               companyId !== undefined
                 ? `/companies/${companyId}`
-                : "/opportunities",
+                : "/companies",
             entityReference: {
               companyId,
               opportunityId,

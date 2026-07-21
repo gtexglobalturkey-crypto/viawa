@@ -5,7 +5,6 @@ import { AppErrorBoundary } from "../components/feedback/AppErrorBoundary";
 import { ToastProvider } from "../components/feedback/ToastProvider";
 import { AppRouter } from "../core/router/AppRouter";
 import { AuthProvider } from "../features/auth/AuthProvider";
-import { CrmStoreProvider } from "../features/crm/store/CrmStoreProvider";
 
 import "../styles/index.css";
 
@@ -16,9 +15,7 @@ ReactDOM.createRoot(
     <AppErrorBoundary>
       <ToastProvider>
         <AuthProvider>
-          <CrmStoreProvider>
-            <AppRouter />
-          </CrmStoreProvider>
+          <AppRouter />
         </AuthProvider>
       </ToastProvider>
     </AppErrorBoundary>

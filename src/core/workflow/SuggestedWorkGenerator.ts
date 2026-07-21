@@ -237,7 +237,7 @@ export class SuggestedWorkGenerator {
             route:
               companyId !== undefined
                 ? `/companies/${companyId}`
-                : "/opportunities",
+                : "/companies",
             entityReference: {
               companyId,
               opportunityId,
