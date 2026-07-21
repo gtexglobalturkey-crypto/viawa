@@ -20,6 +20,10 @@ import {
   createOpportunity,
 } from "../../services/supabase/opportunityService";
 
+import {
+  createTimelineEvent,
+} from "../../services/supabase/timelineService";
+
 type CompanyFormState = {
   companyName: string;
   contactPerson: string;
@@ -130,18 +134,51 @@ export function NewCompanyPage() {
         });
 
       try {
-        await createOpportunity({
+        await createTimelineEvent({
           company_id: company.id,
-          exhibition_id: null,
-          stage: "new",
-          interest_level: 25,
-          estimated_value: 0,
-          next_action:
-            "Initial sales call",
-          next_action_date:
-            getDefaultNextActionDate(),
-          owner: null,
+          opportunity_id: null,
+          type: "company-created",
+          title: "Firma oluşturuldu",
+          description: `${companyName} firma kaydı oluşturuldu.`,
         });
+      } catch (timelineError) {
+        console.error(
+          "Company timeline creation error:",
+          timelineError,
+        );
+      }
+
+      try {
+        const opportunity =
+          await createOpportunity({
+            company_id: company.id,
+            exhibition_id: null,
+            stage: "new",
+            interest_level: 25,
+            estimated_value: 0,
+            next_action:
+              "Initial sales call",
+            next_action_date:
+              getDefaultNextActionDate(),
+            owner: null,
+          });
+
+        try {
+          await createTimelineEvent({
+            company_id: company.id,
+            opportunity_id:
+              opportunity.id,
+            type: "opportunity-created",
+            title:
+              "Katılım fırsatı oluşturuldu",
+            description: `${companyName} için yeni bir katılım fırsatı oluşturuldu.`,
+          });
+        } catch (timelineError) {
+          console.error(
+            "Opportunity timeline creation error:",
+            timelineError,
+          );
+        }
       } catch (opportunityError) {
         console.error(
           "Opportunity creation error:",

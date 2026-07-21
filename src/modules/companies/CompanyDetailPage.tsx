@@ -21,6 +21,10 @@ import {
   createOpportunity,
 } from "../../services/supabase/opportunityService";
 
+import {
+  createTimelineEvent,
+} from "../../services/supabase/timelineService";
+
 function getDefaultNextActionDate(): string {
   const date = new Date();
 
@@ -218,42 +222,60 @@ export function CompanyDetailPage() {
     setOpportunityError(null);
 
     try {
-      await createOpportunity({
-        company_id: company.id,
-        exhibition_id: null,
-        stage,
-        interest_level:
-          Number.isFinite(
-            parsedInterestLevel,
-          )
-            ? Math.min(
-                100,
-                Math.max(
+      const opportunity =
+        await createOpportunity({
+          company_id: company.id,
+          exhibition_id: null,
+          stage,
+          interest_level:
+            Number.isFinite(
+              parsedInterestLevel,
+            )
+              ? Math.min(
+                  100,
+                  Math.max(
+                    0,
+                    parsedInterestLevel,
+                  ),
+                )
+              : 0,
+          estimated_value:
+            Number.isFinite(
+              parsedEstimatedValue,
+            )
+              ? Math.max(
                   0,
-                  parsedInterestLevel,
-                ),
-              )
-            : 0,
-        estimated_value:
-          Number.isFinite(
-            parsedEstimatedValue,
-          )
-            ? Math.max(
-                0,
-                parsedEstimatedValue,
-              )
-            : 0,
-        next_action:
-          normalizedNextAction,
-        next_action_date:
-          opportunityNextActionDate
-            ? new Date(
-                `${opportunityNextActionDate}T10:00:00`,
-              ).toISOString()
-            : null,
-        owner:
-          owner.trim() || null,
-      });
+                  parsedEstimatedValue,
+                )
+              : 0,
+          next_action:
+            normalizedNextAction,
+          next_action_date:
+            opportunityNextActionDate
+              ? new Date(
+                  `${opportunityNextActionDate}T10:00:00`,
+                ).toISOString()
+              : null,
+          owner:
+            owner.trim() || null,
+        });
+
+      try {
+        await createTimelineEvent({
+          company_id: company.id,
+          opportunity_id:
+            opportunity.id,
+          type: "opportunity-created",
+          title:
+            "Katılım fırsatı oluşturuldu",
+          description: `${company.company_name} için yeni bir katılım fırsatı oluşturuldu.`,
+        });
+      } catch (timelineError) {
+        console.error(
+          "Opportunity timeline creation error:",
+          timelineError,
+        );
+      }
 
       await refresh();
 

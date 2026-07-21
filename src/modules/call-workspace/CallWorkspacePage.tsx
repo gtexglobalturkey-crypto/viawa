@@ -22,9 +22,9 @@ import {
 import {
   createReminder,
 } from "../../services/supabase/reminderService";
-
-
-
+import {
+  createTimelineEvent,
+} from "../../services/supabase/timelineService";
 
 import { useWorkspaceData } from "./hooks/useWorkspaceData";
 
@@ -42,6 +42,7 @@ import { WorkQueuePanel } from "./components/WorkQueuePanel";
 
 
 import { createCallWorkspaceViewModel } from "./models/workspaceMapper";
+import { formatWorkspaceDate } from "./models/workspaceFormatters";
 
 
 
@@ -435,13 +436,33 @@ export function CallWorkspacePage() {
     setFollowUpSaving(true);
 
     try {
-      await createReminder({
-        company_id: activeCompany.id,
-        title: "Follow up",
-        due_date:
-          getFollowUpReminderDate(),
-        completed: false,
-      });
+      const reminder =
+        await createReminder({
+          company_id: activeCompany.id,
+          title: "Follow up",
+          due_date:
+            getFollowUpReminderDate(),
+          completed: false,
+        });
+
+      try {
+        await createTimelineEvent({
+          company_id: activeCompany.id,
+          opportunity_id:
+            activeOpportunity.id,
+          type: "reminder-created",
+          title:
+            "Takip hatırlatıcısı oluşturuldu",
+          description: `"${reminder.title}" için ${formatWorkspaceDate(
+            reminder.due_date,
+          )} tarihinde bir hatırlatıcı oluşturuldu.`,
+        });
+      } catch (timelineError) {
+        console.error(
+          "Reminder timeline creation error:",
+          timelineError,
+        );
+      }
 
       await refreshWorkspaceData();
 
