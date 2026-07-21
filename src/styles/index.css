@@ -523,12 +523,9 @@ select {
 
 
 .today-heading-row {
-  display: grid;
-  grid-template-columns:
-    minmax(205px, 0.2fr)
-    minmax(0, 0.8fr);
-  align-items: stretch;
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   margin-bottom: 8px;
 }
 
@@ -538,7 +535,7 @@ select {
   flex-direction: column;
   justify-content: center;
   margin-bottom: 0;
-  padding: 8px 0;
+  padding: 0;
 }
 
 .today-heading-row .page-header .eyebrow {
@@ -1242,7 +1239,7 @@ select {
 .today-grid {
   min-height: 0;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: 10px;
   overflow: hidden;
@@ -1254,7 +1251,10 @@ select {
   height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  overscroll-behavior: contain;
 }
 
 .today-grid > .panel > * {

@@ -66,11 +66,11 @@ export function TodayPage() {
           data={today}
         />
 
-        <DraftEmailsCard
+        <RiskSignalsCard
           data={today}
         />
 
-        <RiskSignalsCard
+        <DraftEmailsCard
           data={today}
         />
       </section>
