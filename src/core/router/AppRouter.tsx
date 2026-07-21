@@ -83,19 +83,6 @@ const CommunicationPage = lazy(async () => {
   };
 });
 
-const ParticipationOpportunitiesPage = lazy(
-  async () => {
-    const module = await import(
-      "../../modules/participation-opportunities/ParticipationOpportunitiesPage"
-    );
-
-    return {
-      default:
-        module.ParticipationOpportunitiesPage,
-    };
-  },
-);
-
 const OnboardingPage = lazy(async () => {
   const module = await import(
     "../../modules/onboarding/OnboardingPage"
@@ -191,13 +178,6 @@ function AppRoutes() {
         <Route
           path="/reference-data"
           element={<MasterDataPage />}
-        />
-
-        <Route
-          path="/opportunities"
-          element={
-            <ParticipationOpportunitiesPage />
-          }
         />
       </Routes>
     </Suspense>

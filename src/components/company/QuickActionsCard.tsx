@@ -50,13 +50,6 @@ export function QuickActionsCard({
 
         <Link
           className="btn"
-          to={`/opportunities?companyId=${encodedCompanyId}`}
-        >
-          Fırsatları Görüntüle
-        </Link>
-
-        <Link
-          className="btn"
           to="/companies"
         >
           Firmalara Dön

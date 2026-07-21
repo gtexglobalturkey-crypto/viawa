@@ -1,6 +1,15 @@
-import { useMemo } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { useWorkspaceData } from "../modules/call-workspace/hooks/useWorkspaceData";
+
+import {
+  getExhibition,
+  type Exhibition,
+} from "../services/supabase/exhibitionService";
 
 function formatDateValue(
   value?: string | null,
@@ -171,6 +180,94 @@ export function useCompanyWorkspace(
   const workspace =
     useWorkspaceData(companyId);
 
+  const exhibitionIds = useMemo(() => {
+    const ids = new Set<string>();
+
+    for (const opportunity of workspace.opportunities) {
+      if (opportunity.exhibition_id) {
+        ids.add(
+          opportunity.exhibition_id,
+        );
+      }
+    }
+
+    return ids;
+  }, [workspace.opportunities]);
+
+  const [
+    exhibitionsById,
+    setExhibitionsById,
+  ] = useState<
+    Map<string, Exhibition>
+  >(new Map());
+
+  useEffect(() => {
+    let isActive = true;
+
+    const idsToLoad = [
+      ...exhibitionIds,
+    ].filter(
+      (exhibitionId) =>
+        !exhibitionsById.has(
+          exhibitionId,
+        ),
+    );
+
+    if (idsToLoad.length === 0) {
+      return;
+    }
+
+    async function loadExhibitions() {
+      const results =
+        await Promise.allSettled(
+          idsToLoad.map(
+            (exhibitionId) =>
+              getExhibition(
+                exhibitionId,
+              ),
+          ),
+        );
+
+      if (!isActive) {
+        return;
+      }
+
+      setExhibitionsById(
+        (current) => {
+          const next = new Map(
+            current,
+          );
+
+          results.forEach(
+            (result, index) => {
+              if (
+                result.status ===
+                  "fulfilled" &&
+                result.value
+              ) {
+                next.set(
+                  idsToLoad[index],
+                  result.value,
+                );
+              }
+            },
+          );
+
+          return next;
+        },
+      );
+    }
+
+    void loadExhibitions();
+
+    return () => {
+      isActive = false;
+    };
+  }, [
+    exhibitionIds,
+    exhibitionsById,
+  ]);
+
   const derivedData = useMemo(() => {
     const {
       company,
@@ -273,6 +370,7 @@ export function useCompanyWorkspace(
   return {
     ...workspace,
     ...derivedData,
+    exhibitionsById,
     formatDate: formatDateValue,
     formatStage: formatStageValue,
     formatEstimatedValue,

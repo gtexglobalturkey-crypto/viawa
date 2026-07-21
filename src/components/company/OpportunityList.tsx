@@ -2,9 +2,12 @@ import { Link } from "react-router-dom";
 
 import { Panel } from "../ui/Panel";
 
+import type { Exhibition } from "../../services/supabase/exhibitionService";
+
 type OpportunityItem = {
   id: string;
   stage: string;
+  exhibition_id?: string | null;
   estimated_value?: number | null;
   interest_level: number;
   next_action?: string | null;
@@ -44,8 +47,8 @@ function formatNextActionLabel(
 
 type Props = {
   companyId: string;
-  companyName: string;
   opportunities: OpportunityItem[];
+  exhibitionsById: Map<string, Exhibition>;
   formatDate: (
     value?: string | null,
   ) => string;
@@ -62,8 +65,8 @@ type Props = {
 
 export function OpportunityList({
   companyId,
-  companyName,
   opportunities,
+  exhibitionsById,
   formatDate,
   formatStage,
   formatEstimatedValue,
@@ -91,7 +94,15 @@ export function OpportunityList({
       <div className="opportunity-list">
         {opportunities.length > 0 ? (
           opportunities.map(
-            (opportunity) => (
+            (opportunity) => {
+              const exhibition =
+                opportunity.exhibition_id
+                  ? exhibitionsById.get(
+                      opportunity.exhibition_id,
+                    )
+                  : undefined;
+
+              return (
               <Panel
                 className="opportunity-card"
                 key={opportunity.id}
@@ -104,12 +115,33 @@ export function OpportunityList({
                   </p>
 
                   <h2>
-                    Katılım Fırsatı
+                    {exhibition?.name ??
+                      "Katılım Fırsatı"}
                   </h2>
 
-                  <p className="muted">
-                    {companyName}
-                  </p>
+                  {exhibition ? (
+                    <p className="muted">
+                      {[
+                        exhibition.city,
+                        exhibition.country,
+                      ]
+                        .filter(Boolean)
+                        .join(", ") ||
+                        "Konum kayıtlı değil"}
+                    </p>
+                  ) : null}
+
+                  {exhibition ? (
+                    <p className="muted">
+                      {formatDate(
+                        exhibition.start_date,
+                      )}
+                      {" – "}
+                      {formatDate(
+                        exhibition.end_date,
+                      )}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="data-list">
@@ -190,7 +222,8 @@ export function OpportunityList({
                   Satış Görüşmesini Aç
                 </Link>
               </Panel>
-            ),
+              );
+            },
           )
         ) : (
           <Panel>

@@ -483,7 +483,13 @@ select {
 .company-opportunity-section .opportunity-card {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   padding: 10px 12px;
+}
+
+.company-opportunity-section .opportunity-card h2,
+.company-opportunity-section .opportunity-card > div > p {
+  overflow-wrap: anywhere;
 }
 
 .company-opportunity-section .opportunity-card .data-list {

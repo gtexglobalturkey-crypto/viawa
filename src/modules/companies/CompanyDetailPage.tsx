@@ -107,6 +107,7 @@ export function CompanyDetailPage() {
     primaryOpportunity,
     contactName,
     nextAction,
+    exhibitionsById,
     formatDate,
     formatStage,
     formatEstimatedValue,
@@ -593,8 +594,8 @@ export function CompanyDetailPage() {
 
       <OpportunityList
         companyId={company.id}
-        companyName={company.company_name}
         opportunities={sortedOpportunities}
+        exhibitionsById={exhibitionsById}
         formatDate={formatDate}
         formatStage={formatStage}
         formatEstimatedValue={formatEstimatedValue}
