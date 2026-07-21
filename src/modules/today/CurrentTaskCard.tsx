@@ -1,10 +1,8 @@
 import {
-  AlertTriangle,
   ArrowRight,
   CheckCircle2,
   ChevronDown,
   RotateCcw,
-  Sparkles,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -28,12 +26,6 @@ type TaskScoreDetails = {
   score: number | null;
   priority: string | null;
   reasons: string[];
-};
-
-type AiInsightDetails = {
-  confidence: number | null;
-  riskDetected: boolean;
-  recommended: boolean;
 };
 
 const EXACT_TASK_TEXT_TRANSLATIONS: Record<
@@ -340,37 +332,6 @@ function readMetadataString(
   return null;
 }
 
-function readMetadataBoolean(
-  task: WorkflowTask,
-  key: string,
-): boolean {
-  const value = task.metadata?.[key];
-
-  if (typeof value === "boolean") {
-    return value;
-  }
-
-  if (typeof value === "number") {
-    return value > 0;
-  }
-
-  if (typeof value === "string") {
-    const normalizedValue =
-      value.trim().toLowerCase();
-
-    return [
-      "true",
-      "1",
-      "yes",
-      "recommended",
-      "high",
-      "detected",
-    ].includes(normalizedValue);
-  }
-
-  return false;
-}
-
 function readMetadataStringArray(
   task: WorkflowTask,
   key: string,
@@ -421,25 +382,6 @@ function getTaskScoreDetails(
   };
 }
 
-function getAiInsightDetails(
-  task: WorkflowTask,
-): AiInsightDetails {
-  return {
-    confidence: readMetadataNumber(
-      task,
-      "aiConfidence",
-    ),
-    riskDetected: readMetadataBoolean(
-      task,
-      "aiRisk",
-    ),
-    recommended: readMetadataBoolean(
-      task,
-      "aiRecommended",
-    ),
-  };
-}
-
 const priorityLabels: Record<string, string> = {
   low: "Düşük",
   normal: "Normal",
@@ -463,29 +405,6 @@ function formatPriority(
     priority.charAt(0).toUpperCase() +
       priority.slice(1)
   );
-}
-
-function formatConfidence(
-  confidence: number | null,
-): string | null {
-  if (confidence === null) {
-    return null;
-  }
-
-  const normalizedConfidence =
-    confidence <= 1
-      ? confidence * 100
-      : confidence;
-
-  return `${Math.round(
-    Math.max(
-      0,
-      Math.min(
-        normalizedConfidence,
-        100,
-      ),
-    ),
-  )}%`;
 }
 
 export function CurrentTaskCard({
@@ -546,19 +465,6 @@ export function CurrentTaskCard({
 
   const taskScore =
     getTaskScoreDetails(task);
-
-  const aiInsight =
-    getAiInsightDetails(task);
-
-  const confidenceLabel =
-    formatConfidence(
-      aiInsight.confidence,
-    );
-
-  const hasAiInsight =
-    aiInsight.recommended ||
-    aiInsight.riskDetected ||
-    confidenceLabel !== null;
 
   const priorityLabel =
     formatPriority(
@@ -648,59 +554,6 @@ export function CurrentTaskCard({
             </div>
           ) : null}
         </div>
-
-        {hasAiInsight ? (
-          <aside className="current-task-ai-insight">
-            <div className="current-task-ai-insight-header">
-              <Sparkles size={14} />
-              <span>AI ANALİZİ</span>
-            </div>
-
-            <div className="current-task-ai-insight-body">
-              {confidenceLabel ? (
-                <div className="current-task-ai-confidence">
-                  <strong>
-                    {confidenceLabel}
-                  </strong>
-
-                  <span>
-                    Güven
-                  </span>
-                </div>
-              ) : null}
-
-              {aiInsight.recommended ? (
-                <div className="current-task-ai-status current-task-ai-status--recommended">
-                  <CheckCircle2 size={14} />
-
-                  <span>
-                    Önerilen
-                  </span>
-                </div>
-              ) : null}
-
-              <div
-                className={
-                  aiInsight.riskDetected
-                    ? "current-task-ai-status current-task-ai-status--risk"
-                    : "current-task-ai-status current-task-ai-status--safe"
-                }
-              >
-                {aiInsight.riskDetected ? (
-                  <AlertTriangle size={14} />
-                ) : (
-                  <CheckCircle2 size={14} />
-                )}
-
-                <span>
-                  {aiInsight.riskDetected
-                    ? "Risk tespit edildi"
-                    : "Risk tespit edilmedi"}
-                </span>
-              </div>
-            </div>
-          </aside>
-        ) : null}
 
         <div className="current-task-footer">
           <div className="current-task-actions">

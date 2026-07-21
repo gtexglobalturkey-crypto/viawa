@@ -1,12 +1,12 @@
 import {
-  AlertTriangle,
-  CalendarDays,
+  ArrowRight,
   CheckCircle2,
   Mail,
   Phone,
+  ReceiptText,
 } from "lucide-react";
-
-import type { ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import type { EmailRecord } from "../../services/supabase/emailService";
 import type { Reminder } from "../../services/supabase/reminderService";
@@ -23,13 +23,29 @@ type Props = {
   };
 };
 
+type ActionType =
+  | "call"
+  | "follow-up"
+  | "quotation"
+  | "email"
+  | "task";
+
+type ActionDetails = {
+  type: ActionType;
+  typeLabel: string;
+  icon: LucideIcon;
+};
+
 type QueueItem = {
   key: string;
-  icon: ReactNode;
+  icon: LucideIcon;
+  typeLabel: string;
   companyName: string;
   title: string;
   value: string;
   priority: "Yüksek" | "Orta" | "Normal";
+  dueDate: string | null;
+  href: string;
 };
 
 function cleanText(
@@ -37,7 +53,7 @@ function cleanText(
 ): string {
   return value
     ?.replace(
-      /^(company_name|company|reminder|title|task|action)\s*:\s*/i,
+      /^(company_name|company|reminder|title|task|action|subject|email)\s*:\s*/i,
       "",
     )
     .replace(/\s+/g, " ")
@@ -59,6 +75,27 @@ function getCompanyName(
   );
 }
 
+function formatDate(
+  value: string | null,
+): string {
+  if (!value) {
+    return "Tarih planlanmadı";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Geçersiz tarih";
+  }
+
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
 const ENGINE_TITLE_TRANSLATIONS: Record<
   string,
   string
@@ -78,8 +115,7 @@ const ENGINE_TITLE_TRANSLATIONS: Record<
 function normalizeReminderTitle(
   title: string,
 ): string {
-  const cleanedTitle =
-    cleanText(title);
+  const cleanedTitle = cleanText(title);
 
   const engineMatch =
     ENGINE_TITLE_TRANSLATIONS[
@@ -102,13 +138,6 @@ function normalizeReminderTitle(
     )
   ) {
     return "Müşteriyle takip görüşmesi yapın";
-  }
-
-  if (
-    normalizedTitle.includes("call") ||
-    normalizedTitle.includes("phone")
-  ) {
-    return "Müşteriyi arayın";
   }
 
   if (
@@ -138,6 +167,13 @@ function normalizeReminderTitle(
     return "E-posta yazışmasına devam edin";
   }
 
+  if (
+    normalizedTitle.includes("call") ||
+    normalizedTitle.includes("phone")
+  ) {
+    return "Müşteriyi arayın";
+  }
+
   return (
     cleanedTitle ||
     "Planlanan görevi tamamlayın"
@@ -157,19 +193,117 @@ function getEmailTitle(
   return subject;
 }
 
+function getActionDetails(
+  title: string,
+): ActionDetails {
+  const value = cleanText(
+    title,
+  ).toLowerCase();
+
+  if (
+    value.includes("follow up") ||
+    value.includes("follow-up")
+  ) {
+    return {
+      type: "follow-up",
+      typeLabel: "Takip",
+      icon: Phone,
+    };
+  }
+
+  if (
+    value.includes("quotation") ||
+    value.includes("quote")
+  ) {
+    return {
+      type: "quotation",
+      typeLabel: "Teklif",
+      icon: ReceiptText,
+    };
+  }
+
+  if (
+    value.includes("email") ||
+    value.includes("mail") ||
+    value.includes(
+      "information package",
+    ) ||
+    value.includes("info package")
+  ) {
+    return {
+      type: "email",
+      typeLabel: "E-posta",
+      icon: Mail,
+    };
+  }
+
+  if (
+    value.includes("call") ||
+    value.includes("phone")
+  ) {
+    return {
+      type: "call",
+      typeLabel: "Arama",
+      icon: Phone,
+    };
+  }
+
+  return {
+    type: "task",
+    typeLabel: "Görev",
+    icon: ArrowRight,
+  };
+}
+
+function getActionHref(
+  companyId: string,
+  action: ActionDetails,
+): string {
+  const encodedCompanyId =
+    encodeURIComponent(companyId);
+
+  if (
+    action.type === "call" ||
+    action.type === "follow-up"
+  ) {
+    return `/call?companyId=${encodedCompanyId}`;
+  }
+
+  if (action.type === "quotation") {
+    return (
+      `/communication?companyId=${encodedCompanyId}` +
+      "&template=Quotation"
+    );
+  }
+
+  if (action.type === "email") {
+    return (
+      `/communication?companyId=${encodedCompanyId}` +
+      "&template=Information%20Package"
+    );
+  }
+
+  return `/companies/${encodedCompanyId}`;
+}
+
 function createReminderItem(
   reminder: Reminder,
   companyNames: Map<string, string>,
   options: {
-    icon: ReactNode;
     value: string;
     priority: QueueItem["priority"];
     prefix: string;
+    forceAction?: ActionDetails;
   },
 ): QueueItem {
+  const action =
+    options.forceAction ??
+    getActionDetails(reminder.title);
+
   return {
     key: `${options.prefix}-${reminder.id}`,
-    icon: options.icon,
+    icon: action.icon,
+    typeLabel: action.typeLabel,
     companyName: getCompanyName(
       reminder.company_id,
       companyNames,
@@ -179,6 +313,11 @@ function createReminderItem(
     ),
     value: options.value,
     priority: options.priority,
+    dueDate: reminder.due_date,
+    href: getActionHref(
+      reminder.company_id,
+      action,
+    ),
   };
 }
 
@@ -199,9 +338,6 @@ export function NextActionsCard({
         overdueReminder,
         data.companyNames,
         {
-          icon: (
-            <AlertTriangle size={16} />
-          ),
           value: `${data.overdueReminders.length} geciken`,
           priority: "Yüksek",
           prefix: "overdue",
@@ -228,10 +364,14 @@ export function NextActionsCard({
         pendingCall,
         data.companyNames,
         {
-          icon: <Phone size={16} />,
           value: `${data.pendingCalls.length} arama`,
           priority: "Yüksek",
           prefix: "call",
+          forceAction: {
+            type: "call",
+            typeLabel: "Arama",
+            icon: Phone,
+          },
         },
       ),
     );
@@ -245,9 +385,16 @@ export function NextActionsCard({
     data.draftEmails[0] ?? null;
 
   if (draftEmail) {
+    const emailAction: ActionDetails = {
+      type: "email",
+      typeLabel: "E-posta",
+      icon: Mail,
+    };
+
     queue.push({
       key: `email-${draftEmail.id}`,
-      icon: <Mail size={16} />,
+      icon: emailAction.icon,
+      typeLabel: emailAction.typeLabel,
       companyName: getCompanyName(
         draftEmail.company_id,
         data.companyNames,
@@ -257,6 +404,11 @@ export function NextActionsCard({
       ),
       value: `${data.draftEmails.length} taslak`,
       priority: "Orta",
+      dueDate: draftEmail.created_at,
+      href: getActionHref(
+        draftEmail.company_id,
+        emailAction,
+      ),
     });
   }
 
@@ -274,9 +426,6 @@ export function NextActionsCard({
         todayReminder,
         data.companyNames,
         {
-          icon: (
-            <CalendarDays size={16} />
-          ),
           value: `${data.todayReminders.length} görev`,
           priority: "Normal",
           prefix: "today",
@@ -294,7 +443,7 @@ export function NextActionsCard({
         Bugünkü İş Planı
       </p>
 
-      <h2 style={{ margin: "0 0 8px", lineHeight: 1.2 }}>İş Sırası</h2>
+      <h2 style={{ margin: "0 0 8px", lineHeight: 1.2 }}>Sıradaki İşler</h2>
 
       {visibleQueue.length === 0 ? (
         <div className="today-action-row" style={{ gap: "8px", marginBottom: "0" }}>
@@ -302,50 +451,72 @@ export function NextActionsCard({
 
           <div>
             <strong style={{ display: "block", lineHeight: 1.2, fontSize: "12px" }}>
-              Potansiyel müşteri aramaya hazırsınız.
+              Şu anda sırada bekleyen iş bulunmuyor.
             </strong>
-
-            <p className="muted" style={{ margin: "2px 0 0", lineHeight: 1.3, fontSize: "11px" }}>
-              Bugün için bekleyen operasyonel
-              görev yok.
-            </p>
           </div>
         </div>
       ) : (
         <div className="data-list" style={{ gap: "7px", marginTop: "4px" }}>
           {visibleQueue.map(
-            (item) => (
-              <div
-                key={item.key}
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: "8px",
-                  padding: "6px 0",
-                  minWidth: 0,
-                }}
-              >
-                <div style={{ flex: "0 0 auto", marginTop: "1px" }}>
-                  {item.icon}
-                </div>
+            (item) => {
+              const Icon = item.icon;
 
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <strong style={{ display: "block", lineHeight: 1.2, fontSize: "12px" }}>
-                    {item.companyName}
-                  </strong>
+              return (
+                <Link
+                  key={item.key}
+                  to={item.href}
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "8px",
+                    padding: "6px 0",
+                    minWidth: 0,
+                    color: "inherit",
+                    textDecoration: "none",
+                  }}
+                >
+                  <div style={{ flex: "0 0 auto", marginTop: "1px" }}>
+                    <Icon size={16} />
+                  </div>
 
-                  <p className="muted" style={{ margin: "2px 0 0", lineHeight: 1.3, fontSize: "11px" }}>
-                    {item.title}
-                  </p>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                      <strong style={{ fontSize: "12px", lineHeight: 1.2, overflowWrap: "anywhere" }}>
+                        {item.companyName}
+                      </strong>
 
-                  <p className="muted" style={{ margin: "2px 0 0", lineHeight: 1.3, fontSize: "10px" }}>
-                    {item.value}
-                    {" • "}
-                    {item.priority} öncelik
-                  </p>
-                </div>
-              </div>
-            ),
+                      <span
+                        style={{
+                          fontSize: "8px",
+                          fontWeight: 800,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.08em",
+                          padding: "2px 6px",
+                          borderRadius: "999px",
+                          background: "var(--atlas-soft)",
+                        }}
+                      >
+                        {item.typeLabel}
+                      </span>
+                    </div>
+
+                    <p className="muted" style={{ margin: "2px 0 0", lineHeight: 1.3, fontSize: "11px", overflowWrap: "anywhere" }}>
+                      {item.title}
+                    </p>
+
+                    <p className="muted" style={{ margin: "2px 0 0", lineHeight: 1.3, fontSize: "10px" }}>
+                      {formatDate(item.dueDate)}
+                      {" • "}
+                      {item.value}
+                      {" • "}
+                      {item.priority} öncelik
+                    </p>
+                  </div>
+
+                  <ArrowRight size={14} style={{ flex: "0 0 auto", marginTop: "2px" }} />
+                </Link>
+              );
+            },
           )}
         </div>
       )}

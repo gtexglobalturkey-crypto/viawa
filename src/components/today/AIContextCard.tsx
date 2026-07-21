@@ -13,7 +13,6 @@ import { Panel } from "../ui/Panel";
 
 type Props = {
   data: {
-    aiReady: number;
     pendingCalls: unknown[];
     draftEmails: unknown[];
     overdueReminders: unknown[];
@@ -25,19 +24,6 @@ type FocusItem = {
   icon: typeof AlertTriangle;
   text: string;
 };
-
-function clampPercentage(
-  value: number,
-): number {
-  if (!Number.isFinite(value)) {
-    return 0;
-  }
-
-  return Math.min(
-    100,
-    Math.max(0, Math.round(value)),
-  );
-}
 
 function cleanText(
   value: string | null | undefined,
@@ -364,7 +350,7 @@ function createFocusItems(
     items.push({
       icon: CheckCircle2,
       text:
-        "Planlanan işler kontrol altında. Potansiyel müşteri aramaya devam edin veya sıradaki adımı olmayan fırsatları gözden geçirin.",
+        "Atlas bugün için ek bir kritik sinyal tespit etmedi.",
     });
   }
 
@@ -378,14 +364,6 @@ export function AIContextCard({
 
   const focusItems =
     createFocusItems(data);
-
-  const aiCoverage =
-    clampPercentage(data.aiReady);
-
-  const confidence =
-    clampPercentage(
-      memory?.confidence ?? 0,
-    );
 
   return (
     <Panel>
@@ -432,48 +410,6 @@ export function AIContextCard({
                   );
                 },
               )}
-            </div>
-
-            <div className="today-ai-stats" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "6px" }}>
-              <div style={{ padding: "6px 7px", borderRadius: "8px", background: "var(--atlas-soft)" }}>
-                <span style={{ display: "block", color: "var(--atlas-muted)", fontSize: "8px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em" }}>AI Kapsamı</span>
-
-                <strong style={{ display: "block", marginTop: "2px", fontSize: "12px", lineHeight: 1.2 }}>
-                  {aiCoverage}%
-                </strong>
-              </div>
-
-              <div style={{ padding: "6px 7px", borderRadius: "8px", background: "var(--atlas-soft)" }}>
-                <span style={{ display: "block", color: "var(--atlas-muted)", fontSize: "8px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em" }}>Güven</span>
-
-                <strong style={{ display: "block", marginTop: "2px", fontSize: "12px", lineHeight: 1.2 }}>
-                  {memory
-                    ? `${confidence}%`
-                    : "—"}
-                </strong>
-              </div>
-
-              <div style={{ padding: "6px 7px", borderRadius: "8px", background: "var(--atlas-soft)" }}>
-                <span style={{ display: "block", color: "var(--atlas-muted)", fontSize: "8px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em" }}>Bekleyen Aramalar</span>
-
-                <strong style={{ display: "block", marginTop: "2px", fontSize: "12px", lineHeight: 1.2 }}>
-                  {
-                    data.pendingCalls
-                      .length
-                  }
-                </strong>
-              </div>
-
-              <div style={{ padding: "6px 7px", borderRadius: "8px", background: "var(--atlas-soft)" }}>
-                <span style={{ display: "block", color: "var(--atlas-muted)", fontSize: "8px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em" }}>Gecikenler</span>
-
-                <strong style={{ display: "block", marginTop: "2px", fontSize: "12px", lineHeight: 1.2 }}>
-                  {
-                    data.overdueReminders
-                      .length
-                  }
-                </strong>
-              </div>
             </div>
           </div>
         </div>
