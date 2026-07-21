@@ -1,5 +1,4 @@
 import { AIContextCard } from "../../components/today/AIContextCard";
-import { ContinueWorkingCard } from "../../components/today/ContinueWorkingCard";
 import { DraftEmailsCard } from "../../components/today/DraftEmailsCard";
 import { NextActionsCard } from "../../components/today/NextActionsCard";
 import { RiskSignalsCard } from "../../components/today/RiskSignalsCard";
@@ -72,10 +71,6 @@ export function TodayPage() {
         />
 
         <RiskSignalsCard
-          data={today}
-        />
-
-        <ContinueWorkingCard
           data={today}
         />
       </section>

@@ -19,6 +19,7 @@ type Props = {
     pendingCalls: Reminder[];
     draftEmails: EmailRecord[];
     todayReminders: Reminder[];
+    upcomingReminders: Reminder[];
     companyNames: Map<string, string>;
   };
 };
@@ -431,6 +432,36 @@ export function NextActionsCard({
           prefix: "today",
         },
       ),
+    );
+
+    addedReminderIds.add(
+      todayReminder.id,
+    );
+  }
+
+  const upcomingReminder =
+    data.upcomingReminders.find(
+      (reminder) =>
+        !addedReminderIds.has(
+          reminder.id,
+        ),
+    ) ?? null;
+
+  if (upcomingReminder) {
+    queue.push(
+      createReminderItem(
+        upcomingReminder,
+        data.companyNames,
+        {
+          value: `${data.upcomingReminders.length} yaklaşan`,
+          priority: "Normal",
+          prefix: "upcoming",
+        },
+      ),
+    );
+
+    addedReminderIds.add(
+      upcomingReminder.id,
     );
   }
 
