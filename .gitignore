@@ -8,3 +8,4 @@ dist/
 .DS_Store
 Atlas-Rebuild-v2.zip
 .git.broken-backup/
+*.zip
