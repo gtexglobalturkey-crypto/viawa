@@ -386,7 +386,7 @@ export function AIContextCard({
 
         <div className="today-ai-card-scroll" style={{ minHeight: 0, overflowY: "auto" }}>
           <div className="today-ai-card-content" style={{ display: "flex", flexDirection: "column", gap: "8px", minHeight: 0 }}>
-            <div className="today-ai-focus-list" style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <div className="today-ai-focus-list" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               {focusItems.map(
                 (item, index) => {
                   const Icon = item.icon;
@@ -398,7 +398,7 @@ export function AIContextCard({
                       style={{
                         display: "flex",
                         alignItems: "flex-start",
-                        gap: "6px",
+                        gap: "8px",
                         minWidth: 0,
                         padding: "0",
                       }}

@@ -263,7 +263,7 @@ export function RiskSignalsCard({
                         </span>
                       </div>
 
-                      <p style={{ margin: "2px 0 0", fontSize: "10px", lineHeight: 1.3, overflowWrap: "anywhere" }}>
+                      <p style={{ margin: "6px 0 0", fontSize: "10px", lineHeight: 1.3, overflowWrap: "anywhere" }}>
                         {normalizeRiskText(
                           memory.risk,
                         )}

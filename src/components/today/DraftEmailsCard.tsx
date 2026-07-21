@@ -139,7 +139,7 @@ export function DraftEmailsCard({
             style={{
               display: "flex",
               alignItems: "flex-start",
-              gap: "8px",
+              gap: "12px",
               padding: "8px 0 0",
               minWidth: 0,
             }}

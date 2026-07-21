@@ -487,7 +487,7 @@ export function NextActionsCard({
           </div>
         </div>
       ) : (
-        <div className="data-list" style={{ gap: "7px", marginTop: "4px" }}>
+        <div className="data-list" style={{ gap: "10px", marginTop: "4px" }}>
           {visibleQueue.map(
             (item) => {
               const Icon = item.icon;
@@ -500,7 +500,7 @@ export function NextActionsCard({
                     display: "flex",
                     alignItems: "flex-start",
                     gap: "8px",
-                    padding: "6px 0",
+                    padding: "8px 0",
                     minWidth: 0,
                     color: "inherit",
                     textDecoration: "none",
@@ -513,7 +513,7 @@ export function NextActionsCard({
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
                       <strong style={{ fontSize: "12px", lineHeight: 1.2, overflowWrap: "anywhere" }}>
-                        {item.companyName}
+                        {item.title}
                       </strong>
 
                       <span
@@ -532,10 +532,10 @@ export function NextActionsCard({
                     </div>
 
                     <p className="muted" style={{ margin: "2px 0 0", lineHeight: 1.3, fontSize: "11px", overflowWrap: "anywhere" }}>
-                      {item.title}
+                      {item.companyName}
                     </p>
 
-                    <p className="muted" style={{ margin: "2px 0 0", lineHeight: 1.3, fontSize: "10px" }}>
+                    <p className="muted" style={{ margin: "3px 0 0", lineHeight: 1.3, fontSize: "10px" }}>
                       {formatDate(item.dueDate)}
                       {" • "}
                       {item.value}
