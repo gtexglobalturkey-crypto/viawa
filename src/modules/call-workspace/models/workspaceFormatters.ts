@@ -11,7 +11,7 @@ export function formatWorkspaceDate(
     return "Not planned";
   }
 
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat("tr-TR", {
     day: "2-digit",
     month: "short",
     year: "numeric",

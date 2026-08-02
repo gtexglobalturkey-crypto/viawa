@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Panel } from "../../components/ui/Panel";
@@ -24,16 +25,16 @@ const initialState: MasterDataState = {
 
 function formatDate(value?: string | null): string {
   if (!value) {
-    return "Not recorded";
+    return "Kayıtlı değil";
   }
 
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return "Not recorded";
+    return "Kayıtlı değil";
   }
 
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat("tr-TR", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -74,7 +75,7 @@ export function MasterDataPage() {
           exhibitions: [],
           loading: false,
           error:
-            "Reference data could not be loaded.",
+            "Referans veriler yüklenemedi.",
         });
       }
     }
@@ -142,17 +143,17 @@ export function MasterDataPage() {
     return (
       <main className="page">
         <PageHeader
-          eyebrow="Reference Data"
-          title="Master Data"
-          subtitle="Atlas is loading sectors, organizers and exhibitions."
+          eyebrow="Referans Veriler"
+          title="Ana Veriler"
+          subtitle="VIAWA sektörleri, organizatörleri ve fuarları yüklüyor."
         />
 
         <Panel>
-          <h2>Loading master data...</h2>
+          <h2>Ana veriler yükleniyor...</h2>
 
           <p className="muted">
-            Reference lists are being loaded from
-            Supabase.
+            Referans listeleri Supabase'den
+            yükleniyor.
           </p>
         </Panel>
       </main>
@@ -163,13 +164,13 @@ export function MasterDataPage() {
     return (
       <main className="page">
         <PageHeader
-          eyebrow="Reference Data"
-          title="Master Data"
-          subtitle="Reference data could not be prepared."
+          eyebrow="Referans Veriler"
+          title="Ana Veriler"
+          subtitle="Referans veriler hazırlanamadı."
         />
 
         <Panel>
-          <h2>Unable to load master data</h2>
+          <h2>Ana veriler yüklenemedi</h2>
 
           <p className="muted">{data.error}</p>
         </Panel>
@@ -180,70 +181,70 @@ export function MasterDataPage() {
   return (
     <main className="page">
       <PageHeader
-        eyebrow="Reference Data"
-        title="Master Data"
-        subtitle="Manage the reference lists Atlas uses for import, filtering and reports."
+        eyebrow="Referans Veriler"
+        title="Ana Veriler"
+        subtitle="VIAWA'nın içe aktarma, filtreleme ve raporlar için kullandığı referans listelerini yönetin."
       />
 
       <section className="today-grid">
         <Panel>
-          <p className="eyebrow">Sectors</p>
+          <p className="eyebrow">Sektörler</p>
 
           <h2>{sectors.length}</h2>
 
-          <p>Active sectors available in Atlas.</p>
+          <p>VIAWA'da mevcut aktif sektörler.</p>
 
           <strong>
-            {exhibitionSectors.length} used by exhibitions
+            {exhibitionSectors.length} fuarlarda kullanılıyor
           </strong>
         </Panel>
 
         <Panel>
-          <p className="eyebrow">Organizers</p>
+          <p className="eyebrow">Organizatörler</p>
 
           <h2>{organizers.length}</h2>
 
           <p>
-            Organizers currently represented in the
-            exhibition portfolio.
+            Fuar portföyünde şu anda yer alan
+            organizatörler.
           </p>
 
-          <strong>{organizers.length} active</strong>
+          <strong>{organizers.length} aktif</strong>
         </Panel>
 
         <Panel>
-          <p className="eyebrow">Exhibitions</p>
+          <p className="eyebrow">Fuarlar</p>
 
           <h2>{data.exhibitions.length}</h2>
 
           <p>
-            Exhibition records available in Supabase.
+            Supabase'de mevcut fuar kayıtları.
           </p>
 
           <strong>
-            {upcomingExhibitions.length} upcoming
+            {upcomingExhibitions.length} yaklaşan
           </strong>
         </Panel>
 
         <Panel>
-          <p className="eyebrow">Product Groups</p>
+          <p className="eyebrow">Ürün Grupları</p>
 
           <h2>0</h2>
 
           <p>
-            Product groups will be added after the MVP
-            launch.
+            Ürün grupları MVP lansmanından sonra
+            eklenecek.
           </p>
 
-          <strong>Planned</strong>
+          <strong>Planlandı</strong>
         </Panel>
       </section>
 
       <section className="panel-grid">
         <Panel>
-          <p className="eyebrow">Sectors</p>
+          <p className="eyebrow">Sektörler</p>
 
-          <h2>{sectors.length} active sectors</h2>
+          <h2>{sectors.length} aktif sektör</h2>
 
           <div className="data-list">
             {sectors.map((sector) => (
@@ -259,9 +260,9 @@ export function MasterDataPage() {
         </Panel>
 
         <Panel>
-          <p className="eyebrow">Organizers</p>
+          <p className="eyebrow">Organizatörler</p>
 
-          <h2>{organizers.length} organizers</h2>
+          <h2>{organizers.length} organizatör</h2>
 
           {organizers.length > 0 ? (
             <div className="data-list">
@@ -277,14 +278,14 @@ export function MasterDataPage() {
                           organizer,
                       ).length
                     }{" "}
-                    exhibitions
+                    fuar
                   </strong>
                 </div>
               ))}
             </div>
           ) : (
             <p className="muted">
-              No organizer records found.
+              Organizatör kaydı bulunamadı.
             </p>
           )}
         </Panel>
@@ -292,13 +293,13 @@ export function MasterDataPage() {
 
       <section className="section-head">
         <div>
-          <p className="eyebrow">Portfolio</p>
+          <p className="eyebrow">Portföy</p>
 
-          <h2>Exhibitions</h2>
+          <h2>Fuarlar</h2>
 
           <p className="muted">
-            Live exhibition records connected to sales
-            opportunities.
+            Satış fırsatlarına bağlı canlı fuar
+            kayıtları.
           </p>
         </div>
       </section>
@@ -313,20 +314,20 @@ export function MasterDataPage() {
               <div>
                 <p className="eyebrow">
                   {exhibition.sector ??
-                    "Sector not assigned"}
+                    "Sektör atanmadı"}
                 </p>
 
                 <h2>{exhibition.name}</h2>
 
                 <p className="muted">
                   {exhibition.organizer ??
-                    "Organizer not assigned"}
+                    "Organizatör atanmadı"}
                 </p>
               </div>
 
               <div className="data-list">
                 <div>
-                  <span>Location</span>
+                  <span>Konum</span>
 
                   <strong>
                     {[
@@ -334,12 +335,12 @@ export function MasterDataPage() {
                       exhibition.country,
                     ]
                       .filter(Boolean)
-                      .join(", ") || "Not recorded"}
+                      .join(", ") || "Kayıtlı değil"}
                   </strong>
                 </div>
 
                 <div>
-                  <span>Start Date</span>
+                  <span>Başlangıç Tarihi</span>
 
                   <strong>
                     {formatDate(
@@ -349,7 +350,7 @@ export function MasterDataPage() {
                 </div>
 
                 <div>
-                  <span>End Date</span>
+                  <span>Bitiş Tarihi</span>
 
                   <strong>
                     {formatDate(
@@ -359,27 +360,39 @@ export function MasterDataPage() {
                 </div>
 
                 <div>
-                  <span>Sector</span>
+                  <span>Sektör</span>
 
                   <strong>
                     {exhibition.sector ??
-                      "Not assigned"}
+                      "Atanmadı"}
                   </strong>
                 </div>
               </div>
+
+              <Link
+                to={`/exhibitions/${exhibition.id}/repository`}
+                className="btn btn-secondary"
+                style={{
+                  marginTop: "12px",
+                  alignSelf:
+                    "flex-start",
+                }}
+              >
+                Repository'yi Aç
+              </Link>
             </Panel>
           ))
         ) : (
           <Panel>
             <p className="eyebrow">
-              No Exhibitions
+              Fuar Yok
             </p>
 
-            <h2>No exhibition records yet</h2>
+            <h2>Henüz fuar kaydı yok</h2>
 
             <p className="muted">
-              Add exhibitions to Supabase to build the
-              sales portfolio.
+              Satış portföyünü oluşturmak için
+              Supabase'e fuar ekleyin.
             </p>
           </Panel>
         )}

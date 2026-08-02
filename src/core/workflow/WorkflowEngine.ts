@@ -1,6 +1,8 @@
 import { SuggestedWorkGenerator } from "./SuggestedWorkGenerator";
 import { TaskScoreEngine } from "./TaskScoreEngine";
 
+import { normalizeLegacyOpportunityStage } from "../../types/businessStatus";
+
 import type {
   WorkflowCompletionResult,
   WorkflowEngineResult,
@@ -209,7 +211,7 @@ export class WorkflowEngine {
               email,
               "companyName",
               "company_name",
-            ) ?? "Customer",
+            ) ?? "Müşteri",
           );
 
         const contactName =
@@ -228,7 +230,7 @@ export class WorkflowEngine {
             this.readString(
               email,
               "subject",
-            ) ?? "Pending email",
+            ) ?? "Bekleyen e-posta",
           );
 
         const createdAt =
@@ -254,7 +256,7 @@ export class WorkflowEngine {
           title: `Complete email: ${subject}`,
           description:
             contactName !== undefined
-              ? `${contactName} at ${companyName}`
+              ? `${contactName} (${companyName})`
               : companyName,
           reason:
             "Pending customer communication should be handled before starting other work.",
@@ -264,7 +266,12 @@ export class WorkflowEngine {
           estimatedMinutes: 5,
           action: {
             label: "Open email",
-            route: "/communication",
+            // Sprint 25.1 / Adım 4 — route removed: nothing ever read
+            // WorkflowTaskAction.route (confirmed via a repo-wide
+            // search), the real navigation is built entirely in
+            // useTodayWorkflow.ts's getTaskRoute from entityReference
+            // below. route is optional on the shared type, so dropping
+            // it here doesn't affect anything else that uses it.
             entityReference: {
               companyId,
               opportunityId,
@@ -319,13 +326,20 @@ export class WorkflowEngine {
             "opportunity_id",
           );
 
+        const taskType =
+          this.readString(
+            reminder,
+            "taskType",
+            "task_type",
+          );
+
         const companyName =
           this.cleanCompanyName(
             this.readString(
               reminder,
               "companyName",
               "company_name",
-            ) ?? "Customer",
+            ) ?? "Müşteri",
           );
 
         const contactName =
@@ -385,7 +399,7 @@ export class WorkflowEngine {
           title,
           description:
             contactName !== undefined
-              ? `${contactName} at ${companyName}`
+              ? `${contactName} (${companyName})`
               : companyName,
           reason:
             priority === "critical"
@@ -406,6 +420,7 @@ export class WorkflowEngine {
             entityReference: {
               companyId,
               opportunityId,
+              taskType,
               reminderId,
             },
           },
@@ -464,7 +479,7 @@ export class WorkflowEngine {
               opportunity,
               "companyName",
               "company_name",
-            ) ?? "Customer",
+            ) ?? "Müşteri",
           );
 
         const opportunityTitle =
@@ -478,10 +493,12 @@ export class WorkflowEngine {
           );
 
         const stage =
-          this.readString(
-            opportunity,
-            "stage",
-          ) ?? "contacted";
+          normalizeLegacyOpportunityStage(
+            this.readString(
+              opportunity,
+              "stage",
+            ) ?? "contacted",
+          );
 
         const nextAction =
           this.cleanOptionalTaskTitle(
@@ -511,11 +528,13 @@ export class WorkflowEngine {
           ) ?? now;
 
         const taskType =
-          stage === "quotation-sent"
-            ? "follow-up-quotation"
-            : stage === "contract"
-              ? "follow-up-contract"
-              : "follow-up";
+          stage === "proposal-ready"
+            ? "send-quotation"
+            : stage === "quotation-sent"
+              ? "follow-up-quotation"
+              : stage === "contract"
+                ? "follow-up-contract"
+                : "follow-up";
 
         const priority =
           this.getTimeBasedPriority(
@@ -532,7 +551,8 @@ export class WorkflowEngine {
         return {
           id: `opportunity-${opportunityId}`,
           source:
-            stage === "quotation-requested"
+            stage === "quotation-ready" ||
+            stage === "proposal-ready"
               ? "quotation"
               : stage === "contract"
                 ? "contract"
@@ -557,14 +577,18 @@ export class WorkflowEngine {
           dueAt,
           createdAt,
           estimatedMinutes:
-            stage === "quotation-requested"
+            stage === "quotation-ready"
               ? 15
-              : 10,
+              : stage === "proposal-ready"
+                ? 5
+                : 10,
           action: {
             label:
-              stage === "quotation-requested"
+              stage === "quotation-ready"
                 ? "Prepare quotation"
-                : "Open opportunity",
+                : stage === "proposal-ready"
+                  ? "Send quotation"
+                  : "Open opportunity",
             route:
               companyId !== undefined
                 ? `/companies/${companyId}`
@@ -1371,11 +1395,17 @@ export class WorkflowEngine {
   private requiresFollowUp(
     opportunity: UnknownRecord,
   ): boolean {
-    const stage =
+    const rawStage =
       this.readString(
         opportunity,
         "stage",
-      )?.toLowerCase();
+      );
+
+    const stage = rawStage
+      ? normalizeLegacyOpportunityStage(
+          rawStage,
+        ).toLowerCase()
+      : undefined;
 
     const nextAction =
       this.readString(
@@ -1405,7 +1435,8 @@ export class WorkflowEngine {
     return (
       nextAction !== undefined ||
       dueAt !== undefined ||
-      stage === "quotation-requested" ||
+      stage === "quotation-ready" ||
+      stage === "proposal-ready" ||
       stage === "quotation-sent" ||
       stage === "negotiation" ||
       stage === "contract"
@@ -1417,8 +1448,11 @@ export class WorkflowEngine {
     companyName: string,
   ): string {
     switch (stage) {
-      case "quotation-requested":
+      case "quotation-ready":
         return `Prepare quotation for ${companyName}`;
+
+      case "proposal-ready":
+        return `Send quotation to ${companyName}`;
 
       case "quotation-sent":
         return `Follow up quotation with ${companyName}`;
@@ -1531,7 +1565,12 @@ export class WorkflowEngine {
       entityReference?.opportunityId;
 
     if (opportunityId !== undefined) {
-      return `opportunity:${opportunityId}`;
+      return [
+        "opportunity",
+        opportunityId,
+        entityReference?.taskType ??
+          task.type,
+      ].join(":");
     }
 
     const reminderId =
@@ -1656,7 +1695,7 @@ export class WorkflowEngine {
     const cleanedValue =
       this.cleanStoredText(value);
 
-    return cleanedValue || "Customer";
+    return cleanedValue || "Müşteri";
   }
 
   private normalizeTaskTitle(

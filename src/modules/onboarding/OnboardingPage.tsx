@@ -5,35 +5,35 @@ export function OnboardingPage() {
   return (
     <main className="page">
       <Panel>
-        <p className="eyebrow">ATLAS Representative Edition</p>
+        <p className="eyebrow">VIAWA Temsilci Sürümü</p>
 
-        <h1>Welcome to Atlas</h1>
+        <h1>VIAWA'ya hoş geldiniz</h1>
 
         <p className="muted">
-          Let's prepare your existing customer portfolio and start selling in a
-          few minutes.
+          Mevcut müşteri portföyünüzü hazırlayalım ve birkaç dakika içinde
+          satışa başlayalım.
         </p>
 
         <br />
 
-        <h2>Do you already have customer data?</h2>
+        <h2>Mevcut müşteri veriniz var mı?</h2>
 
         <div className="task-list">
           <label>
             <input type="radio" checked readOnly />
-            <span>Yes, I have an Excel file.</span>
+            <span>Evet, bir Excel dosyam var.</span>
           </label>
 
           <label>
             <input type="radio" readOnly />
-            <span>No, I want to start from scratch.</span>
+            <span>Hayır, sıfırdan başlamak istiyorum.</span>
           </label>
         </div>
 
         <br />
 
         <Link className="btn btn-primary" to="/today">
-          Continue
+          Devam et
         </Link>
       </Panel>
     </main>

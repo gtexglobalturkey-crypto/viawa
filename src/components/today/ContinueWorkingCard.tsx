@@ -46,7 +46,7 @@ function formatDate(
   }
 
   return new Intl.DateTimeFormat(
-    "en-GB",
+    "tr-TR",
     {
       day: "2-digit",
       month: "short",
@@ -239,6 +239,12 @@ function getActionDetails(
   };
 }
 
+// Sprint 25.1 / Adım 3 — "quotation"-classified reminders here only ever
+// come from the "Wait for quotation feedback" reminder
+// (executionListeners.ts's follow-up on an already-sent quotation — see
+// useTodayWorkflow.ts's EMAIL_TASK_TEMPLATE_IDS for the same reasoning),
+// so this opens Revised Quotation, not Quotation — resending the
+// original offer would be wrong here.
 function getActionHref(
   reminder: Reminder,
 ): string {
@@ -257,18 +263,28 @@ function getActionHref(
     return `/call?companyId=${companyId}`;
   }
 
-  if (action.type === "quotation") {
-    return (
-      `/communication?companyId=${companyId}` +
-      "&template=Quotation"
-    );
-  }
+  const emailTemplateId =
+    action.type === "quotation"
+      ? "Revised Quotation"
+      : action.type === "email"
+        ? "Information Package"
+        : null;
 
-  if (action.type === "email") {
-    return (
-      `/communication?companyId=${companyId}` +
-      "&template=Information%20Package"
-    );
+  if (emailTemplateId) {
+    const params = new URLSearchParams({
+      companyId: reminder.company_id,
+      openEmail: "true",
+      template: emailTemplateId,
+    });
+
+    if (reminder.opportunity_id) {
+      params.set(
+        "opportunityId",
+        reminder.opportunity_id,
+      );
+    }
+
+    return `/call?${params.toString()}`;
   }
 
   return `/companies/${companyId}`;

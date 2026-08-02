@@ -12,6 +12,7 @@ import type {
 } from "./timelineBuilder";
 
 import {
+  createActiveReminderIfAbsent,
   createReminder,
   updateReminder,
 } from "../../services/supabase/reminderService";
@@ -21,12 +22,16 @@ import {
 } from "../../services/supabase/timelineService";
 
 import {
+  getOpportunity,
   updateOpportunity,
 } from "../../services/supabase/opportunityService";
 
 import {
   upsertAiMemory,
 } from "../../services/supabase/aiService";
+
+import { findWorkspaceFollowUpActionByExecutionId } from "../../types/workspaceFollowUpAction";
+import { isForwardStageTransition } from "../../types/businessStatus";
 
 let initialized = false;
 
@@ -93,18 +98,23 @@ function getNextTask(
 function getNextStage(
   actionId?: string,
 ): string | null {
+  const followUpAction =
+    actionId
+      ? findWorkspaceFollowUpActionByExecutionId(
+          actionId,
+        )
+      : null;
+
+  if (followUpAction) {
+    return followUpAction.resultingStage;
+  }
+
   switch (actionId) {
     case "information-package":
       return "information-sent";
 
-    case "quotation":
-      return "quotation-sent";
-
     case "revised-quotation":
       return "negotiation";
-
-    case "contract":
-      return "contract";
 
     default:
       return null;
@@ -364,17 +374,27 @@ async function saveTimelineEvent(
   });
 }
 
+// Sprint 22.9.9 — nextStage/currentStage are resolved by the caller
+// (currentStage requires an async Opportunity lookup, only needed when
+// there is a candidate stage change at all) so this stays a pure,
+// synchronous decision function. A backward transition is skipped
+// silently — stage is simply left out of the update — never treated as
+// an error.
 function buildOpportunityUpdate(
-  actionId: string | undefined,
+  nextStage: string | null,
+  currentStage: string | null | undefined,
   nextTask: string | null,
   reminderDate: string | null,
 ): OpportunityUpdate | null {
-  const nextStage =
-    getNextStage(actionId);
-
   const update: OpportunityUpdate = {};
 
-  if (nextStage !== null) {
+  if (
+    nextStage !== null &&
+    isForwardStageTransition(
+      currentStage,
+      nextStage,
+    )
+  ) {
     update.stage = nextStage;
   }
 
@@ -432,6 +452,11 @@ export function initializeExecutionListeners() {
         payload.actionId,
       );
 
+    const nextTaskType =
+      getNextTaskType(
+        payload.actionId,
+      );
+
     if (nextTask) {
       addWorkQueueItem(
         nextTask,
@@ -451,14 +476,28 @@ export function initializeExecutionListeners() {
       nextTask &&
       reminderDate
     ) {
-      await createReminder({
-        company_id:
-          payload.companyId,
-        title: nextTask,
-        due_date:
-          reminderDate,
-        completed: false,
-      });
+      if (
+        payload.opportunityId &&
+        nextTaskType
+      ) {
+        await createActiveReminderIfAbsent({
+          companyId: payload.companyId,
+          opportunityId:
+            payload.opportunityId,
+          taskType: nextTaskType,
+          title: nextTask,
+          dueDate: reminderDate,
+        });
+      } else {
+        await createReminder({
+          company_id:
+            payload.companyId,
+          title: nextTask,
+          due_date:
+            reminderDate,
+          completed: false,
+        });
+      }
 
       nextActionScheduled = true;
     }
@@ -476,9 +515,36 @@ export function initializeExecutionListeners() {
     }
 
     if (payload.opportunityId) {
+      const nextStage = getNextStage(
+        payload.actionId,
+      );
+
+      let currentStage:
+        | string
+        | null
+        | undefined;
+
+      if (nextStage !== null) {
+        try {
+          const currentOpportunity =
+            await getOpportunity(
+              payload.opportunityId,
+            );
+
+          currentStage =
+            currentOpportunity?.stage;
+        } catch (lookupError) {
+          console.error(
+            "Opportunity stage lookup error:",
+            lookupError,
+          );
+        }
+      }
+
       const opportunityUpdate =
         buildOpportunityUpdate(
-          payload.actionId,
+          nextStage,
+          currentStage,
           nextTask,
           reminderDate,
         );
@@ -493,4 +559,35 @@ export function initializeExecutionListeners() {
   });
 
   initialized = true;
+}
+
+function getNextTaskType(
+  actionId?: string,
+): string | null {
+  const normalizedActionId =
+    actionId
+      ?.trim()
+      .toLowerCase() ?? "";
+
+  switch (normalizedActionId) {
+    case "information-package":
+      return "information-package-follow-up";
+    case "quotation":
+      return "quotation-feedback";
+    case "revised-quotation":
+      return "final-offer-negotiation";
+    case "contract":
+      return "signed-contract-tracking";
+    case "make-call":
+    case "call":
+    case "follow-up":
+    case "follow-up-call":
+    case "planned-call":
+    case "phone-call":
+      return "call-result-review";
+    default:
+      return normalizedActionId.includes("call")
+        ? "call-result-review"
+        : null;
+  }
 }

@@ -1,15 +1,8 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useMemo } from "react";
 
 import { useWorkspaceData } from "../modules/call-workspace/hooks/useWorkspaceData";
 
-import {
-  getExhibition,
-  type Exhibition,
-} from "../services/supabase/exhibitionService";
+import { findBusinessStatus } from "../types/businessStatus";
 
 function formatDateValue(
   value?: string | null,
@@ -24,7 +17,7 @@ function formatDateValue(
     return "Kayıtlı değil";
   }
 
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat("tr-TR", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -53,16 +46,6 @@ const STAGE_AND_STATUS_LABELS: Record<
   prospect: "Aday Müşteri",
   customer: "Müşteri",
   inactive: "Pasif",
-  new: "Yeni",
-  contacted: "İletişime Geçildi",
-  interested: "İlgileniyor",
-  "information-sent": "Bilgi Paketi Gönderildi",
-  "quotation-requested": "Teklif Talep Edildi",
-  "quotation-sent": "Teklif Gönderildi",
-  negotiation: "Görüşme",
-  contract: "Sözleşme",
-  signed: "İmzalandı",
-  lost: "Kaybedildi",
   activity: "Aktivite",
   call: "Arama",
   "call-completed": "Arama Tamamlandı",
@@ -96,6 +79,13 @@ function formatStageValue(
 
   const normalizedValue =
     cleaned.toLowerCase();
+
+  const businessStatus =
+    findBusinessStatus(normalizedValue);
+
+  if (businessStatus) {
+    return businessStatus.label;
+  }
 
   if (
     STAGE_AND_STATUS_LABELS[normalizedValue]
@@ -180,93 +170,18 @@ export function useCompanyWorkspace(
   const workspace =
     useWorkspaceData(companyId);
 
-  const exhibitionIds = useMemo(() => {
-    const ids = new Set<string>();
-
-    for (const opportunity of workspace.opportunities) {
-      if (opportunity.exhibition_id) {
-        ids.add(
-          opportunity.exhibition_id,
-        );
-      }
-    }
-
-    return ids;
-  }, [workspace.opportunities]);
-
-  const [
-    exhibitionsById,
-    setExhibitionsById,
-  ] = useState<
-    Map<string, Exhibition>
-  >(new Map());
-
-  useEffect(() => {
-    let isActive = true;
-
-    const idsToLoad = [
-      ...exhibitionIds,
-    ].filter(
-      (exhibitionId) =>
-        !exhibitionsById.has(
-          exhibitionId,
+  const exhibitionsById = useMemo(
+    () =>
+      new Map(
+        workspace.exhibitions.map(
+          (exhibition) => [
+            exhibition.id,
+            exhibition,
+          ],
         ),
-    );
-
-    if (idsToLoad.length === 0) {
-      return;
-    }
-
-    async function loadExhibitions() {
-      const results =
-        await Promise.allSettled(
-          idsToLoad.map(
-            (exhibitionId) =>
-              getExhibition(
-                exhibitionId,
-              ),
-          ),
-        );
-
-      if (!isActive) {
-        return;
-      }
-
-      setExhibitionsById(
-        (current) => {
-          const next = new Map(
-            current,
-          );
-
-          results.forEach(
-            (result, index) => {
-              if (
-                result.status ===
-                  "fulfilled" &&
-                result.value
-              ) {
-                next.set(
-                  idsToLoad[index],
-                  result.value,
-                );
-              }
-            },
-          );
-
-          return next;
-        },
-      );
-    }
-
-    void loadExhibitions();
-
-    return () => {
-      isActive = false;
-    };
-  }, [
-    exhibitionIds,
-    exhibitionsById,
-  ]);
+      ),
+    [workspace.exhibitions],
+  );
 
   const derivedData = useMemo(() => {
     const {

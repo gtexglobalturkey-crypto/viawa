@@ -1,9 +1,6 @@
 import {
-  Building2,
-  Globe2,
   Mail,
   Phone,
-  Star,
   UserRound,
 } from "lucide-react";
 
@@ -14,20 +11,6 @@ import type { CallWorkspaceViewModel } from "../models/workspaceViewModel";
 type Props = {
   workspace: CallWorkspaceViewModel;
 };
-
-function getRelationshipLabel(
-  probability: number | null,
-) {
-  if (probability !== null && probability >= 75) {
-    return "Güçlü";
-  }
-
-  if (probability !== null && probability >= 40) {
-    return "Gelişiyor";
-  }
-
-  return "Erken";
-}
 
 function getInitials(
   fullName: string,
@@ -50,10 +33,6 @@ function getInitials(
 export function CustomerPanel({
   workspace,
 }: Props) {
-  const relationship = getRelationshipLabel(
-    workspace.opportunity.probability,
-  );
-
   const initials = getInitials(
     workspace.customer.fullName,
   );
@@ -103,37 +82,6 @@ export function CustomerPanel({
           <strong>
             {workspace.customer.email}
           </strong>
-        </div>
-
-        <div>
-          <span>
-            <Building2 size={14} />
-            Firma
-          </span>
-
-          <strong>
-            {workspace.company.name}
-          </strong>
-        </div>
-
-        <div>
-          <span>
-            <Globe2 size={14} />
-            Ülke
-          </span>
-
-          <strong>
-            {workspace.company.country}
-          </strong>
-        </div>
-
-        <div>
-          <span>
-            <Star size={14} />
-            İlişki
-          </span>
-
-          <strong>{relationship}</strong>
         </div>
 
         <div>

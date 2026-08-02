@@ -6,7 +6,6 @@ import {
   Clock3,
   Lightbulb,
   ShieldCheck,
-  Sparkles,
   TrendingUp,
 } from "lucide-react";
 
@@ -32,14 +31,14 @@ function getConfidenceColor(
   confidence: number,
 ) {
   if (confidence >= 85) {
-    return "#22c55e";
+    return "var(--atlas-success)";
   }
 
   if (confidence >= 65) {
-    return "#f59e0b";
+    return "var(--atlas-warning)";
   }
 
-  return "#ef4444";
+  return "var(--atlas-danger)";
 }
 
 function clampPercentage(
@@ -153,168 +152,163 @@ export function AiCopilot({
 
   return (
     <Panel className="ai-panel">
-      <p className="eyebrow">
-        Atlas AI
-      </p>
+      <div className="ai-panel-header">
+        <p className="eyebrow">
+          VIAWA AI
+        </p>
 
-      <h2>Satış Asistanı</h2>
-
-      <div
-        className="ai-card"
-        style={{
-          borderLeft: `4px solid ${getConfidenceColor(
-            confidence,
-          )}`,
-        }}
-      >
-        <ShieldCheck size={18} />
-
-        <div>
-          <strong>
-            AI Güveni · {confidence}%
-          </strong>
-
-          <p>
-            {
-              workspace.ai
-                .confidenceLabel
-            }
-          </p>
-        </div>
+        <h2>Satış Asistanı</h2>
       </div>
 
-      {metrics && (
-        <>
-          <div className="ai-card">
-            <Activity size={18} />
+      <div className="ai-panel-body">
+        <div
+          className="ai-card"
+          style={{
+            borderLeft: `4px solid ${getConfidenceColor(
+              confidence,
+            )}`,
+          }}
+        >
+          <ShieldCheck size={18} />
 
-            <div>
-              <strong>
-                Aktivite Skoru
-              </strong>
+          <div>
+            <strong>
+              AI Güveni · {confidence}%
+            </strong>
 
-              <p>
-                {
-                  metrics.activityScore
-                }
-                %
-                {" • "}
-                {
-                  metrics
-                    .activityScoreLabel
-                }
-              </p>
-            </div>
+            <p>
+              {
+                workspace.ai
+                  .confidenceLabel
+              }
+            </p>
           </div>
+        </div>
 
-          <div className="ai-card">
-            <AlertTriangle
-              size={18}
-            />
+        {metrics && (
+          <>
+            <div className="ai-card">
+              <Activity size={18} />
 
-            <div>
-              <strong>
-                Risk Skoru
-              </strong>
+              <div>
+                <strong>
+                  Aktivite Skoru
+                </strong>
 
-              <p>
-                {metrics.riskScore}%
-                {" • "}
-                {
-                  metrics
-                    .riskScoreLabel
-                }
-              </p>
+                <p>
+                  {
+                    metrics.activityScore
+                  }
+                  %
+                  {" • "}
+                  {
+                    metrics
+                      .activityScoreLabel
+                  }
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div className="ai-card">
-            <Clock3 size={18} />
+            <div className="ai-card">
+              <AlertTriangle
+                size={18}
+              />
 
-            <div>
-              <strong>
-                Son Aktivite
-              </strong>
+              <div>
+                <strong>
+                  Risk Skoru
+                </strong>
 
-              <p>
-                {
-                  metrics
-                    .lastActivityDateLabel
-                }
-              </p>
+                <p>
+                  {metrics.riskScore}%
+                  {" • "}
+                  {
+                    metrics
+                      .riskScoreLabel
+                  }
+                </p>
+              </div>
             </div>
+
+            <div className="ai-card">
+              <Clock3 size={18} />
+
+              <div>
+                <strong>
+                  Son Aktivite
+                </strong>
+
+                <p>
+                  {
+                    metrics
+                      .lastActivityDateLabel
+                  }
+                </p>
+              </div>
+            </div>
+          </>
+        )}
+
+        <div className="ai-card">
+          <BrainCircuit size={18} />
+
+          <div>
+            <strong>
+              Müşteri Bağlamı
+            </strong>
+
+            <p>
+              {
+                workspace.ai
+                  .conversationSummary
+              }
+            </p>
           </div>
-        </>
-      )}
+        </div>
 
-      <div className="ai-card">
-        <BrainCircuit size={18} />
+        <div className="ai-card">
+          <Lightbulb size={18} />
 
-        <div>
-          <strong>
-            Müşteri Bağlamı
-          </strong>
+          <div>
+            <strong>
+              Son Hafıza
+            </strong>
 
-          <p>
-            {
-              workspace.ai
-                .conversationSummary
-            }
-          </p>
+            <p>{memorySummary}</p>
+
+            <small>
+              {memoryCount} hafıza kaydı
+              {memoryDate
+                ? ` • ${memoryDate}`
+                : ""}
+            </small>
+          </div>
+        </div>
+
+        <div className="ai-card">
+          <TrendingUp size={18} />
+
+          <div>
+            <strong>
+              AI Önerisi
+            </strong>
+
+            <p>{memoryNextStep}</p>
+          </div>
+        </div>
+
+        <div className="ai-card">
+          <CircleAlert size={18} />
+
+          <div>
+            <strong>
+              Mevcut Risk
+            </strong>
+
+            <p>{memoryRisk}</p>
+          </div>
         </div>
       </div>
-
-      <div className="ai-card">
-        <Lightbulb size={18} />
-
-        <div>
-          <strong>
-            Son Hafıza
-          </strong>
-
-          <p>{memorySummary}</p>
-
-          <small>
-            {memoryCount} hafıza kaydı
-            {memoryDate
-              ? ` • ${memoryDate}`
-              : ""}
-          </small>
-        </div>
-      </div>
-
-      <div className="ai-card">
-        <TrendingUp size={18} />
-
-        <div>
-          <strong>
-            Önerilen Sonraki Adım
-          </strong>
-
-          <p>{memoryNextStep}</p>
-        </div>
-      </div>
-
-      <div className="ai-card">
-        <CircleAlert size={18} />
-
-        <div>
-          <strong>
-            Mevcut Risk
-          </strong>
-
-          <p>{memoryRisk}</p>
-        </div>
-      </div>
-
-      <button
-        className="btn btn-primary"
-        type="button"
-        style={{ width: "100%" }}
-      >
-        <Sparkles size={18} />
-        AI Analizini Yenile
-      </button>
     </Panel>
   );
 }

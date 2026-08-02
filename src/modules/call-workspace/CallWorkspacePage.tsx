@@ -1,95 +1,27 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useEffect, useState } from "react";
 import {
   useNavigate,
   useSearchParams,
 } from "react-router-dom";
 
-import { useToast } from "../../components/feedback/toastContext";
 import { useWorkspaceHeader } from "../../components/layout/workspaceHeaderContext";
 import { Panel } from "../../components/ui/Panel";
-import { useAuth } from "../../features/auth/AuthContext";
-import {
-  executeAction,
-  getWorkQueue,
-} from "../../features/execution";
-import {
-  createCallNote,
-} from "../../services/supabase/noteService";
-import {
-  createReminder,
-} from "../../services/supabase/reminderService";
-import {
-  createTimelineEvent,
-} from "../../services/supabase/timelineService";
 
+import { CustomerWorkspace } from "./CustomerWorkspace";
 import { useWorkspaceData } from "./hooks/useWorkspaceData";
 
-import { AiCopilot } from "./components/AiCopilot";
-
-import { CustomerPanel } from "./components/CustomerPanel";
-import { FairPanel } from "./components/FairPanel";
-import { LiveInteraction } from "./components/LiveInteraction";
-import { SalesKitPanel } from "./components/SalesKitPanel";
-import { TimelinePanel } from "./components/TimelinePanel";
-import { WorkQueuePanel } from "./components/WorkQueuePanel";
-
-
-
-
-
-import { createCallWorkspaceViewModel } from "./models/workspaceMapper";
-import { formatWorkspaceDate } from "./models/workspaceFormatters";
-
-
-
-export type {
-  WorkspaceMode,
-} from "./models/workspaceViewModel";
-
-
-
-
-
-function mapNextActionToActionId(
-  nextAction: string,
-): string {
-  switch (nextAction) {
-    case "Prepare Offer":
-      return "quotation";
-
-    case "Prepare Contract":
-      return "contract";
-
-    case "Call Tomorrow":
-      return "call";
-
-    default:
-      return "follow-up";
-  }
-}
-
-function getFollowUpReminderDate(): string {
-  const reminderDate = new Date();
-
-  reminderDate.setDate(
-    reminderDate.getDate() + 3,
-  );
-
-  reminderDate.setHours(10, 0, 0, 0);
-
-  return reminderDate.toISOString();
-}
-
+/**
+ * The single, real Company Working Space. Company Record (CompanyDetailPage)
+ * is a separate, non-operational archive screen — it only links here via
+ * "Çalışma Alanını Aç". This page owns the one data fetch and feeds
+ * CustomerWorkspace via props (no second fetch, no duplicated business
+ * logic).
+ */
 export function CallWorkspacePage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] =
+    useSearchParams();
 
-  const { user } = useAuth();
-  const { showToast } = useToast();
   const {
     setWorkspaceHeader,
     clearWorkspaceHeader,
@@ -99,11 +31,63 @@ export function CallWorkspacePage() {
     searchParams.get("companyId") ??
     undefined;
 
+  const contactId =
+    searchParams.get("contactId");
+
+  // Sprint 25.1 / Adım 3 — a Today task's opportunity context (Send
+  // Quotation, Follow-up Quotation/Contract). Read directly each render,
+  // same as contactId above — unlike openEmail/template below, this
+  // doesn't need one-shot/pending semantics or URL cleanup, since
+  // CustomerWorkspace only ever reads it once on its own mount.
   const opportunityId =
     searchParams.get("opportunityId");
 
-  const [refreshVersion, setRefreshVersion] =
-    useState(0);
+  // Sprint 25.1 / Adım 2 — Company Detail's "E-posta Gönder" intent
+  // (openEmail/template query params). Captured once via a lazy useState
+  // initializer — runs exactly once, on the very first render, before
+  // `company` has loaded (CustomerWorkspace isn't mounted yet during the
+  // loading state below) and before the cleanup effect below strips
+  // these params from the URL — so the intent survives the async gap
+  // until CustomerWorkspace actually mounts and can consume it. A plain
+  // useRef would work the same way but reading `.current` during render
+  // (to pass it down as a prop below) is flagged by the
+  // rules-of-hooks/react-compiler lint rule; state is the render-safe
+  // equivalent here since this value is never mutated after mount.
+  const [openEmailIntent] = useState(
+    () => ({
+      open:
+        searchParams.get("openEmail") ===
+        "true",
+      templateId:
+        searchParams.get("template"),
+    }),
+  );
+
+  useEffect(() => {
+    if (!openEmailIntent.open) {
+      return;
+    }
+
+    // Strips openEmail/template from the URL right away so a later page
+    // refresh (which would re-read the URL from scratch) never re-arms
+    // this intent — CustomerWorkspace's own mount effect already
+    // consumes it, this just prevents the query param itself from being
+    // a persistent re-trigger.
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(
+          current,
+        );
+
+        next.delete("openEmail");
+        next.delete("template");
+
+        return next;
+      },
+      { replace: true },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const {
     company,
@@ -113,95 +97,29 @@ export function CallWorkspacePage() {
     emails,
     callNotes,
     aiMemory,
+    exhibitions,
+    contacts,
     loading,
     error,
-    refresh: refreshWorkspaceData,
-  } = useWorkspaceData(
-    companyId,
-    refreshVersion,
-  );
-
-  
-  
-  
-  const [
-    noteSaving,
-    setNoteSaving,
-  ] = useState(false);
-
-  const [
-    followUpSaving,
-    setFollowUpSaving,
-  ] = useState(false);
-
-  const workQueueItems = useMemo(
-    () =>
-      getWorkQueue(companyId).map(
-        (item) => item.title,
-      ),
-    [refreshVersion, companyId],
-  );
-
-  const selectedOpportunity = useMemo(() => {
-    if (opportunityId) {
-      return (
-        opportunities.find(
-          (opportunity) =>
-            opportunity.id === opportunityId,
-        ) ?? opportunities[0]
-      );
-    }
-
-    return opportunities[0];
-  }, [
-    opportunities,
-    opportunityId,
-  ]);
-
-  const workspace = useMemo(() => {
-    if (
-      !company ||
-      !selectedOpportunity
-    ) {
-      return null;
-    }
-
-    return createCallWorkspaceViewModel({
-      company,
-      opportunity: selectedOpportunity,
-      timelineEvents: timeline,
-      reminders,
-      emails,
-      callNotes,
-      aiMemory,
-    });
-  }, [
-    company,
-    selectedOpportunity,
-    timeline,
-    reminders,
-    emails,
-    aiMemory,
-    callNotes,
-  ]);
+    refresh,
+  } = useWorkspaceData(companyId);
 
   useEffect(() => {
-    if (!workspace) {
+    if (!company) {
       clearWorkspaceHeader();
       return;
     }
 
     setWorkspaceHeader({
-      aiConfidence: workspace.ai.confidence,
-      aiConfidenceLabel:
-        workspace.ai.confidenceLabel,
+      companyName:
+        company.company_name,
     });
 
     return () => {
       clearWorkspaceHeader();
     };
   }, [
-    workspace,
+    company,
     setWorkspaceHeader,
     clearWorkspaceHeader,
   ]);
@@ -211,7 +129,7 @@ export function CallWorkspacePage() {
       <main className="page sales-workspace">
         <Panel>
           <p className="eyebrow">
-            Atlas Satış Görüşmesi
+            VIAWA Satış Görüşmesi
           </p>
 
           <h2>
@@ -231,7 +149,7 @@ export function CallWorkspacePage() {
       <main className="page sales-workspace">
         <Panel>
           <p className="eyebrow">
-            Atlas Satış Görüşmesi
+            VIAWA Satış Görüşmesi
           </p>
 
           <h2>
@@ -256,16 +174,12 @@ export function CallWorkspacePage() {
     );
   }
 
-  if (
-    !company ||
-    !selectedOpportunity ||
-    !workspace
-  ) {
+  if (!company) {
     return (
       <main className="page sales-workspace">
         <Panel>
           <p className="eyebrow">
-            Atlas Satış Görüşmesi
+            VIAWA Satış Görüşmesi
           </p>
 
           <h2>
@@ -273,8 +187,8 @@ export function CallWorkspacePage() {
           </h2>
 
           <p className="muted">
-            Satış görüşmesini başlatmadan önce
-            bir firma ve katılım fırsatı seçin.
+            Çalışma alanını başlatmadan önce
+            bir firma seçin.
           </p>
 
           <button
@@ -291,296 +205,37 @@ export function CallWorkspacePage() {
     );
   }
 
-  const activeCompany = company;
-  const activeOpportunity =
-    selectedOpportunity;
-  const activeWorkspace = workspace;
-
-  async function handleSaveNote(
-    note: string,
-    nextAction: string,
-  ) {
-    await persistInteraction(
-      note,
-      nextAction,
-      false,
-    );
-  }
-
-  async function handleCompleteSession(
-    note: string,
-    nextAction: string,
-  ) {
-    await persistInteraction(
-      note,
-      nextAction,
-      true,
-    );
-  }
-
-  async function persistInteraction(
-    note: string,
-    nextAction: string,
-    shouldCompleteSession: boolean,
-  ) {
-    if (
-      noteSaving ||
-      !user
-    ) {
-      return;
-    }
-
-    setNoteSaving(true);
-
-    try {
-      const completedNote = note.trim();
-
-      if (completedNote) {
-        await createCallNote({
-            company_id:
-              activeCompany.id,
-            opportunity_id:
-              activeOpportunity.id,
-            note: completedNote,
-            created_by: user.id,
-          });
-      }
-
-      if (shouldCompleteSession) {
-        const actionId = mapNextActionToActionId(
-          nextAction,
-        );
-
-        await executeAction({
-          actionId,
-          title: nextAction,
-          companyId: activeCompany.id,
-          opportunityId:
-            activeOpportunity.id,
-        });
-      }
-
-      await refreshWorkspaceData();
-
-      if (shouldCompleteSession) {
-        setRefreshVersion((version) => version + 1);
-      }
-
-      if (shouldCompleteSession) {
-        navigate("/today");
-      }
-
-      showToast(
-        shouldCompleteSession
-          ? "Görüşme notu kaydedildi ve iş akışı güncellendi."
-          : "Görüşme notu kaydedildi.",
-        "success",
-      );
-    } catch (noteError) {
-      console.error(
-        "Call note saving error:",
-        noteError,
-      );
-
-      showToast(
-        "Görüşme notu kaydedilemedi.",
-        "error",
-      );
-
-      throw noteError;
-    } finally {
-      setNoteSaving(false);
-    }
-  }
-
-  function handleQuickAction(
-    templateId: string,
-  ) {
-    if (
-      !activeCompany.id ||
-      !activeOpportunity.id
-    ) {
-      showToast(
-        "Firma veya katılım fırsatı seçilmedi.",
-        "error",
-      );
-
-      return;
-    }
-
-    navigate(
-      `/communication?companyId=${encodeURIComponent(
-        activeCompany.id,
-      )}&opportunityId=${encodeURIComponent(
-        activeOpportunity.id,
-      )}&template=${encodeURIComponent(
-        templateId,
-      )}`,
-    );
-  }
-
-  async function handleCreateFollowUpReminder() {
-    if (
-      !activeCompany.id ||
-      !activeOpportunity.id
-    ) {
-      showToast(
-        "Firma veya katılım fırsatı seçilmedi.",
-        "error",
-      );
-
-      return;
-    }
-
-    if (followUpSaving) {
-      return;
-    }
-
-    setFollowUpSaving(true);
-
-    try {
-      const reminder =
-        await createReminder({
-          company_id: activeCompany.id,
-          title: "Follow up",
-          due_date:
-            getFollowUpReminderDate(),
-          completed: false,
-        });
-
-      try {
-        await createTimelineEvent({
-          company_id: activeCompany.id,
-          opportunity_id:
-            activeOpportunity.id,
-          type: "reminder-created",
-          title:
-            "Takip hatırlatıcısı oluşturuldu",
-          description: `"${reminder.title}" için ${formatWorkspaceDate(
-            reminder.due_date,
-          )} tarihinde bir hatırlatıcı oluşturuldu.`,
-        });
-      } catch (timelineError) {
-        console.error(
-          "Reminder timeline creation error:",
-          timelineError,
-        );
-      }
-
-      await refreshWorkspaceData();
-
-      showToast(
-        "Takip hatırlatıcısı oluşturuldu.",
-        "success",
-      );
-    } catch (followUpError) {
-      console.error(
-        "Follow-up reminder creation error:",
-        followUpError,
-      );
-
-      showToast(
-        "Takip hatırlatıcısı oluşturulamadı.",
-        "error",
-      );
-    } finally {
-      setFollowUpSaving(false);
-    }
-  }
-
   return (
     <main className="page sales-workspace">
-      <section className="sw-context-header">
-        <div>
-          <p className="eyebrow">
-            Satış Görüşmesi
-          </p>
-
-          <div className="sw-context-title-row">
-            <h1>
-              {activeWorkspace.company.name}
-            </h1>
-
-            <span className="sw-stage-badge">
-              {
-                activeWorkspace
-                  .opportunity.stageLabel
-              }
-            </span>
-          </div>
-
-          <p className="muted">
-            {activeWorkspace.company.industry}
-            {" · "}
-            {activeWorkspace.company.country}
-            {" · "}
-            {activeWorkspace.customer.fullName}
-          </p>
-        </div>
-
-        <div className="sw-header-confidence">
-          <span>
-            AI Güveni
-          </span>
-
-          <strong>
-            {activeWorkspace.ai.confidence}%
-          </strong>
-
-          <small>
-            {
-              activeWorkspace.ai
-                .confidenceLabel
-            }
-          </small>
-        </div>
-      </section>
-
-      <section className="sw-workspace-grid">
-        <aside className="sw-left-column">
-          <CustomerPanel
-            workspace={activeWorkspace}
-          />
-
-          <FairPanel
-            workspace={activeWorkspace}
-          />
-        </aside>
-
-        <section className="sw-main-column">
-          <LiveInteraction
-            key={activeOpportunity.id}
-            workspace={activeWorkspace}
-            saving={noteSaving}
-            onSaveNote={handleSaveNote}
-            onCompleteSession={handleCompleteSession}
-            onQuickAction={handleQuickAction}
-            onCreateFollowUpReminder={
-              handleCreateFollowUpReminder
-            }
-            followUpSaving={followUpSaving}
-          />
-
-          <TimelinePanel
-            conversation={
-              activeWorkspace
-                .conversationHistory
-            }
-          />
-        </section>
-
-        <aside className="sw-right-column">
-          <AiCopilot
-            workspace={activeWorkspace}
-          />
-
-          <SalesKitPanel />
-
-          <WorkQueuePanel
-            items={workQueueItems}
-          />
-        </aside>
-      </section>
+      <CustomerWorkspace
+        // Forces a full remount when switching companies — several of
+        // CustomerWorkspace's internal states are now lazily initialized
+        // from company-scoped localStorage (approved prices, generated
+        // documents); without this key, switching companies without a
+        // full page reload would keep serving the previous company's
+        // data until the next reload.
+        key={company.id}
+        company={company}
+        opportunities={opportunities}
+        timeline={timeline}
+        reminders={reminders}
+        emails={emails}
+        callNotes={callNotes}
+        aiMemory={aiMemory}
+        exhibitions={exhibitions}
+        contacts={contacts}
+        initialContactId={contactId}
+        initialOpportunityId={
+          opportunityId
+        }
+        initialOpenEmailPanel={
+          openEmailIntent.open
+        }
+        initialEmailPanelTemplateId={
+          openEmailIntent.templateId
+        }
+        onRefresh={refresh}
+      />
     </main>
   );
 }

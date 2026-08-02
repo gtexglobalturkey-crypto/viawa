@@ -24,7 +24,8 @@ export function mapWorkspaceExhibition({
   stage,
 }: MapWorkspaceExhibitionInput): WorkspaceExhibition {
   const quotationStarted =
-    stage === "quotation-requested" ||
+    stage === "quotation-ready" ||
+    stage === "proposal-ready" ||
     stage === "quotation-sent" ||
     stage === "negotiation" ||
     stage === "contract" ||

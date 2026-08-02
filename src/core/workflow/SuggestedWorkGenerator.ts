@@ -75,7 +75,7 @@ export class SuggestedWorkGenerator {
             event,
             "companyName",
             "company_name",
-          ) ?? "Customer";
+          ) ?? "Müşteri";
 
         const contactName =
           this.readString(
@@ -170,7 +170,7 @@ export class SuggestedWorkGenerator {
             opportunity,
             "companyName",
             "company_name",
-          ) ?? "Customer";
+          ) ?? "Müşteri";
 
         const opportunityTitle =
           this.readString(
@@ -292,13 +292,13 @@ export class SuggestedWorkGenerator {
             email,
             "companyName",
             "company_name",
-          ) ?? "Customer";
+          ) ?? "Müşteri";
 
         const subject =
           this.readString(
             email,
             "subject",
-          ) ?? "Draft email";
+          ) ?? "Taslak e-posta";
 
         const createdAt =
           this.readString(
@@ -323,7 +323,12 @@ export class SuggestedWorkGenerator {
           estimatedMinutes: 5,
           action: {
             label: "Open draft",
-            route: "/communication",
+            // Sprint 25.1 / Adım 4 — route removed: nothing ever read
+            // WorkflowTaskAction.route (confirmed via a repo-wide
+            // search), the real navigation is built entirely in
+            // useTodayWorkflow.ts's getTaskRoute from entityReference
+            // below. route is optional on the shared type, so dropping
+            // it here doesn't affect anything else that uses it.
             entityReference: {
               companyId,
               opportunityId,
@@ -377,7 +382,7 @@ export class SuggestedWorkGenerator {
             opportunity,
             "companyName",
             "company_name",
-          ) ?? "Customer";
+          ) ?? "Müşteri";
 
         const opportunityTitle =
           this.readString(

@@ -1,10 +1,18 @@
 import { Panel } from "../../../components/ui/Panel";
 
 import { EmailComposer } from "./EmailComposer";
+import type { RecipientOption } from "./EmailComposer";
 
 type Props = {
   subject: string;
   body: string;
+  recipientOptions: RecipientOption[];
+  toRecipients: string[];
+  ccRecipients: string[];
+  bccRecipients: string[];
+  onToChange: (recipients: string[]) => void;
+  onCcChange: (recipients: string[]) => void;
+  onBccChange: (recipients: string[]) => void;
   sending: boolean;
   sendError: string | null;
   sendSuccess: string | null;
@@ -17,6 +25,13 @@ type Props = {
 export function ComposerCard({
   subject,
   body,
+  recipientOptions,
+  toRecipients,
+  ccRecipients,
+  bccRecipients,
+  onToChange,
+  onCcChange,
+  onBccChange,
   sending,
   sendError,
   sendSuccess,
@@ -56,6 +71,13 @@ export function ComposerCard({
           <EmailComposer
             subject={subject}
             body={body}
+            recipientOptions={recipientOptions}
+            toRecipients={toRecipients}
+            ccRecipients={ccRecipients}
+            bccRecipients={bccRecipients}
+            onToChange={onToChange}
+            onCcChange={onCcChange}
+            onBccChange={onBccChange}
             onSend={onSend}
           />
         )}

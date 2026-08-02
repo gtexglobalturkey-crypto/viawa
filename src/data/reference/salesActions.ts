@@ -42,7 +42,7 @@ export const salesActions: SalesAction[] = [
       "Prepare and send participation quotation.",
 
     recommendedStages: [
-      "quotation-requested",
+      "quotation-ready",
     ],
 
     createsEmail: true,
@@ -153,7 +153,7 @@ export const salesActions: SalesAction[] = [
 
     recommendedStages: [
       "interested",
-      "quotation-requested",
+      "quotation-ready",
     ],
 
     createsEmail: true,
@@ -179,7 +179,7 @@ export const salesActions: SalesAction[] = [
 
     recommendedStages: [
       "negotiation",
-      "quotation-requested",
+      "quotation-ready",
     ],
 
     createsEmail: true,

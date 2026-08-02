@@ -1,18 +1,33 @@
 import { excelColumns } from "../excelMapping";
 
+import {
+  formatCity,
+  formatCompanyName,
+  formatCountry,
+  formatEmail,
+  formatPersonName,
+  formatTaxOffice,
+  formatWebsite,
+} from "../../../core/formatters/textFormatter";
+
+export type ImportedContact = {
+  name: string;
+  role: string;
+  phone: string;
+  email: string;
+  isPrimary: boolean;
+  isSignatory: boolean;
+};
+
 export type ImportedCompany = {
-  companyCode: string;
-  companyGroup: string;
+  /** 1-based position among the valid (named) rows in the sheet. */
+  rowNumber: number;
 
   name: string;
 
   phone: string;
   email: string;
   website: string;
-
-  phones: string[];
-  emails: string[];
-  websites: string[];
 
   country: string;
   city: string;
@@ -23,148 +38,137 @@ export type ImportedCompany = {
   taxOffice: string;
   taxNumber: string;
 
-  lastContact: string;
-  nextAction: string;
-  relationship: string;
-  status: string;
-
-  generalNotes: string;
-  salesNotes: string;
-
   sectors: string[];
   productGroups: string[];
-  targetExhibitions: string[];
-};
 
-export type ImportedContact = {
-  companyName: string;
-  name: string;
-  role: string;
-  phone: string;
-  email: string;
-  isDecisionMaker: boolean;
+  contacts: ImportedContact[];
 };
 
 export type ImportMappingResult = {
   companies: ImportedCompany[];
-  contacts: ImportedContact[];
-  exhibitionInterests: string[];
 };
 
 function text(value: unknown): string {
   return String(value ?? "").trim();
 }
 
-function collectValues(row: Record<string, unknown>, columns: readonly string[]) {
-  return columns
-    .map((column) => text(row[column]))
-    .filter((value) => value.length > 0);
+function isYes(value: unknown): boolean {
+  return text(value).toLocaleLowerCase("tr") === "evet";
 }
 
-function firstValue(values: string[]): string {
-  return values.find((value) => value.length > 0) ?? "";
+/** Trims, drops empty values, and removes duplicates — used for the
+ * sector / product-group columns, which are free text and prone to
+ * accidental repeats or trailing blanks in a hand-filled template. */
+function collectUniqueValues(
+  row: Record<string, unknown>,
+  columns: readonly string[],
+) {
+  const values = columns
+    .map((column) => text(row[column]))
+    .filter((value) => value.length > 0);
+
+  return Array.from(new Set(values));
 }
 
 export function mapExcelRows(
-  rows: Record<string, unknown>[]
+  rows: Record<string, unknown>[],
 ): ImportMappingResult {
   const companies: ImportedCompany[] = [];
-  const contacts: ImportedContact[] = [];
-  const exhibitionInterests = new Set<string>();
 
   rows.forEach((row) => {
-    const companyName = text(row[excelColumns.companyName]);
+    const companyName = formatCompanyName(
+      text(row[excelColumns.companyName]),
+    );
 
     if (!companyName) {
       return;
     }
 
-    const phones = collectValues(row, excelColumns.companyPhones);
-    const emails = collectValues(row, excelColumns.companyEmails);
-    const websites = collectValues(row, excelColumns.websites);
+    const sectors = collectUniqueValues(
+      row,
+      excelColumns.sectors,
+    );
 
-    const sectors = collectValues(row, excelColumns.sectors);
-    const productGroups = collectValues(row, excelColumns.productGroups);
-    const targetExhibitions = collectValues(row, excelColumns.exhibitions);
+    const productGroups = collectUniqueValues(
+      row,
+      excelColumns.productGroups,
+    );
 
-    targetExhibitions.forEach((exhibition) => {
-      exhibitionInterests.add(exhibition);
+    const contacts: ImportedContact[] = [];
+
+    excelColumns.people.forEach((person) => {
+      const name = formatPersonName(
+        text(row[person.name]),
+      );
+
+      if (!name) {
+        return;
+      }
+
+      contacts.push({
+        name,
+        role: text(row[person.role]),
+        phone: text(row[person.phone]),
+        email: formatEmail(
+          text(row[person.email]),
+        ),
+        isPrimary:
+          isYes(
+            row[person.isExhibitionContact],
+          ) ||
+          isYes(
+            row[person.isPrimaryContact],
+          ),
+        isSignatory: isYes(
+          row[person.isSignatory],
+        ),
+      });
     });
 
     companies.push({
-      companyCode: text(row[excelColumns.companyCode]),
-      companyGroup: text(row[excelColumns.companyGroup]),
+      rowNumber: companies.length + 1,
 
       name: companyName,
 
-      phone: firstValue(phones),
-      email: firstValue(emails),
-      website: firstValue(websites),
+      phone: text(row[excelColumns.phone]),
+      email: formatEmail(
+        text(row[excelColumns.email]),
+      ),
+      website: formatWebsite(
+        text(row[excelColumns.website]),
+      ),
 
-      phones,
-      emails,
-      websites,
+      country: formatCountry(
+        text(row[excelColumns.country]),
+      ),
+      city: formatCity(
+        text(row[excelColumns.city]),
+      ),
+      district: text(
+        row[excelColumns.district],
+      ),
+      address: text(
+        row[excelColumns.address],
+      ),
+      postalCode: text(
+        row[excelColumns.postalCode],
+      ),
 
-      country: text(row[excelColumns.country]),
-      city: text(row[excelColumns.city]),
-      district: text(row[excelColumns.district]),
-      address: text(row[excelColumns.address]),
-      postalCode: text(row[excelColumns.postalCode]),
-
-      taxOffice: text(row[excelColumns.taxOffice]),
-      taxNumber: text(row[excelColumns.taxNumber]),
-
-      lastContact: text(row[excelColumns.lastContact]),
-      nextAction: text(row[excelColumns.nextAction]),
-      relationship: text(row[excelColumns.relationship]),
-      status: text(row[excelColumns.status]),
-
-      generalNotes: text(row[excelColumns.generalNotes]),
-      salesNotes: text(row[excelColumns.salesNotes]),
+      taxOffice: formatTaxOffice(
+        text(row[excelColumns.taxOffice]),
+      ),
+      taxNumber: text(
+        row[excelColumns.taxNumber],
+      ),
 
       sectors,
       productGroups,
-      targetExhibitions,
-    });
 
-    excelColumns.decisionMakers.forEach((contactColumn) => {
-      const name = text(row[contactColumn.name]);
-
-      if (!name) {
-        return;
-      }
-
-      contacts.push({
-        companyName,
-        name,
-        role: text(row[contactColumn.role]),
-        phone: text(row[contactColumn.phone]),
-        email: text(row[contactColumn.email]),
-        isDecisionMaker: true,
-      });
-    });
-
-    excelColumns.contactPeople.forEach((contactColumn) => {
-      const name = text(row[contactColumn.name]);
-
-      if (!name) {
-        return;
-      }
-
-      contacts.push({
-        companyName,
-        name,
-        role: text(row[contactColumn.role]),
-        phone: text(row[contactColumn.phone]),
-        email: text(row[contactColumn.email]),
-        isDecisionMaker: false,
-      });
+      contacts,
     });
   });
 
   return {
     companies,
-    contacts,
-    exhibitionInterests: Array.from(exhibitionInterests),
   };
 }

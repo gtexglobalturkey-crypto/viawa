@@ -302,14 +302,28 @@ export class TaskScoreEngine {
 
     if (
       stage ===
-        "quotation-requested" ||
+        "quotation-ready" ||
       taskType.includes(
-        "quotation-requested",
+        "quotation-ready",
       )
     ) {
       score += applyRule(
         TASK_SCORING_RULES
-          .quotationRequested,
+          .quotationReady,
+        reasons,
+        badges,
+      );
+    }
+
+    if (
+      stage === "proposal-ready" ||
+      taskType.includes(
+        "send-quotation",
+      )
+    ) {
+      score += applyRule(
+        TASK_SCORING_RULES
+          .proposalReady,
         reasons,
         badges,
       );

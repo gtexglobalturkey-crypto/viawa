@@ -16,7 +16,15 @@ type WorkspaceMode =
 type WorkspaceHeaderState = {
   aiConfidence: number | null;
   aiConfidenceLabel: string;
+  companyName: string | null;
+  companyCode: string | null;
+  stageLabel: string | null;
+  industry: string | null;
+  country: string | null;
 };
+
+type WorkspaceHeaderUpdate =
+  Partial<WorkspaceHeaderState>;
 
 type WorkspaceHeaderContextValue =
   WorkspaceHeaderState & {
@@ -27,7 +35,7 @@ type WorkspaceHeaderContextValue =
     ) => void;
 
     setWorkspaceHeader: (
-      state: WorkspaceHeaderState,
+      state: WorkspaceHeaderUpdate,
     ) => void;
 
     clearWorkspaceHeader: () => void;
@@ -36,6 +44,11 @@ type WorkspaceHeaderContextValue =
 const initialHeaderState: WorkspaceHeaderState = {
   aiConfidence: null,
   aiConfidenceLabel: "",
+  companyName: null,
+  companyCode: null,
+  stageLabel: null,
+  industry: null,
+  country: null,
 };
 
 const WorkspaceHeaderContext =
@@ -62,20 +75,54 @@ export function WorkspaceHeaderProvider({
 
   const setWorkspaceHeader = useCallback(
     (
-      state: WorkspaceHeaderState,
+      state: WorkspaceHeaderUpdate,
     ) => {
       setWorkspaceHeaderState(
         (currentState) => {
+          const nextState: WorkspaceHeaderState = {
+            aiConfidence:
+              state.aiConfidence ??
+              null,
+            aiConfidenceLabel:
+              state.aiConfidenceLabel ??
+              "",
+            companyName:
+              state.companyName ??
+              null,
+            companyCode:
+              state.companyCode ??
+              null,
+            stageLabel:
+              state.stageLabel ??
+              null,
+            industry:
+              state.industry ??
+              null,
+            country:
+              state.country ??
+              null,
+          };
+
           if (
             currentState.aiConfidence ===
-              state.aiConfidence &&
+              nextState.aiConfidence &&
             currentState.aiConfidenceLabel ===
-              state.aiConfidenceLabel
+              nextState.aiConfidenceLabel &&
+            currentState.companyName ===
+              nextState.companyName &&
+            currentState.companyCode ===
+              nextState.companyCode &&
+            currentState.stageLabel ===
+              nextState.stageLabel &&
+            currentState.industry ===
+              nextState.industry &&
+            currentState.country ===
+              nextState.country
           ) {
             return currentState;
           }
 
-          return state;
+          return nextState;
         },
       );
     },
@@ -88,7 +135,12 @@ export function WorkspaceHeaderProvider({
         (currentState) => {
           if (
             currentState.aiConfidence === null &&
-            currentState.aiConfidenceLabel === ""
+            currentState.aiConfidenceLabel === "" &&
+            currentState.companyName === null &&
+            currentState.companyCode === null &&
+            currentState.stageLabel === null &&
+            currentState.industry === null &&
+            currentState.country === null
           ) {
             return currentState;
           }

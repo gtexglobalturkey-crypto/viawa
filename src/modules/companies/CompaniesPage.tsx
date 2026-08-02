@@ -14,6 +14,7 @@ import { Link } from "react-router-dom";
 
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Panel } from "../../components/ui/Panel";
+import { normalizeMasterListName } from "../../core/normalization/masterListName";
 
 import {
   getCompanies,
@@ -25,12 +26,29 @@ import {
   type Opportunity,
 } from "../../services/supabase/opportunityService";
 
+import {
+  listCompanySectorRelations,
+  type CompanySectorRelation,
+} from "../../services/supabase/sectorService";
+
+import {
+  listCompanyProductGroupRelations,
+  listProductGroups,
+  type CompanyProductGroupRelation,
+  type ProductGroup,
+} from "../../services/supabase/productGroupService";
+
+import {
+  COMPANY_STATUS_LABELS,
+  getBusinessStatusLabel,
+  isTerminalBusinessStatus,
+  resolveCompanyStatus,
+  type CompanyStatusLabel,
+} from "../../types/businessStatus";
+
 type StatusFilter =
   | "all"
-  | "lead"
-  | "prospect"
-  | "customer"
-  | "inactive";
+  | CompanyStatusLabel;
 
 function normalizeValue(
   value: string | null | undefined,
@@ -51,7 +69,7 @@ function formatDate(
     return "Planlanmadı";
   }
 
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat("tr-TR", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -103,26 +121,6 @@ function formatEnumLabel(
     .join(" ");
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  lead: "Potansiyel Müşteri",
-  prospect: "Aday Müşteri",
-  customer: "Müşteri",
-  inactive: "Pasif",
-};
-
-const STAGE_LABELS: Record<string, string> = {
-  new: "Yeni",
-  contacted: "İletişime Geçildi",
-  interested: "İlgileniyor",
-  "information-sent": "Bilgi Paketi Gönderildi",
-  "quotation-requested": "Teklif Talep Edildi",
-  "quotation-sent": "Teklif Gönderildi",
-  negotiation: "Görüşme",
-  contract: "Sözleşme",
-  signed: "Kazanıldı",
-  lost: "Kaybedildi",
-};
-
 const NEXT_ACTION_LABELS: Record<
   string,
   string
@@ -141,33 +139,11 @@ const NEXT_ACTION_LABELS: Record<
     "Arama sonucunu değerlendirin ve sonraki adımı tamamlayın",
 };
 
-function formatStatusLabel(
-  value: string | null | undefined,
-): string | undefined {
-  const cleaned = stripLabelPrefix(value);
-
-  if (!cleaned) {
-    return cleaned;
-  }
-
-  return (
-    STATUS_LABELS[cleaned.toLowerCase()] ??
-    formatEnumLabel(cleaned)
-  );
-}
-
 function formatStageLabel(
   value: string | null | undefined,
 ): string | undefined {
-  const cleaned = stripLabelPrefix(value);
-
-  if (!cleaned) {
-    return cleaned;
-  }
-
-  return (
-    STAGE_LABELS[cleaned.toLowerCase()] ??
-    formatEnumLabel(cleaned)
+  return getBusinessStatusLabel(
+    stripLabelPrefix(value),
   );
 }
 
@@ -211,29 +187,45 @@ function formatNextActionLabel(
   return cleaned;
 }
 
-function toTitleCase(
-  value: string | null | undefined,
-): string | undefined {
-  const cleaned = stripLabelPrefix(value);
+const INDUSTRY_CANONICAL_LABELS: Record<
+  string,
+  string
+> = {
+  mining: "Madencilik",
+  madencilik: "Madencilik",
+  gıda: "Gıda",
+  tarım: "Tarım",
+};
 
-  if (!cleaned) {
-    return cleaned;
-  }
+/**
+ * Turkish-locale-aware lowercasing so "GIDA"/"gıda"/"Gıda" and
+ * "MADENCİLİK"/"madencilik" collapse to the same key — plain `.toLowerCase()`
+ * maps "I" to ASCII "i" instead of Turkish "ı", which would otherwise keep
+ * "GIDA" and "gıda" as distinct keys.
+ */
+function normalizeIndustryKey(
+  value: string,
+): string {
+  return normalizeMasterListName(value);
+}
 
-  return cleaned
+function toTurkishTitleCase(
+  value: string,
+): string {
+  return value
     .split(" ")
     .filter(Boolean)
     .map(
       (word) =>
-        word.charAt(0).toUpperCase() +
-        word.slice(1).toLowerCase(),
+        word
+          .charAt(0)
+          .toLocaleUpperCase("tr") +
+        word
+          .slice(1)
+          .toLocaleLowerCase("tr"),
     )
     .join(" ");
 }
-
-const INDUSTRY_LABELS: Record<string, string> = {
-  mining: "Madencilik",
-};
 
 function formatIndustryLabel(
   value: string | null | undefined,
@@ -244,10 +236,27 @@ function formatIndustryLabel(
     return cleaned;
   }
 
+  const key = normalizeIndustryKey(cleaned);
+
   return (
-    INDUSTRY_LABELS[cleaned.toLowerCase()] ??
-    toTitleCase(cleaned)
+    INDUSTRY_CANONICAL_LABELS[key] ??
+    toTurkishTitleCase(cleaned)
   );
+}
+
+/**
+ * Groups by the final *displayed* label, not the raw value — "mining" and
+ * "madencilik" both format to the same "Madencilik" label and must collapse
+ * into a single filter option instead of two identical-looking entries.
+ */
+function getIndustryKey(
+  value: string | null | undefined,
+): string {
+  const label = formatIndustryLabel(value);
+
+  return label
+    ? normalizeIndustryKey(label)
+    : "";
 }
 
 function escapeCsvValue(
@@ -281,6 +290,19 @@ export function CompaniesPage() {
   ] = useState<Opportunity[]>([]);
 
   const [
+    companySectorRelations,
+    setCompanySectorRelations,
+  ] = useState<CompanySectorRelation[]>([]);
+
+  const [productGroups, setProductGroups] =
+    useState<ProductGroup[]>([]);
+
+  const [
+    companyProductGroupRelations,
+    setCompanyProductGroupRelations,
+  ] = useState<CompanyProductGroupRelation[]>([]);
+
+  const [
     searchQuery,
     setSearchQuery,
   ] = useState("");
@@ -293,6 +315,11 @@ export function CompaniesPage() {
   const [
     industryFilter,
     setIndustryFilter,
+  ] = useState("all");
+
+  const [
+    productGroupFilter,
+    setProductGroupFilter,
   ] = useState("all");
 
   const [
@@ -326,14 +353,27 @@ export function CompaniesPage() {
         const [
           companyData,
           opportunityData,
+          companySectorData,
+          productGroupData,
+          companyProductGroupData,
         ] = await Promise.all([
           getCompanies(),
           getOpportunities(),
+          listCompanySectorRelations(),
+          listProductGroups(),
+          listCompanyProductGroupRelations(),
         ]);
 
         setCompanies(companyData);
         setOpportunities(
           opportunityData,
+        );
+        setCompanySectorRelations(
+          companySectorData,
+        );
+        setProductGroups(productGroupData);
+        setCompanyProductGroupRelations(
+          companyProductGroupData,
         );
       } catch (error) {
         console.error(
@@ -356,11 +396,17 @@ export function CompaniesPage() {
     void Promise.all([
       getCompanies(),
       getOpportunities(),
+      listCompanySectorRelations(),
+      listProductGroups(),
+      listCompanyProductGroupRelations(),
     ])
       .then(
         ([
           companyData,
           opportunityData,
+          companySectorData,
+          productGroupData,
+          companyProductGroupData,
         ]) => {
           if (!isActive) {
             return;
@@ -369,6 +415,13 @@ export function CompaniesPage() {
           setCompanies(companyData);
           setOpportunities(
             opportunityData,
+          );
+          setCompanySectorRelations(
+            companySectorData,
+          );
+          setProductGroups(productGroupData);
+          setCompanyProductGroupRelations(
+            companyProductGroupData,
           );
         },
       )
@@ -397,26 +450,164 @@ export function CompaniesPage() {
     };
   }, []);
 
+  const companySectorsByCompanyId =
+    useMemo(() => {
+      const relationsByCompanyId = new Map<
+        string,
+        CompanySectorRelation[]
+      >();
+
+      companySectorRelations.forEach(
+        (relation) => {
+          const relations =
+            relationsByCompanyId.get(
+              relation.companyId,
+            ) ?? [];
+
+          relations.push(relation);
+          relationsByCompanyId.set(
+            relation.companyId,
+            relations,
+          );
+        },
+      );
+
+      return relationsByCompanyId;
+    }, [companySectorRelations]);
+
   const industries =
     useMemo(() => {
-      return Array.from(
-        new Set(
-          companies
-            .map(
-              (company) =>
-                company.industry?.trim(),
-            )
-            .filter(
-              (
-                industry,
-              ): industry is string =>
-                Boolean(industry),
-            ),
-        ),
-      ).sort((first, second) =>
-        first.localeCompare(second),
+      const labelsByKey = new Map<
+        string,
+        string
+      >();
+
+      companySectorRelations.forEach(
+        (relation) => {
+          const label = formatIndustryLabel(
+            relation.name,
+          );
+
+          if (!label) {
+            return;
+          }
+
+          const key = getIndustryKey(label);
+
+          if (!labelsByKey.has(key)) {
+            labelsByKey.set(key, label);
+          }
+        },
       );
-    }, [companies]);
+
+      companies.forEach((company) => {
+        if (
+          companySectorsByCompanyId.has(
+            company.id,
+          )
+        ) {
+          return;
+        }
+
+        const label = formatIndustryLabel(
+          company.industry,
+        );
+
+        if (!label) {
+          return;
+        }
+
+        const key = getIndustryKey(label);
+
+        if (!labelsByKey.has(key)) {
+          labelsByKey.set(key, label);
+        }
+      });
+
+      return Array.from(
+        labelsByKey.entries(),
+      )
+        .map(([key, label]) => ({
+          key,
+          label,
+        }))
+        .sort((first, second) =>
+          first.label.localeCompare(
+            second.label,
+            "tr",
+          ),
+        );
+    }, [
+      companies,
+      companySectorRelations,
+      companySectorsByCompanyId,
+    ]);
+
+  const companyProductGroupsByCompanyId =
+    useMemo(() => {
+      const relationsByCompanyId = new Map<
+        string,
+        CompanyProductGroupRelation[]
+      >();
+
+      companyProductGroupRelations.forEach(
+        (relation) => {
+          const relations =
+            relationsByCompanyId.get(
+              relation.companyId,
+            ) ?? [];
+
+          relations.push(relation);
+          relationsByCompanyId.set(
+            relation.companyId,
+            relations,
+          );
+        },
+      );
+
+      return relationsByCompanyId;
+    }, [companyProductGroupRelations]);
+
+  const productGroupOptions = useMemo(() => {
+    const uniqueByNormalizedName = new Map<
+      string,
+      ProductGroup
+    >();
+
+    productGroups.forEach((productGroup) => {
+      if (
+        !uniqueByNormalizedName.has(
+          productGroup.normalized_name,
+        )
+      ) {
+        uniqueByNormalizedName.set(
+          productGroup.normalized_name,
+          productGroup,
+        );
+      }
+    });
+
+    return Array.from(
+      uniqueByNormalizedName.values(),
+    ).sort((first, second) =>
+      first.name.localeCompare(
+        second.name,
+        "tr",
+      ),
+    );
+  }, [productGroups]);
+
+  useEffect(() => {
+    if (
+      productGroupFilter !== "all" &&
+      !productGroupOptions.some(
+        (productGroup) =>
+          productGroup.id === productGroupFilter,
+      )
+    ) {
+      setProductGroupFilter("all");
+    }
+  }, [productGroupFilter, productGroupOptions]);
 
   const companyRows =
     useMemo(() => {
@@ -463,16 +654,35 @@ export function CompaniesPage() {
             orderedOpportunities[0] ??
             null;
 
+          const sectors =
+            companySectorsByCompanyId.get(
+            company.id,
+          ) ?? [];
+
+          const companyProductGroups =
+            companyProductGroupsByCompanyId.get(
+              company.id,
+            ) ?? [];
+
           return {
             company,
+            sectors,
             opportunities:
               companyOpportunities,
+            productGroups:
+              companyProductGroups,
             nextOpportunity,
+            companyStatus:
+              resolveCompanyStatus(
+                companyOpportunities,
+              ),
           };
         },
       );
     }, [
       companies,
+      companySectorsByCompanyId,
+      companyProductGroupsByCompanyId,
       opportunities,
     ]);
 
@@ -484,13 +694,12 @@ export function CompaniesPage() {
       return companyRows.filter(
         ({
           company,
+          companyStatus,
           nextOpportunity,
+          productGroups:
+            companyProductGroups,
+          sectors,
         }) => {
-          const companyStatus =
-            normalizeValue(
-              company.status,
-            );
-
           const matchesStatus =
             statusFilter === "all" ||
             companyStatus ===
@@ -499,12 +708,24 @@ export function CompaniesPage() {
           const matchesIndustry =
             industryFilter ===
               "all" ||
-            normalizeValue(
-              company.industry,
-            ) ===
-              normalizeValue(
-                industryFilter,
-              );
+            (sectors.length > 0
+              ? sectors.some(
+                  (sector) =>
+                    getIndustryKey(
+                      sector.name,
+                    ) === industryFilter,
+                )
+              : getIndustryKey(
+                  company.industry,
+                ) === industryFilter);
+
+          const matchesProductGroup =
+            productGroupFilter === "all" ||
+            companyProductGroups.some(
+              (productGroup) =>
+                productGroup.productGroupId ===
+                productGroupFilter,
+            );
 
           const searchableValues = [
             company.company_name,
@@ -513,7 +734,7 @@ export function CompaniesPage() {
             company.phone,
             company.country,
             company.industry,
-            company.status,
+            companyStatus,
             nextOpportunity?.next_action,
             nextOpportunity?.stage,
           ]
@@ -529,6 +750,7 @@ export function CompaniesPage() {
           return (
             matchesStatus &&
             matchesIndustry &&
+            matchesProductGroup &&
             matchesSearch
           );
         },
@@ -536,6 +758,7 @@ export function CompaniesPage() {
     }, [
       companyRows,
       industryFilter,
+      productGroupFilter,
       searchQuery,
       statusFilter,
     ]);
@@ -547,13 +770,8 @@ export function CompaniesPage() {
       const openOpportunities =
         opportunities.filter(
           (opportunity) =>
-            ![
-              "signed",
-              "lost",
-            ].includes(
-              normalizeValue(
-                opportunity.stage,
-              ),
+            !isTerminalBusinessStatus(
+              opportunity.stage,
             ),
         );
 
@@ -600,13 +818,8 @@ export function CompaniesPage() {
                 nextActionDate,
                 now,
               ) &&
-              ![
-                "signed",
-                "lost",
-              ].includes(
-                normalizeValue(
-                  opportunity.stage,
-                ),
+              !isTerminalBusinessStatus(
+                opportunity.stage,
               )
             );
           },
@@ -648,6 +861,7 @@ export function CompaniesPage() {
         opportunities:
           companyOpportunities,
         nextOpportunity,
+        companyStatus,
       }) => [
         company.company_name,
         company.contact_person ?? "",
@@ -655,9 +869,7 @@ export function CompaniesPage() {
         company.phone ?? "",
         company.country ?? "",
         company.industry ?? "",
-        formatStatusLabel(
-          company.status,
-        ) ?? "",
+        companyStatus,
         companyOpportunities.length,
         formatStageLabel(
           nextOpportunity?.stage,
@@ -856,24 +1068,16 @@ export function CompaniesPage() {
               }}
             >
               <option value="all">
-                Tüm durumlar
+                Tüm Durumlar
               </option>
 
-              <option value="lead">
-                Potansiyel Müşteri
-              </option>
-
-              <option value="prospect">
-                Aday Müşteri
-              </option>
-
-              <option value="customer">
-                Müşteri
-              </option>
-
-              <option value="inactive">
-                Pasif
-              </option>
+              {COMPANY_STATUS_LABELS.map(
+                (status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ),
+              )}
             </select>
           </label>
 
@@ -893,14 +1097,40 @@ export function CompaniesPage() {
               </option>
 
               {industries.map(
-                (industry) => (
+                ({ key, label }) => (
                   <option
-                    key={industry}
-                    value={industry}
+                    key={key}
+                    value={key}
                   >
-                    {formatIndustryLabel(
-                      industry,
-                    )}
+                    {label}
+                  </option>
+                ),
+              )}
+            </select>
+          </label>
+
+          <label>
+            <span>Ürün Grubu</span>
+
+            <select
+              value={productGroupFilter}
+              onChange={(event) => {
+                setProductGroupFilter(
+                  event.target.value,
+                );
+              }}
+            >
+              <option value="all">
+                Tüm Ürün Grupları
+              </option>
+
+              {productGroupOptions.map(
+                (productGroup) => (
+                  <option
+                    key={productGroup.id}
+                    value={productGroup.id}
+                  >
+                    {productGroup.name}
                   </option>
                 ),
               )}
@@ -917,218 +1147,220 @@ export function CompaniesPage() {
         </div>
       </Panel>
 
-      {isLoading && (
-        <Panel>
-          <p>
-            Firmalar yükleniyor...
-          </p>
-        </Panel>
-      )}
-
-      {errorMessage && (
-        <Panel>
-          <p>{errorMessage}</p>
-
-          <button
-            className="btn"
-            type="button"
-            onClick={() => {
-              void loadCompanyWorkspace();
-            }}
-          >
-            Tekrar Dene
-          </button>
-        </Panel>
-      )}
-
-      {!isLoading &&
-        !errorMessage &&
-        companies.length === 0 && (
-          <Panel className="companies-empty-state">
-            <p className="eyebrow">
-              Portföyünüze başlayın
+      <div className="companies-results-area">
+        {isLoading && (
+          <Panel>
+            <p>
+              Firmalar yükleniyor...
             </p>
-
-            <h2>
-              Firma bulunamadı
-            </h2>
-
-            <p className="muted">
-              İlk firmayı oluşturun veya mevcut
-              bir portföyü içe aktarın.
-            </p>
-
-            <div className="companies-empty-actions">
-              <Link
-                className="btn btn-primary"
-                to="/companies/new"
-              >
-                + Yeni Firma
-              </Link>
-
-              <Link
-                className="btn"
-                to="/companies/import"
-              >
-                Portföy İçe Aktar
-              </Link>
-            </div>
           </Panel>
         )}
 
-      {!isLoading &&
-        !errorMessage &&
-        companies.length > 0 &&
-        filteredRows.length === 0 && (
-          <Panel className="companies-empty-state">
-            <h2>
-              Eşleşen firma yok
-            </h2>
-
-            <p className="muted">
-              Daha fazla sonuç görmek için arama
-              veya filtre ayarlarını değiştirin.
-            </p>
+        {errorMessage && (
+          <Panel>
+            <p>{errorMessage}</p>
 
             <button
               className="btn"
               type="button"
               onClick={() => {
-                setSearchQuery("");
-                setStatusFilter("all");
-                setIndustryFilter("all");
+                void loadCompanyWorkspace();
               }}
             >
-              Filtreleri Temizle
+              Tekrar Dene
             </button>
           </Panel>
         )}
 
-      {!isLoading &&
-        !errorMessage &&
-        filteredRows.length > 0 && (
-          <section className="company-list">
-            {filteredRows.map(
-              ({
-                company,
-                opportunities:
-                  companyOpportunities,
-                nextOpportunity,
-              }) => {
-                const contactName =
-                  stripLabelPrefix(
-                    company.contact_person,
-                  ) ?? "Birincil kişi yok";
+        {!isLoading &&
+          !errorMessage &&
+          companies.length === 0 && (
+            <Panel className="companies-empty-state">
+              <p className="eyebrow">
+                Portföyünüze başlayın
+              </p>
 
-                const nextAction =
-                  formatNextActionLabel(
-                    nextOpportunity
-                      ?.next_action,
-                  ) ??
-                  "Planlanmış aksiyon yok";
+              <h2>
+                Firma bulunamadı
+              </h2>
 
-                const stage =
-                  formatStageLabel(
-                    nextOpportunity?.stage,
-                  ) ?? "Fırsat yok";
+              <p className="muted">
+                İlk firmayı oluşturun veya mevcut
+                bir portföyü içe aktarın.
+              </p>
 
-                return (
-                  <Panel
-                    key={company.id}
-                    className="company-row"
-                  >
-                    <div className="company-row-main">
-                      <h2>
-                        {
-                          stripLabelPrefix(
-                            company.company_name,
-                          ) ??
-                            company.company_name
-                        }
-                      </h2>
+              <div className="companies-empty-actions">
+                <Link
+                  className="btn btn-primary"
+                  to="/companies/new"
+                >
+                  + Yeni Firma
+                </Link>
 
-                      <p>
-                        {contactName}
-                      </p>
+                <Link
+                  className="btn"
+                  to="/companies/import"
+                >
+                  Portföy İçe Aktar
+                </Link>
+              </div>
+            </Panel>
+          )}
 
-                      <span>
-                        {stripLabelPrefix(
-                          company.email,
-                        ) ??
-                          stripLabelPrefix(
-                            company.phone,
-                          ) ??
-                          "İletişim bilgisi yok"}
-                      </span>
-                    </div>
+        {!isLoading &&
+          !errorMessage &&
+          companies.length > 0 &&
+          filteredRows.length === 0 && (
+            <Panel className="companies-empty-state">
+              <h2>
+                Eşleşen firma yok
+              </h2>
 
-                    <div>
-                      <span>Sektör</span>
+              <p className="muted">
+                Daha fazla sonuç görmek için arama
+                veya filtre ayarlarını değiştirin.
+              </p>
 
-                      <strong>
-                        {formatIndustryLabel(
-                          company.industry,
-                        ) ?? "Atanmadı"}
-                      </strong>
-                    </div>
+              <button
+                className="btn"
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setStatusFilter("all");
+                  setIndustryFilter("all");
+                  setProductGroupFilter("all");
+                }}
+              >
+                Filtreleri Temizle
+              </button>
+            </Panel>
+          )}
 
-                    <div>
-                      <span>Durum</span>
+        {!isLoading &&
+          !errorMessage &&
+          filteredRows.length > 0 && (
+            <section className="company-list">
+              {filteredRows.map(
+                ({
+                  company,
+                  opportunities:
+                    companyOpportunities,
+                  nextOpportunity,
+                  companyStatus,
+                }) => {
+                  const contactName =
+                    stripLabelPrefix(
+                      company.contact_person,
+                    ) ?? "Birincil kişi yok";
 
-                      <strong>
-                        {formatStatusLabel(
-                          company.status,
-                        ) ?? "Potansiyel Müşteri"}
-                      </strong>
-                    </div>
+                  const nextAction =
+                    formatNextActionLabel(
+                      nextOpportunity
+                        ?.next_action,
+                    ) ??
+                    "Planlanmış aksiyon yok";
 
-                    <div>
-                      <span>
-                        Fırsatlar
-                      </span>
+                  const stage =
+                    formatStageLabel(
+                      nextOpportunity?.stage,
+                    ) ?? "Fırsat yok";
 
-                      <strong>
-                        {
-                          companyOpportunities.length
-                        }
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span>Aşama</span>
-
-                      <strong>
-                        {stage}
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span>Sonraki Aksiyon</span>
-
-                      <strong>
-                        {nextAction}
-                      </strong>
-
-                      <small>
-                        {formatDate(
-                          nextOpportunity
-                            ?.next_action_date,
-                        )}
-                      </small>
-                    </div>
-
-                    <Link
-                      className="btn btn-primary"
-                      to={`/companies/${company.id}`}
+                  return (
+                    <Panel
+                      key={company.id}
+                      className="company-row"
                     >
-                      Firmayı Aç
-                    </Link>
-                  </Panel>
-                );
-              },
-            )}
-          </section>
-        )}
+                      <div className="company-row-main">
+                        <h2>
+                          {
+                            stripLabelPrefix(
+                              company.company_name,
+                            ) ??
+                              company.company_name
+                          }
+                        </h2>
+
+                        <p>
+                          {contactName}
+                        </p>
+
+                        <span>
+                          {stripLabelPrefix(
+                            company.email,
+                          ) ??
+                            stripLabelPrefix(
+                              company.phone,
+                            ) ??
+                            "İletişim bilgisi yok"}
+                        </span>
+                      </div>
+
+                      <div>
+                        <span>Sektör</span>
+
+                        <strong>
+                          {formatIndustryLabel(
+                            company.industry,
+                          ) ?? "Atanmadı"}
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>Durum</span>
+
+                        <strong>
+                          {companyStatus}
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>
+                          Fırsatlar
+                        </span>
+
+                        <strong>
+                          {
+                            companyOpportunities.length
+                          }
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>Aşama</span>
+
+                        <strong>
+                          {stage}
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>Sonraki Aksiyon</span>
+
+                        <strong>
+                          {nextAction}
+                        </strong>
+
+                        <small>
+                          {formatDate(
+                            nextOpportunity
+                              ?.next_action_date,
+                          )}
+                        </small>
+                      </div>
+
+                      <Link
+                        className="btn btn-primary"
+                        to={`/companies/${company.id}`}
+                      >
+                        Firmayı Aç
+                      </Link>
+                    </Panel>
+                  );
+                },
+              )}
+            </section>
+          )}
+      </div>
     </main>
   );
 }

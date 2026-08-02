@@ -1,10 +1,17 @@
-import { ReactNode } from "react";
+import { ComponentPropsWithoutRef } from "react";
 
-type PanelProps = {
-  children: ReactNode;
+type PanelProps = ComponentPropsWithoutRef<"section"> & {
   className?: string;
 };
 
-export function Panel({ children, className = "" }: PanelProps) {
-  return <section className={`panel ${className}`}>{children}</section>;
+export function Panel({
+  children,
+  className = "",
+  ...rest
+}: PanelProps) {
+  return (
+    <section className={`panel ${className}`} {...rest}>
+      {children}
+    </section>
+  );
 }

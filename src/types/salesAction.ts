@@ -3,12 +3,14 @@ export type OpportunityStage =
   | "contacted"
   | "interested"
   | "information-sent"
-  | "quotation-requested"
+  | "quotation-ready"
+  | "proposal-ready"
   | "quotation-sent"
   | "negotiation"
   | "contract"
   | "signed"
-  | "lost";
+  | "lost"
+  | "won";
 
 export type SalesActionType =
   | "information-package"

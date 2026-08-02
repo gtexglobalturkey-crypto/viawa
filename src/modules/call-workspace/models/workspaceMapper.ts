@@ -2,6 +2,7 @@ import type {
   AiMemory,
   Company,
   EmailRecord,
+  Exhibition,
   Opportunity,
   Reminder,
   TimelineEvent,
@@ -18,6 +19,15 @@ import {
   createRiskAnalysis,
 } from "../services/conversationEngine";
 
+import { getWorkspaceFollowUpActionLabel } from "../../../types/workspaceFollowUpAction";
+import { translateSystemGeneratedText } from "../../../features/execution/atlasTextTranslations";
+
+import {
+  findBusinessStatus,
+  getBusinessStatusLabel,
+  isForwardStageTransition,
+} from "../../../types/businessStatus";
+
 import type {
   CallWorkspaceViewModel,
   WorkspaceAiMemory,
@@ -25,31 +35,12 @@ import type {
   WorkspaceTimelineItem,
 } from "./workspaceViewModel";
 
-const OPPORTUNITY_STAGES: OpportunityStage[] = [
-  "new",
-  "contacted",
-  "interested",
-  "information-sent",
-  "quotation-requested",
-  "quotation-sent",
-  "negotiation",
-  "contract",
-  "signed",
-  "lost",
-];
-
 function normalizeStage(
   stage: string,
 ): OpportunityStage {
-  if (
-    OPPORTUNITY_STAGES.includes(
-      stage as OpportunityStage,
-    )
-  ) {
-    return stage as OpportunityStage;
-  }
-
-  return "new";
+  return (
+    findBusinessStatus(stage)?.id ?? "new"
+  );
 }
 
 function formatDate(
@@ -66,7 +57,7 @@ function formatDate(
   }
 
   return new Intl.DateTimeFormat(
-    "en-GB",
+    "tr-TR",
     {
       day: "2-digit",
       month: "short",
@@ -90,23 +81,33 @@ function formatLabel(
     .join(" ");
 }
 
-const STAGE_LABELS: Record<string, string> = {
-  new: "Yeni",
-  contacted: "İletişime Geçildi",
-  interested: "İlgileniyor",
-  "information-sent": "Bilgi Paketi Gönderildi",
-  "quotation-requested": "Teklif Talep Edildi",
-  "quotation-sent": "Teklif Gönderildi",
-  negotiation: "Görüşme",
-  contract: "Sözleşme",
-  signed: "İmzalandı",
-  lost: "Kaybedildi",
-};
-
 function formatStageLabel(
-  value: string,
+  value: OpportunityStage,
 ): string {
-  return STAGE_LABELS[value] ?? formatLabel(value);
+  return (
+    getBusinessStatusLabel(value) ??
+    formatLabel(value)
+  );
+}
+
+function resolveExhibitionName(
+  exhibition: Exhibition | undefined,
+): string {
+  const trimmedName =
+    exhibition?.name.trim();
+
+  return trimmedName
+    ? trimmedName
+    : "Fuar Katılımı";
+}
+
+function resolveExhibitionOrganizer(
+  exhibition: Exhibition | undefined,
+): string | undefined {
+  const organizer =
+    exhibition?.organizer?.trim();
+
+  return organizer || undefined;
 }
 
 function formatEstimatedValue(
@@ -120,6 +121,18 @@ function formatEstimatedValue(
   }
 
   return value.toLocaleString("en-US");
+}
+
+function formatStandType(value?: string | null): string {
+  if (!value) return "â€”";
+
+  return ({
+    "space-only": "Space Only",
+    "shell-scheme": "Shell Scheme",
+    "premium-shell": "Premium Shell",
+    custom: "Custom Stand",
+    outdoor: "Outdoor",
+  } as Record<string, string>)[value] ?? value;
 }
 
 function cleanValue(
@@ -275,13 +288,14 @@ function mapReminderConversation(
 
 function mapCallNoteConversation(
   note: import("../../../types/database").CallNote,
+  contactName: string,
 ): WorkspaceConversationItem {
   return {
     id: `call-note-${note.id}`,
     source: "call-note",
     icon: "📝",
     type: "note",
-    title: "Görüşme Notu",
+    title: `Görüşme Notu · ${contactName}`,
     text: note.note,
     createdAt: note.updated_at,
     dateLabel: formatDate(
@@ -298,10 +312,11 @@ function mapAiMemoryConversation(
     source: "ai-memory",
     icon: "🧠",
     type: "ai-memory",
-    title: "Atlas AI Hafızası",
+    title: "VIAWA AI Hafızası",
     text:
-      aiMemory.summary ??
-      "Kayıtlı AI hafızası yok.",
+      translateSystemGeneratedText(
+        aiMemory.summary,
+      ) || "Kayıtlı AI hafızası yok.",
     createdAt:
       aiMemory.created_at,
     dateLabel: formatDate(
@@ -376,6 +391,7 @@ function createConversationHistory(
   reminders: Reminder[],
   emails: EmailRecord[],
   aiMemory: AiMemory | null,
+  contactName: string,
 ): WorkspaceConversationItem[] {
   const timelineItems =
     timelineEvents.map(
@@ -383,7 +399,12 @@ function createConversationHistory(
     );
 
   const callNoteItems =
-    callNotes.map(mapCallNoteConversation);
+    callNotes.map((note) =>
+      mapCallNoteConversation(
+        note,
+        contactName,
+      ),
+    );
 
   const reminderItems =
     reminders.map(
@@ -432,6 +453,7 @@ type CreateCallWorkspaceViewModelInput = {
   emails: EmailRecord[];
   callNotes: import("../../../types/database").CallNote[];
   aiMemory: AiMemory | null;
+  exhibitions?: Exhibition[];
 };
 
 export function createCallWorkspaceViewModel({
@@ -442,11 +464,24 @@ export function createCallWorkspaceViewModel({
   emails,
   callNotes,
   aiMemory,
+  exhibitions,
 }: CreateCallWorkspaceViewModelInput): CallWorkspaceViewModel {
   const stage =
     normalizeStage(
       opportunity.stage,
     );
+
+  const safeExhibitions =
+    exhibitions ?? [];
+
+  const matchedExhibition =
+    opportunity.exhibition_id
+      ? safeExhibitions.find(
+          (exhibitionRecord) =>
+            exhibitionRecord.id ===
+            opportunity.exhibition_id,
+        )
+      : undefined;
 
   const sortedTimeline = [
     ...timelineEvents,
@@ -507,6 +542,10 @@ export function createCallWorkspaceViewModel({
       aiMemory,
     );
 
+  const contactName =
+    company.contact_person?.trim() ||
+    "Birincil kişi yok";
+
   const conversationHistory =
     createConversationHistory(
       sortedTimeline,
@@ -514,6 +553,7 @@ export function createCallWorkspaceViewModel({
       reminders,
       emails,
       aiMemory,
+      contactName,
     );
 
   const conversationMetrics =
@@ -521,15 +561,9 @@ export function createCallWorkspaceViewModel({
       conversationHistory,
     );
 
-  const contactName =
-    company.contact_person?.trim() ||
-    "Birincil kişi yok";
-
   const nextAction =
-    opportunity.next_action ??
-    createNextBestAction(
-      conversationMetrics,
-      stage,
+    getWorkspaceFollowUpActionLabel(
+      opportunity.next_action,
     );
 
   return {
@@ -611,10 +645,26 @@ export function createCallWorkspaceViewModel({
         ),
       estimatedValue:
         opportunity.estimated_value,
-      currency: "",
+      currency:
+        opportunity.price_currency ?? "",
       formattedEstimatedValue:
-        formatEstimatedValue(
-          opportunity.estimated_value,
+        `${formatEstimatedValue(
+          opportunity.price_grand_total ??
+            opportunity.estimated_value,
+        )}${opportunity.price_currency ? ` ${opportunity.price_currency}` : ""}`,
+      standTypeLabel: formatStandType(
+        opportunity.price_stand_type,
+      ),
+      priceCalculatedAt:
+        opportunity.price_calculated_at ?? null,
+      priceCalculatedDateLabel:
+        formatDate(
+          opportunity.price_calculated_at,
+        ),
+      quotationSent:
+        isForwardStageTransition(
+          "quotation-sent",
+          stage,
         ),
       probability:
         opportunity.interest_level,
@@ -646,13 +696,21 @@ export function createCallWorkspaceViewModel({
     exhibition: {
       id:
         opportunity.exhibition_id,
-      name:
-        "Fuar Katılımı",
+      name: resolveExhibitionName(
+        matchedExhibition,
+      ),
+      organizer:
+        resolveExhibitionOrganizer(
+          matchedExhibition,
+        ),
       hall: "Atanmadı",
       booth: "Atanmadı",
-      standSizeSqm: null,
+      standSizeSqm:
+        opportunity.price_stand_area_sqm ?? null,
       standSizeLabel:
-        "Belirlenmedi",
+        opportunity.price_stand_area_sqm != null
+          ? `${opportunity.price_stand_area_sqm} m²`
+          : "â€”",
       floorPlanStatus:
         stage ===
         "information-sent"
@@ -660,7 +718,9 @@ export function createCallWorkspaceViewModel({
           : "Kroki Bekleniyor",
       quotationStatus:
         stage ===
-          "quotation-requested" ||
+          "quotation-ready" ||
+        stage ===
+          "proposal-ready" ||
         stage ===
           "quotation-sent" ||
         stage ===
@@ -668,7 +728,7 @@ export function createCallWorkspaceViewModel({
         stage === "contract" ||
         stage === "signed"
           ? formatStageLabel(stage)
-          : "Teklif Bekleniyor",
+          : "Sözleşme Bekleniyor",
     },
 
     tasks: [],

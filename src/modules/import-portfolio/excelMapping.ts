@@ -1,46 +1,34 @@
+/**
+ * Column structure for the official import template
+ * (resources/templates/VIAWA_Toplu_Firma_Yukleme_Sablonu.xlsx).
+ *
+ * These header strings are transcribed verbatim from row 4 of that file's
+ * "Firma Veri Girişi" sheet (rows 1-3 are a title, an instructions line,
+ * and a group-header row — see excelReader.ts). Do not invent or rename
+ * columns here; if the template changes, re-read it and update this file
+ * to match rather than guessing.
+ */
+export const EXCEL_TEMPLATE_SHEET_NAME =
+  "Firma Veri Girişi";
+
 export const excelColumns = {
-  companyCode: "Firma Kodu",
-  companyGroup: "Grup Şirketi",
-
-  companyName: "Firma Adı",
-
-  companyPhones: [
-    "Firma Telefon 1",
-    "Firma Telefon 2",
-    "Firma Telefon 3",
-  ],
-
-  companyEmails: [
-    "Firma E-posta 1",
-    "Firma E-posta 2",
-    "Firma E-posta 3",
-  ],
-
-  websites: ["Web Sitesi 1", "Web Sitesi 2", "Web Sitesi 3"],
-
-  country: "Ülke",
-  city: "İl",
-  district: "İlçe",
-  address: "Adres",
-  postalCode: "Posta Kodu",
-
+  companyName: "Firma Ünvanı *",
+  phone: "Telefon",
+  email: "E-posta",
   taxOffice: "Vergi Dairesi",
   taxNumber: "Vergi Numarası",
-
-  lastContact: "Son Görüşme",
-  nextAction: "Sonraki Aktivite",
-  relationship: "İlişki Seviyesi",
-  status: "Durum",
-
-  generalNotes: "Genel Notlar",
-  salesNotes: "Satış Notları",
+  postalCode: "Posta Kodu",
+  address: "Adres",
+  city: "Şehir",
+  district: "İlçe",
+  country: "Ülke",
+  website: "Web Sitesi",
 
   sectors: [
     "Sektör 1",
     "Sektör 2",
     "Sektör 3",
     "Sektör 4",
-    "Sektör 5",
   ],
 
   productGroups: [
@@ -48,66 +36,63 @@ export const excelColumns = {
     "Ürün Grubu 2",
     "Ürün Grubu 3",
     "Ürün Grubu 4",
-    "Ürün Grubu 5",
-    "Ürün Grubu 6",
-    "Ürün Grubu 7",
-    "Ürün Grubu 8",
-    "Ürün Grubu 9",
-    "Ürün Grubu 10",
   ],
 
-  exhibitions: [
-    "Hedef Fuar 1",
-    "Hedef Fuar 2",
-    "Hedef Fuar 3",
-    "Hedef Fuar 4",
-    "Hedef Fuar 5",
-    "Hedef Fuar 6",
-    "Hedef Fuar 7",
-    "Hedef Fuar 8",
-    "Hedef Fuar 9",
-    "Hedef Fuar 10",
-  ],
-
-  decisionMakers: [
+  /**
+   * "Fuar Yetkilisi" and "Ana İletişim Kişisi" are two template columns
+   * that both feed the app's single `is_primary` contact flag — the
+   * company form's own checkbox is already labeled "Fuar Yetkilisi / Ana
+   * İletişim Kişisi" as one combined role (see NewCompanyPage.tsx), so a
+   * person marked "Evet" in either column is primary.
+   */
+  people: [
     {
-      name: "Yetkili 1 Adı",
-      role: "Yetkili 1 Ünvanı",
-      phone: "Yetkili 1 Telefon",
-      email: "Yetkili 1 E-posta",
+      name: "Kişi 1 - Ad Soyad",
+      role: "Kişi 1 - Ünvan",
+      phone: "Kişi 1 - Telefon",
+      email: "Kişi 1 - E-posta",
+      isExhibitionContact:
+        "Kişi 1 - Fuar Yetkilisi",
+      isPrimaryContact:
+        "Kişi 1 - Ana İletişim Kişisi",
+      isSignatory:
+        "Kişi 1 - İmza Yetkilisi",
     },
     {
-      name: "Yetkili 2 Adı",
-      role: "Yetkili 2 Ünvanı",
-      phone: "Yetkili 2 Telefon",
-      email: "Yetkili 2 E-posta",
+      name: "Kişi 2 - Ad Soyad",
+      role: "Kişi 2 - Ünvan",
+      phone: "Kişi 2 - Telefon",
+      email: "Kişi 2 - E-posta",
+      isExhibitionContact:
+        "Kişi 2 - Fuar Yetkilisi",
+      isPrimaryContact:
+        "Kişi 2 - Ana İletişim Kişisi",
+      isSignatory:
+        "Kişi 2 - İmza Yetkilisi",
     },
     {
-      name: "Yetkili 3 Adı",
-      role: "Yetkili 3 Ünvanı",
-      phone: "Yetkili 3 Telefon",
-      email: "Yetkili 3 E-posta",
-    },
-  ],
-
-  contactPeople: [
-    {
-      name: "İrtibat 1 Adı",
-      role: "İrtibat 1 Ünvanı",
-      phone: "İrtibat 1 Telefon",
-      email: "İrtibat 1 E-posta",
+      name: "Kişi 3 - Ad Soyad",
+      role: "Kişi 3 - Ünvan",
+      phone: "Kişi 3 - Telefon",
+      email: "Kişi 3 - E-posta",
+      isExhibitionContact:
+        "Kişi 3 - Fuar Yetkilisi",
+      isPrimaryContact:
+        "Kişi 3 - Ana İletişim Kişisi",
+      isSignatory:
+        "Kişi 3 - İmza Yetkilisi",
     },
     {
-      name: "İrtibat 2 Adı",
-      role: "İrtibat 2 Ünvanı",
-      phone: "İrtibat 2 Telefon",
-      email: "İrtibat 2 E-posta",
-    },
-    {
-      name: "İrtibat 3 Adı",
-      role: "İrtibat 3 Ünvanı",
-      phone: "İrtibat 3 Telefon",
-      email: "İrtibat 3 E-posta",
+      name: "Kişi 4 - Ad Soyad",
+      role: "Kişi 4 - Ünvan",
+      phone: "Kişi 4 - Telefon",
+      email: "Kişi 4 - E-posta",
+      isExhibitionContact:
+        "Kişi 4 - Fuar Yetkilisi",
+      isPrimaryContact:
+        "Kişi 4 - Ana İletişim Kişisi",
+      isSignatory:
+        "Kişi 4 - İmza Yetkilisi",
     },
   ],
 } as const;

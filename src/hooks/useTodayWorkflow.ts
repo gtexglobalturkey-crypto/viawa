@@ -13,6 +13,7 @@ import type {
   WorkflowEngineResult,
   WorkflowState,
   WorkflowTask,
+  WorkflowTaskType,
 } from "../core/workflow/workflowTypes";
 
 import { executeAction } from "../features/execution";
@@ -116,6 +117,31 @@ function mapWorkflowTaskToActionId(
   }
 }
 
+// Sprint 25.1 / Adım 3 — the Workspace Email Panel template each email
+// task type opens with (via CallWorkspacePage's openEmail/template
+// intent — see CustomerWorkspace's own consumer). Deliberately a
+// different mapping from mapWorkflowTaskToActionId above (an actionId,
+// not a WorkspaceEmailPanel templateId):
+//   - reply-email has no template metadata anywhere on WorkflowTask, so
+//     this falls back to the closest existing, already-established
+//     mapping (mapWorkflowTaskToActionId already treats reply-email as
+//     "information-package").
+//   - follow-up-quotation is a follow-up on an ALREADY-sent quotation
+//     (see executionListeners.ts: the "quotation" actionId's own
+//     follow-up reminder is "Wait for quotation feedback", and
+//     mapWorkflowTaskToActionId already maps this task type to the
+//     "revised-quotation" actionId) — Quotation would resend the
+//     original, unrevised offer, so this uses Revised Quotation.
+const EMAIL_TASK_TEMPLATE_IDS: Partial<
+  Record<WorkflowTaskType, string>
+> = {
+  "reply-email": "Information Package",
+  "send-quotation": "Quotation",
+  "follow-up-quotation":
+    "Revised Quotation",
+  "follow-up-contract": "Contract",
+};
+
 function getTaskRoute(
   task: WorkflowTask,
 ): string {
@@ -123,24 +149,46 @@ function getTaskRoute(
     task.action.entityReference
       ?.companyId;
 
-  const searchParams =
-    companyId
-      ? `?companyId=${encodeURIComponent(
-          companyId,
-        )}`
-      : "";
+  const opportunityId =
+    task.action.entityReference
+      ?.opportunityId;
 
-  switch (task.type) {
-    case "reply-email":
-    case "send-quotation":
-    case "follow-up-quotation":
-    case "follow-up-contract":
-      return `/communication${searchParams}`;
+  const params =
+    new URLSearchParams();
 
-    case "relationship-check-in":
-    default:
-      return `/call${searchParams}`;
+  if (companyId) {
+    params.set(
+      "companyId",
+      companyId,
+    );
   }
+
+  const emailTemplateId =
+    EMAIL_TASK_TEMPLATE_IDS[task.type];
+
+  if (emailTemplateId) {
+    params.set(
+      "openEmail",
+      "true",
+    );
+    params.set(
+      "template",
+      emailTemplateId,
+    );
+
+    if (opportunityId) {
+      params.set(
+        "opportunityId",
+        opportunityId,
+      );
+    }
+  }
+
+  const query = params.toString();
+
+  return query
+    ? `/call?${query}`
+    : "/call";
 }
 
 function readMetadataNumber(

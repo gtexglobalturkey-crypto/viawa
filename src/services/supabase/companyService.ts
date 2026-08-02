@@ -28,10 +28,51 @@ export async function getCompany(
   return data;
 }
 
+export type CompanyDuplicateCheckRow = {
+  id: string;
+  company_name: string;
+  phone: string | null;
+  email: string | null;
+  tax_number: string | null;
+  website: string | null;
+  address: string | null;
+};
+
+/**
+ * Fields needed to check a new/edited company against every other company
+ * for duplicate company_name/phone/email/tax_number/website/address.
+ * Excludes `excludeCompanyId` so editing a company can keep its own values.
+ */
+export async function getCompaniesForDuplicateCheck(
+  excludeCompanyId?: string,
+): Promise<CompanyDuplicateCheckRow[]> {
+  let query = supabase
+    .from("companies")
+    .select(
+      "id, company_name, phone, email, tax_number, website, address",
+    );
+
+  if (excludeCompanyId) {
+    query = query.neq(
+      "id",
+      excludeCompanyId,
+    );
+  }
+
+  const { data, error } = await query;
+
+  if (error) throw error;
+
+  return data ?? [];
+}
+
 export async function createCompany(
   company: Omit<
     Company,
-    "id" | "created_at" | "updated_at"
+    | "id"
+    | "company_code"
+    | "created_at"
+    | "updated_at"
   >,
 ): Promise<Company> {
   const { data, error } = await supabase
@@ -48,7 +89,13 @@ export async function createCompany(
 export async function updateCompany(
   id: string,
   updates: Partial<
-    Omit<Company, "id" | "created_at" | "updated_at">
+    Omit<
+      Company,
+      | "id"
+      | "company_code"
+      | "created_at"
+      | "updated_at"
+    >
   >,
 ): Promise<Company> {
   const { data, error } = await supabase

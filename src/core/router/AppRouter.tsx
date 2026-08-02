@@ -4,9 +4,11 @@ import {
 } from "react";
 import {
   BrowserRouter,
+  Navigate,
   Route,
   Routes,
   useLocation,
+  useSearchParams,
 } from "react-router-dom";
 
 import { AppShell } from "../../components/layout/AppShell";
@@ -73,13 +75,13 @@ const CallWorkspacePage = lazy(async () => {
   };
 });
 
-const CommunicationPage = lazy(async () => {
+const CommunicationCenterPage = lazy(async () => {
   const module = await import(
-    "../../modules/communication/CommunicationPage"
+    "../../modules/communication-center/CommunicationCenterPage"
   );
 
   return {
-    default: module.CommunicationPage,
+    default: module.CommunicationCenterPage,
   };
 });
 
@@ -103,21 +105,104 @@ const MasterDataPage = lazy(async () => {
   };
 });
 
+const ExhibitionRepositoryPage = lazy(
+  async () => {
+    const module = await import(
+      "../../modules/exhibition-repository/ExhibitionRepositoryPage"
+    );
+
+    return {
+      default:
+        module.ExhibitionRepositoryPage,
+    };
+  },
+);
+
+// Sprint 25.1 / Adım 4 — CommunicationPage is no longer rendered for any
+// user. This is the one remaining reason /communication still exists as
+// a route: a stale bookmark/link must still land the user in the right
+// place (the Workspace Email Panel) instead of a dead page. Same 8-item
+// catalog as WorkspaceEmailPanel.tsx's WORKSPACE_EMAIL_TEMPLATE_IDS /
+// the old CommunicationPage.tsx's VALID_TEMPLATE_IDS — duplicated here
+// rather than imported, matching how this list is already deliberately
+// duplicated across those two files (see WorkspaceEmailPanel.tsx's own
+// comment on why).
+const LEGACY_COMMUNICATION_VALID_TEMPLATE_IDS = [
+  "Information Package",
+  "Exhibition Presentation",
+  "Quotation",
+  "Revised Quotation",
+  "Contract",
+  "Visa Invitation",
+  "Visitor Invitation",
+  "Thank You",
+];
+
+function LegacyCommunicationRedirect() {
+  const [searchParams] = useSearchParams();
+
+  const companyId =
+    searchParams.get("companyId");
+
+  // No companyId at all — there is nothing for the Workspace to open.
+  // The old CommunicationPage showed an inline "Müşteri seçilmedi"
+  // state for this; since that page no longer renders, this falls back
+  // to Today instead of a blank/broken Workspace.
+  if (!companyId) {
+    return (
+      <Navigate to="/today" replace />
+    );
+  }
+
+  const opportunityId =
+    searchParams.get("opportunityId");
+
+  const requestedTemplate =
+    searchParams.get("template");
+
+  const templateId =
+    requestedTemplate &&
+    LEGACY_COMMUNICATION_VALID_TEMPLATE_IDS.includes(
+      requestedTemplate,
+    )
+      ? requestedTemplate
+      : "Information Package";
+
+  const params = new URLSearchParams({
+    companyId,
+    openEmail: "true",
+    template: templateId,
+  });
+
+  if (opportunityId) {
+    params.set(
+      "opportunityId",
+      opportunityId,
+    );
+  }
+
+  return (
+    <Navigate
+      to={`/call?${params.toString()}`}
+      replace
+    />
+  );
+}
+
 function RouteLoadingState() {
   return (
     <main className="page">
       <Panel>
         <p className="eyebrow">
-          Atlas CRM
+          VIAWA CRM
         </p>
 
         <h2>
-          Loading workspace...
+          Çalışma alanı yükleniyor...
         </h2>
 
         <p className="muted">
-          The requested module is being
-          prepared.
+          İstenen modül hazırlanıyor.
         </p>
       </Panel>
     </main>
@@ -156,6 +241,11 @@ function AppRoutes() {
         />
 
         <Route
+          path="/companies/:id/edit"
+          element={<NewCompanyPage />}
+        />
+
+        <Route
           path="/companies/import"
           element={<ImportPortfolioPage />}
         />
@@ -172,12 +262,26 @@ function AppRoutes() {
 
         <Route
           path="/communication"
-          element={<CommunicationPage />}
+          element={
+            <LegacyCommunicationRedirect />
+          }
+        />
+
+        <Route
+          path="/communication-center"
+          element={<CommunicationCenterPage />}
         />
 
         <Route
           path="/reference-data"
           element={<MasterDataPage />}
+        />
+
+        <Route
+          path="/exhibitions/:id/repository"
+          element={
+            <ExhibitionRepositoryPage />
+          }
         />
       </Routes>
     </Suspense>

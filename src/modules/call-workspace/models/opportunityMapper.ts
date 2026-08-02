@@ -15,28 +15,43 @@ import {
   formatWorkspaceLabel,
 } from "./workspaceFormatters";
 
+import { normalizeLegacyOpportunityStage } from "../../../types/businessStatus";
+
 const OPPORTUNITY_STAGES: OpportunityStage[] = [
   "new",
   "contacted",
   "interested",
   "information-sent",
-  "quotation-requested",
+  "quotation-ready",
+  "proposal-ready",
   "quotation-sent",
   "negotiation",
   "contract",
   "signed",
   "lost",
+  // Sprint 25.5 — set only by "Fırsatı Kapat"; without this, a won
+  // opportunity's stage would be silently normalized back to "new" here.
+  "won",
 ];
 
 export function normalizeOpportunityStage(
   stage: string,
 ): OpportunityStage {
+  // Sprint 22.9.11 — map any old persisted stage id to its current
+  // replacement (e.g. "quotation-requested" → "quotation-ready")
+  // before validating, so a legacy row lands on the correct stage
+  // instead of being silently reset to "new".
+  const migratedStage =
+    normalizeLegacyOpportunityStage(
+      stage,
+    );
+
   if (
     OPPORTUNITY_STAGES.includes(
-      stage as OpportunityStage,
+      migratedStage as OpportunityStage,
     )
   ) {
-    return stage as OpportunityStage;
+    return migratedStage as OpportunityStage;
   }
 
   return "new";
@@ -58,8 +73,11 @@ export function getDefaultNextAction(
     case "information-sent":
       return "Follow up and confirm whether the documents were reviewed.";
 
-    case "quotation-requested":
-      return "Prepare the quotation.";
+    case "quotation-ready":
+      return "Generate the quotation document from the approved price.";
+
+    case "proposal-ready":
+      return "Review and send the generated proposal to the customer.";
 
     case "quotation-sent":
       return "Schedule a quotation follow-up.";
@@ -75,6 +93,9 @@ export function getDefaultNextAction(
 
     case "lost":
       return "Record the reason for loss and define a future reactivation date.";
+
+    case "won":
+      return "Opportunity closed — no further action needed.";
   }
 }
 
@@ -156,12 +177,28 @@ export function mapWorkspaceOpportunity({
       estimatedValue:
         opportunity.estimated_value,
 
-      currency: "",
+      currency:
+        opportunity.price_currency ?? "",
 
       formattedEstimatedValue:
         formatEstimatedValue(
-          opportunity.estimated_value,
+          opportunity.price_grand_total ??
+            opportunity.estimated_value,
         ),
+
+      standTypeLabel:
+        opportunity.price_stand_type ?? "—",
+
+      priceCalculatedAt:
+        opportunity.price_calculated_at ?? null,
+
+      priceCalculatedDateLabel:
+        formatWorkspaceDate(
+          opportunity.price_calculated_at,
+        ),
+
+      quotationSent:
+        ["quotation-sent", "negotiation", "contract", "signed", "won"].includes(stage),
 
       probability:
         opportunity.interest_level,

@@ -22,12 +22,17 @@ import { useWorkspaceHeader } from "./workspaceHeaderContext";
 export function Topbar() {
   const navigate = useNavigate();
 
-  const { signOut, user } = useAuth();
+  const { signOut } = useAuth();
   const { showToast } = useToast();
 
   const {
     aiConfidence,
     aiConfidenceLabel,
+    companyName,
+    companyCode,
+    stageLabel,
+    industry,
+    country,
   } = useWorkspaceHeader();
 
   const searchContainerRef =
@@ -145,44 +150,57 @@ export function Topbar() {
   const hasQuery =
     query.trim().length > 0;
 
-  const displayName =
-    user?.user_metadata?.full_name ||
-    user?.email?.split("@")[0] ||
-    "Kullanıcı";
-
-  const isGenericAdminName =
-    displayName.trim().toLowerCase() ===
-    "admin";
-
   return (
     <header className="atlas-topbar">
-      <div className="topbar-welcome">
-        <p className="eyebrow">
-          Atlas CRM v2
-        </p>
+      {companyName && (
+        <div className="topbar-company-name">
+          <div className="topbar-company-name-row">
+            <strong>{companyName}</strong>
 
-        <h2>
-          {isGenericAdminName
-            ? "Hoş geldiniz"
-            : `Hoş geldiniz, ${displayName}`}
-        </h2>
-      </div>
+            {companyCode && (
+              <span className="topbar-company-code">
+                Firma ID: {companyCode}
+              </span>
+            )}
 
-      {aiConfidence !== null && (
-        <div className="topbar-ai-confidence">
-          <span>AI Confidence</span>
+            {stageLabel && (
+              <span className="sw-stage-badge">
+                {stageLabel}
+              </span>
+            )}
+          </div>
 
-          <strong>
-            {aiConfidence}%
-          </strong>
-
-          <small>
-            {aiConfidenceLabel}
-          </small>
+          {(industry || country) && (
+            <small className="topbar-company-context">
+              {industry}
+              {industry && country
+                ? " · "
+                : ""}
+              {country}
+            </small>
+          )}
         </div>
       )}
 
       <div className="topbar-actions">
+        {aiConfidence !== null && (
+          <div className="topbar-ai-confidence">
+            <span>AI Confidence</span>
+
+            <small
+              className={
+                aiConfidence >= 85
+                  ? "is-success"
+                  : aiConfidence >= 65
+                    ? "is-warning"
+                    : "is-danger"
+              }
+            >
+              {aiConfidenceLabel}
+            </small>
+          </div>
+        )}
+
         <div
           ref={searchContainerRef}
           className="global-search"
@@ -193,7 +211,7 @@ export function Topbar() {
             <input
               className="topbar-search-input"
               type="search"
-              placeholder="Atlas'ta ara..."
+              placeholder="VIAWA'da ara..."
               value={query}
               autoComplete="off"
               onFocus={() =>

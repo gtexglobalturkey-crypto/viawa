@@ -1,6 +1,7 @@
 import {
   ArrowRight,
   CheckCircle2,
+  FileSignature,
   Mail,
   Phone,
   ReceiptText,
@@ -10,6 +11,7 @@ import { Link } from "react-router-dom";
 
 import type { EmailRecord } from "../../services/supabase/emailService";
 import type { Reminder } from "../../services/supabase/reminderService";
+import type { TimelineEvent } from "../../services/supabase/timelineService";
 
 import { Panel } from "../ui/Panel";
 
@@ -21,8 +23,72 @@ type Props = {
     todayReminders: Reminder[];
     upcomingReminders: Reminder[];
     companyNames: Map<string, string>;
+    timelineEvents: TimelineEvent[];
   };
 };
+
+type SignatureStatusItem = {
+  key: string;
+  companyId: string;
+  companyName: string;
+  label: string;
+};
+
+function getMostRecentEventPerCompany(
+  events: TimelineEvent[],
+  companyNames: Map<string, string>,
+): SignatureStatusItem[] {
+  const latestByCompany = new Map<
+    string,
+    TimelineEvent
+  >();
+
+  for (const event of events) {
+    const existing = latestByCompany.get(
+      event.company_id,
+    );
+
+    if (
+      !existing ||
+      Date.parse(event.created_at) >
+        Date.parse(existing.created_at)
+    ) {
+      latestByCompany.set(
+        event.company_id,
+        event,
+      );
+    }
+  }
+
+  return Array.from(
+    latestByCompany.values(),
+  ).map((event) => ({
+    key: event.id,
+    companyId: event.company_id,
+    companyName: getCompanyName(
+      event.company_id,
+      companyNames,
+    ),
+    label: event.title,
+  }));
+}
+
+function hasLaterSignedEvent(
+  sentEvent: TimelineEvent,
+  signedEvents: TimelineEvent[],
+): boolean {
+  return signedEvents.some(
+    (signedEvent) =>
+      signedEvent.company_id ===
+        sentEvent.company_id &&
+      Date.parse(
+        signedEvent.created_at,
+      ) >=
+        Date.parse(
+          sentEvent.created_at,
+        ),
+  );
+}
 
 type ActionType =
   | "call"
@@ -66,13 +132,13 @@ function getCompanyName(
   companyNames: Map<string, string>,
 ): string {
   if (!companyId) {
-    return "Customer";
+    return "Müşteri";
   }
 
   return (
     cleanText(
       companyNames.get(companyId),
-    ) || "Customer"
+    ) || "Müşteri"
   );
 }
 
@@ -89,7 +155,7 @@ function formatDate(
     return "Geçersiz tarih";
   }
 
-  return new Intl.DateTimeFormat("en-GB", {
+  return new Intl.DateTimeFormat("tr-TR", {
     day: "2-digit",
     month: "short",
     hour: "2-digit",
@@ -256,9 +322,16 @@ function getActionDetails(
   };
 }
 
+// Sprint 25.1 / Adım 3 — "quotation"-classified reminders here only
+// ever come from the "Wait for quotation feedback" reminder
+// (executionListeners.ts's follow-up on an already-sent quotation — see
+// useTodayWorkflow.ts's EMAIL_TASK_TEMPLATE_IDS for the same reasoning),
+// so this opens Revised Quotation, not Quotation — resending the
+// original offer would be wrong here.
 function getActionHref(
   companyId: string,
   action: ActionDetails,
+  opportunityId?: string | null,
 ): string {
   const encodedCompanyId =
     encodeURIComponent(companyId);
@@ -270,18 +343,28 @@ function getActionHref(
     return `/call?companyId=${encodedCompanyId}`;
   }
 
-  if (action.type === "quotation") {
-    return (
-      `/communication?companyId=${encodedCompanyId}` +
-      "&template=Quotation"
-    );
-  }
+  const emailTemplateId =
+    action.type === "quotation"
+      ? "Revised Quotation"
+      : action.type === "email"
+        ? "Information Package"
+        : null;
 
-  if (action.type === "email") {
-    return (
-      `/communication?companyId=${encodedCompanyId}` +
-      "&template=Information%20Package"
-    );
+  if (emailTemplateId) {
+    const params = new URLSearchParams({
+      companyId,
+      openEmail: "true",
+      template: emailTemplateId,
+    });
+
+    if (opportunityId) {
+      params.set(
+        "opportunityId",
+        opportunityId,
+      );
+    }
+
+    return `/call?${params.toString()}`;
   }
 
   return `/companies/${encodedCompanyId}`;
@@ -318,8 +401,26 @@ function createReminderItem(
     href: getActionHref(
       reminder.company_id,
       action,
+      reminder.opportunity_id,
     ),
   };
+}
+
+function getReminderDuplicateKey(
+  reminder: Reminder,
+): string {
+  if (
+    reminder.opportunity_id &&
+    reminder.task_type
+  ) {
+    return [
+      "opportunity",
+      reminder.opportunity_id,
+      reminder.task_type,
+    ].join(":");
+  }
+
+  return `reminder:${reminder.id}`;
 }
 
 export function NextActionsCard({
@@ -327,7 +428,7 @@ export function NextActionsCard({
 }: Props) {
   const queue: QueueItem[] = [];
 
-  const addedReminderIds =
+  const addedReminderKeys =
     new Set<string>();
 
   const overdueReminder =
@@ -346,16 +447,20 @@ export function NextActionsCard({
       ),
     );
 
-    addedReminderIds.add(
-      overdueReminder.id,
+    addedReminderKeys.add(
+      getReminderDuplicateKey(
+        overdueReminder,
+      ),
     );
   }
 
   const pendingCall =
     data.pendingCalls.find(
       (reminder) =>
-        !addedReminderIds.has(
-          reminder.id,
+        !addedReminderKeys.has(
+          getReminderDuplicateKey(
+            reminder,
+          ),
         ),
     ) ?? null;
 
@@ -377,8 +482,10 @@ export function NextActionsCard({
       ),
     );
 
-    addedReminderIds.add(
-      pendingCall.id,
+    addedReminderKeys.add(
+      getReminderDuplicateKey(
+        pendingCall,
+      ),
     );
   }
 
@@ -416,8 +523,10 @@ export function NextActionsCard({
   const todayReminder =
     data.todayReminders.find(
       (reminder) =>
-        !addedReminderIds.has(
-          reminder.id,
+        !addedReminderKeys.has(
+          getReminderDuplicateKey(
+            reminder,
+          ),
         ),
     ) ?? null;
 
@@ -434,16 +543,20 @@ export function NextActionsCard({
       ),
     );
 
-    addedReminderIds.add(
-      todayReminder.id,
+    addedReminderKeys.add(
+      getReminderDuplicateKey(
+        todayReminder,
+      ),
     );
   }
 
   const upcomingReminder =
     data.upcomingReminders.find(
       (reminder) =>
-        !addedReminderIds.has(
-          reminder.id,
+        !addedReminderKeys.has(
+          getReminderDuplicateKey(
+            reminder,
+          ),
         ),
     ) ?? null;
 
@@ -460,13 +573,46 @@ export function NextActionsCard({
       ),
     );
 
-    addedReminderIds.add(
-      upcomingReminder.id,
+    addedReminderKeys.add(
+      getReminderDuplicateKey(
+        upcomingReminder,
+      ),
     );
   }
 
   const visibleQueue =
     queue.slice(0, 3);
+
+  const contractSentEvents =
+    data.timelineEvents.filter(
+      (event) =>
+        event.type === "contract-sent",
+    );
+
+  const contractSignedEvents =
+    data.timelineEvents.filter(
+      (event) =>
+        event.type ===
+        "contract-signed",
+    );
+
+  const awaitingSignatureItems =
+    getMostRecentEventPerCompany(
+      contractSentEvents.filter(
+        (event) =>
+          !hasLaterSignedEvent(
+            event,
+            contractSignedEvents,
+          ),
+      ),
+      data.companyNames,
+    ).slice(0, 3);
+
+  const signedItems =
+    getMostRecentEventPerCompany(
+      contractSignedEvents,
+      data.companyNames,
+    ).slice(0, 3);
 
   return (
     <Panel>
@@ -551,6 +697,61 @@ export function NextActionsCard({
           )}
         </div>
       )}
+
+      {awaitingSignatureItems.length > 0 ||
+      signedItems.length > 0 ? (
+        <div style={{ marginTop: "12px", borderTop: "1px solid var(--atlas-border, #e2e8f0)", paddingTop: "10px" }}>
+          <p className="eyebrow" style={{ margin: "0 0 6px" }}>
+            İmza Durumu
+          </p>
+
+          <div className="data-list" style={{ gap: "8px" }}>
+            {awaitingSignatureItems.map(
+              (item) => (
+                <Link
+                  key={item.key}
+                  to={`/companies/${encodeURIComponent(item.companyId)}`}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    color: "inherit",
+                    textDecoration: "none",
+                  }}
+                >
+                  <FileSignature size={14} style={{ flex: "0 0 auto" }} />
+
+                  <span style={{ fontSize: "11px", overflowWrap: "anywhere" }}>
+                    <strong>{item.companyName}</strong> · İmza bekleniyor
+                  </span>
+                </Link>
+              ),
+            )}
+
+            {signedItems.map(
+              (item) => (
+                <Link
+                  key={item.key}
+                  to={`/companies/${encodeURIComponent(item.companyId)}`}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    color: "inherit",
+                    textDecoration: "none",
+                  }}
+                >
+                  <CheckCircle2 size={14} style={{ flex: "0 0 auto" }} />
+
+                  <span style={{ fontSize: "11px", overflowWrap: "anywhere" }}>
+                    <strong>{item.companyName}</strong> · İmzalandı
+                  </span>
+                </Link>
+              ),
+            )}
+          </div>
+        </div>
+      ) : null}
     </Panel>
   );
 }

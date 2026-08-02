@@ -20,21 +20,21 @@ export function ProtectedApp({
       <main className="auth-page">
         <section className="auth-card">
           <div className="auth-brand">
-            <span>ATLAS</span>
+            <span>VIAWA</span>
 
             <p>
-              Sales Intelligence Workspace
+              Satış Zekası Çalışma Alanı
             </p>
           </div>
 
           <p className="eyebrow">
-            Secure access
+            Güvenli erişim
           </p>
 
-          <h1>Loading session...</h1>
+          <h1>Oturum yükleniyor...</h1>
 
           <p className="muted">
-            Your ATLAS account is being checked.
+            VIAWA hesabınız kontrol ediliyor.
           </p>
         </section>
       </main>

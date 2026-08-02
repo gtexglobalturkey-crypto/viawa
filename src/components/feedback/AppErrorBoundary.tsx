@@ -54,14 +54,13 @@ export class AppErrorBoundary extends Component<
               <AlertTriangle size={30} />
             </div>
 
-            <p className="eyebrow">ATLAS SYSTEM</p>
+            <p className="eyebrow">VIAWA SİSTEM</p>
 
-            <h1>Something went wrong</h1>
+            <h1>Bir şeyler ters gitti</h1>
 
             <p>
-              The application encountered an unexpected
-              error. Your saved CRM data has not been
-              deleted.
+              Uygulamada beklenmeyen bir hata oluştu.
+              Kayıtlı CRM verileriniz silinmedi.
             </p>
 
             <button
@@ -70,7 +69,7 @@ export class AppErrorBoundary extends Component<
             >
               <RefreshCw size={17} />
 
-              Reload application
+              Uygulamayı yeniden yükle
             </button>
           </section>
         </main>

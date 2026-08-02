@@ -1,47 +1,38 @@
+import { UserPlus, X } from "lucide-react";
 import {
+  type ReactNode,
+  useEffect,
+  useMemo,
   useState,
-  type FormEvent,
 } from "react";
 import {
   Link,
+  useNavigate,
   useParams,
 } from "react-router-dom";
 
-import { AIMemoryCard } from "../../components/company/AIMemoryCard";
-import { CompanyHeader } from "../../components/company/CompanyHeader";
-import { CompanyInfoCard } from "../../components/company/CompanyInfoCard";
-import { OpportunityList } from "../../components/company/OpportunityList";
-import { QuickActionsCard } from "../../components/company/QuickActionsCard";
-import { TimelineCard } from "../../components/company/TimelineCard";
+import {
+  CompanyHeader,
+  type CompanyHeaderTag,
+} from "../../components/company/CompanyHeader";
+import { ExhibitionFileList } from "../../components/company/ExhibitionFileList";
+import { useWorkspaceHeader } from "../../components/layout/workspaceHeaderContext";
+import { useToast } from "../../components/feedback/toastContext";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Panel } from "../../components/ui/Panel";
 import { useCompanyWorkspace } from "../../hooks/useCompanyWorkspace";
-
+import { useExhibitionSelection } from "../exhibitions/context/ExhibitionSelectionContext";
+import { loadApprovedPriceSnapshots } from "../call-workspace/pricing/services/approvedPriceSnapshotStorage";
+import { loadGeneratedDocuments } from "../document-engine/services/generatedDocumentStorage";
+import { getCompanyProductGroups } from "../../services/supabase/productGroupService";
+import { getCompanySectors } from "../../services/supabase/sectorService";
 import {
-  createOpportunity,
-} from "../../services/supabase/opportunityService";
-
-import {
-  createTimelineEvent,
-} from "../../services/supabase/timelineService";
-
-function getDefaultNextActionDate(): string {
-  const date = new Date();
-
-  date.setDate(date.getDate() + 1);
-
-  const year = date.getFullYear();
-
-  const month = String(
-    date.getMonth() + 1,
-  ).padStart(2, "0");
-
-  const day = String(
-    date.getDate(),
-  ).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-}
+  getBusinessStatusLabel,
+  isTerminalBusinessStatus,
+  MAX_ACTIVE_OPPORTUNITIES_PER_COMPANY,
+  resolveCompanyStatus,
+} from "../../types/businessStatus";
+import { getLostReasonLabel } from "../../types/opportunityClosure";
 
 function stripLabelPrefix<
   T extends string | null | undefined,
@@ -56,257 +47,415 @@ function stripLabelPrefix<
   ).trim() as T;
 }
 
-function toTitleCase<
-  T extends string | null | undefined,
->(value: T): T {
-  const cleaned = stripLabelPrefix(value);
+function getWorkspaceHref(
+  companyId: string,
+  opportunityId?: string | null,
+): string {
+  const encodedCompanyId =
+    encodeURIComponent(companyId);
 
-  if (!cleaned) {
-    return cleaned;
-  }
-
-  return cleaned
-    .split(" ")
-    .filter(Boolean)
-    .map(
-      (word) =>
-        word.charAt(0).toUpperCase() +
-        word.slice(1).toLowerCase(),
-    )
-    .join(" ") as T;
+  return opportunityId
+    ? `/call?companyId=${encodedCompanyId}&opportunityId=${encodeURIComponent(
+        opportunityId,
+      )}`
+    : `/call?companyId=${encodedCompanyId}`;
 }
 
-const INDUSTRY_LABELS: Record<string, string> = {
-  mining: "Madencilik",
+function formatStandType(value?: string | null): string {
+  if (!value) return "—";
+
+  return ({
+    "space-only": "Boş Alan",
+    "shell-scheme": "Standart Stand",
+    "premium-shell": "Premium Stand",
+    custom: "Özel Stand",
+    "custom-stand": "Özel Stand",
+    outdoor: "Açık Alan",
+  } as Record<string, string>)[value] ?? value;
+}
+
+const MAX_COMPANY_CONTACTS = 4;
+
+type CompanyDetailModalProps = {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  footer?: ReactNode;
 };
 
-function formatIndustryLabel<
-  T extends string | null | undefined,
->(value: T): T {
-  const cleaned = stripLabelPrefix(value);
+function CompanyDetailModal({ title, onClose, children, footer }: CompanyDetailModalProps) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
 
-  if (!cleaned) {
-    return cleaned;
+  return (
+    <div className="company-detail-modal-backdrop" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) onClose();
+    }}>
+      <section className="company-detail-modal" role="dialog" aria-modal="true" aria-labelledby="company-detail-modal-title">
+        <header className="company-detail-modal-header">
+          <h2 id="company-detail-modal-title">{title}</h2>
+          <button type="button" className="company-detail-modal-close" onClick={onClose} aria-label="Kapat"><X size={18} /></button>
+        </header>
+        <div className="company-detail-modal-body">{children}</div>
+        {footer ? <footer className="company-detail-modal-footer">{footer}</footer> : null}
+      </section>
+    </div>
+  );
+}
+
+type PersonCardData = {
+  id: string | null;
+  label: string;
+  name: string | null;
+  title: string | null;
+  phone: string | null;
+  email: string | null;
+  isPrimary: boolean;
+  isSignatory: boolean;
+};
+
+type PersonContactCardProps = {
+  card: PersonCardData;
+  linkHref: string;
+  linkTitle: string;
+  nameFallback: string;
+  phoneFallback?: string | null;
+  emailFallback?: string | null;
+  emptyStateHref?: string;
+  selected?: boolean;
+  onSelect?: (contactId: string) => void;
+};
+
+/**
+ * Single shared render for every Kişi 1-4 card. Every value shown (name,
+ * title, phone, email, and both role badges) comes from this card's own
+ * `card` prop only — there is exactly one JSX block for all 4 slots, so a
+ * card can never end up showing another card's data.
+ */
+function PersonContactCard({
+  card,
+  linkHref,
+  linkTitle,
+  nameFallback,
+  phoneFallback = null,
+  emailFallback = null,
+  emptyStateHref,
+  selected = false,
+  onSelect,
+}: PersonContactCardProps) {
+  const name = stripLabelPrefix(
+    card.name,
+  );
+  const title = stripLabelPrefix(
+    card.title,
+  );
+  const phone =
+    stripLabelPrefix(card.phone) ||
+    stripLabelPrefix(phoneFallback);
+  const email =
+    stripLabelPrefix(card.email) ||
+    stripLabelPrefix(emailFallback);
+
+  const hasData = Boolean(
+    name || title || card.phone || card.email,
+  );
+
+  if (!hasData && emptyStateHref) {
+    return (
+      <Panel className="opportunity-card opportunity-card--add">
+        <Link
+          className="opportunity-card-add-btn"
+          to={emptyStateHref}
+          title="Kişi Ekle"
+        >
+          <UserPlus size={18} />
+          Kişi Ekle
+        </Link>
+      </Panel>
+    );
   }
 
   return (
-    (INDUSTRY_LABELS[
-      cleaned.toLowerCase()
-    ] ?? toTitleCase(cleaned)) as T
+    <Panel className={`opportunity-card ${selected ? "opportunity-card--selected" : ""}`}>
+      {card.id && onSelect ? (
+        <button
+          type="button"
+          className="contact-card-selector"
+          aria-label={`${name || nameFallback} kişisini seç`}
+          aria-pressed={selected}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onSelect(card.id as string);
+          }}
+        >
+          <span />
+        </button>
+      ) : null}
+      <div>
+        <h2>
+          <Link
+            className="opportunity-card-person-link"
+            to={linkHref}
+            title={linkTitle}
+          >
+            {name || nameFallback}
+          </Link>
+        </h2>
+      </div>
+
+      <div className="data-list">
+        <div className="contact-title-row">
+          <strong>
+            <span className="contact-title-label">
+              Ünvan:
+            </span>{" "}
+            {title || "—"}
+          </strong>
+
+          {card.isPrimary ||
+          card.isSignatory ? (
+            <div className="contact-role-badges">
+              {card.isPrimary ? (
+                <span className="contact-role-badge">
+                  Fuar Yetkilisi
+                </span>
+              ) : null}
+
+              {card.isSignatory ? (
+                <span className="contact-role-badge">
+                  İmza Yetkilisi
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        <div>
+          <span>Telefon</span>
+          <strong>
+            {phone ? (
+              <a href={`tel:${phone}`}>
+                {phone}
+              </a>
+            ) : (
+              "—"
+            )}
+          </strong>
+        </div>
+
+        <div>
+          <span>Mail</span>
+          <strong>
+            {email ? (
+              <a
+                href={`mailto:${email}`}
+              >
+                {email}
+              </a>
+            ) : (
+              "—"
+            )}
+          </strong>
+        </div>
+      </div>
+    </Panel>
   );
 }
 
 export function CompanyDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { showToast } = useToast();
+  const { exhibitions: repositoryExhibitions } =
+    useExhibitionSelection();
+
+  const {
+    setWorkspaceHeader,
+    clearWorkspaceHeader,
+  } = useWorkspaceHeader();
 
   const {
     company,
-    aiMemory,
     loading,
     error,
     sortedOpportunities,
-    sortedTimeline,
-    latestTimelineEvent,
-    nextReminder,
-    primaryOpportunity,
     contactName,
-    nextAction,
+    contacts,
     exhibitionsById,
     formatDate,
-    formatStage,
-    formatEstimatedValue,
-    getInterestLabel,
-    refresh,
   } = useCompanyWorkspace(id);
 
-  const [
-    isOpportunityFormOpen,
-    setIsOpportunityFormOpen,
-  ] = useState(false);
-
-  const [
-    isCreatingOpportunity,
-    setIsCreatingOpportunity,
-  ] = useState(false);
-
-  const [
-    opportunityError,
-    setOpportunityError,
-  ] = useState<string | null>(null);
-
-  const [
-    stage,
-    setStage,
-  ] = useState("new");
-
-  const [
-    interestLevel,
-    setInterestLevel,
-  ] = useState("25");
-
-  const [
-    estimatedValue,
-    setEstimatedValue,
-  ] = useState("0");
-
-  const [
-    opportunityNextAction,
-    setOpportunityNextAction,
-  ] = useState("Initial sales call");
-
-  const [
-    opportunityNextActionDate,
-    setOpportunityNextActionDate,
-  ] = useState(
-    getDefaultNextActionDate(),
+  const approvedPriceSnapshots = useMemo(
+    () =>
+      company?.id
+        ? Object.values(
+            loadApprovedPriceSnapshots(company.id),
+          )
+        : [],
+    [company?.id],
   );
 
+  // BUG-S26.003.2 — Firma Arşivi: signed contracts a Won closure has
+  // archived (see CustomerWorkspace.closeOpportunityAsWon). Read-only —
+  // this page never writes to generatedDocuments, it only displays the
+  // archived subset. Same read-once-per-company pattern as
+  // approvedPriceSnapshots above.
+  const archivedContracts = useMemo(
+    () =>
+      company?.id
+        ? loadGeneratedDocuments(company.id).filter((document) =>
+            Boolean(document.archivedToCompanyArchiveAt),
+          )
+        : [],
+    [company?.id],
+  );
+
+  const activeOpportunities =
+    sortedOpportunities.filter(
+      (opportunity) =>
+        !isTerminalBusinessStatus(
+          opportunity.stage,
+        ),
+    );
+
+  // Sprint 25.5 Section 5 — "Geçmiş Fırsatlar": every terminal record
+  // (Won, Lost, and still Signed-but-not-yet-verdicted) — the exact
+  // inverse of activeOpportunities above, so a record can never appear
+  // in both or neither.
+  const historicalOpportunities =
+    sortedOpportunities.filter(
+      (opportunity) =>
+        isTerminalBusinessStatus(
+          opportunity.stage,
+        ),
+    );
+
+  const activeOpportunity =
+    activeOpportunities[0] ??
+    sortedOpportunities[0] ??
+    null;
+
+  const companyStatusLabel =
+    resolveCompanyStatus(sortedOpportunities);
+
+  const [sectors, setSectors] = useState<
+    CompanyHeaderTag[]
+  >([]);
+
   const [
-    owner,
-    setOwner,
-  ] = useState("");
+    productGroups,
+    setProductGroups,
+  ] = useState<CompanyHeaderTag[]>([]);
 
-  function resetOpportunityForm() {
-    setStage("new");
-    setInterestLevel("25");
-    setEstimatedValue("0");
-    setOpportunityNextAction(
-      "Initial sales call",
-    );
-    setOpportunityNextActionDate(
-      getDefaultNextActionDate(),
-    );
-    setOwner("");
-    setOpportunityError(null);
-  }
+  const [notesModalOpen, setNotesModalOpen] = useState(false);
+  const [filesModalOpen, setFilesModalOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState(false);
+  const placeholderPermanentNote =
+    "Bu bölüm uzun süre geçerli kurumsal bilgileri içerir. Henüz kalıcı not eklenmedi.";
+  const [permanentNote, setPermanentNote] = useState(
+    placeholderPermanentNote,
+  );
+  const [noteDraft, setNoteDraft] = useState(
+    placeholderPermanentNote,
+  );
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
 
-  function closeOpportunityForm() {
-    if (isCreatingOpportunity) {
+  useEffect(() => {
+    setSelectedContactId(null);
+  }, [company?.id]);
+
+  // Independent of useCompanyWorkspace's shared data-fetch pipeline
+  // (also used by Company Workspace/Communication) on purpose — these
+  // tags are Company Record-only, so they're fetched separately here
+  // rather than added to that shared hook.
+  useEffect(() => {
+    if (!company?.id) {
+      setSectors([]);
+      setProductGroups([]);
       return;
     }
 
-    resetOpportunityForm();
-    setIsOpportunityFormOpen(false);
-  }
+    let isActive = true;
 
-  async function handleCreateOpportunity(
-    event: FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault();
+    Promise.all([
+      getCompanySectors(company.id),
+      getCompanyProductGroups(
+        company.id,
+      ),
+    ])
+      .then(
+        ([
+          companySectors,
+          companyProductGroups,
+        ]) => {
+          if (!isActive) {
+            return;
+          }
 
-    if (
-      !company ||
-      isCreatingOpportunity
-    ) {
-      return;
-    }
-
-    const normalizedNextAction =
-      opportunityNextAction.trim();
-
-    if (!normalizedNextAction) {
-      setOpportunityError(
-        "Sonraki aksiyon zorunludur.",
-      );
-
-      return;
-    }
-
-    const parsedInterestLevel =
-      Number(interestLevel);
-
-    const parsedEstimatedValue =
-      Number(estimatedValue);
-
-    setIsCreatingOpportunity(true);
-    setOpportunityError(null);
-
-    try {
-      const opportunity =
-        await createOpportunity({
-          company_id: company.id,
-          exhibition_id: null,
-          stage,
-          interest_level:
-            Number.isFinite(
-              parsedInterestLevel,
-            )
-              ? Math.min(
-                  100,
-                  Math.max(
-                    0,
-                    parsedInterestLevel,
-                  ),
-                )
-              : 0,
-          estimated_value:
-            Number.isFinite(
-              parsedEstimatedValue,
-            )
-              ? Math.max(
-                  0,
-                  parsedEstimatedValue,
-                )
-              : 0,
-          next_action:
-            normalizedNextAction,
-          next_action_date:
-            opportunityNextActionDate
-              ? new Date(
-                  `${opportunityNextActionDate}T10:00:00`,
-                ).toISOString()
-              : null,
-          owner:
-            owner.trim() || null,
-        });
-
-      try {
-        await createTimelineEvent({
-          company_id: company.id,
-          opportunity_id:
-            opportunity.id,
-          type: "opportunity-created",
-          title:
-            "Katılım fırsatı oluşturuldu",
-          description: `${company.company_name} için yeni bir katılım fırsatı oluşturuldu.`,
-        });
-      } catch (timelineError) {
+          setSectors(companySectors);
+          setProductGroups(
+            companyProductGroups,
+          );
+        },
+      )
+      .catch((sectorLoadError) => {
         console.error(
-          "Opportunity timeline creation error:",
-          timelineError,
+          "Company sectors/product groups load error:",
+          sectorLoadError,
         );
-      }
+      });
 
-      await refresh();
+    return () => {
+      isActive = false;
+    };
+  }, [company?.id]);
 
-      resetOpportunityForm();
-      setIsOpportunityFormOpen(false);
-    } catch (createError) {
-      console.error(
-        "Opportunity creation error:",
-        createError,
-      );
-
-      setOpportunityError(
-        "Katılım fırsatı oluşturulamadı.",
-      );
-    } finally {
-      setIsCreatingOpportunity(false);
+  useEffect(() => {
+    if (!company) {
+      clearWorkspaceHeader();
+      return;
     }
-  }
+
+    setWorkspaceHeader({
+      companyName:
+        stripLabelPrefix(
+          company.company_name,
+        ) || company.company_name,
+      companyCode: company.company_code,
+    });
+
+    return () => {
+      clearWorkspaceHeader();
+    };
+  }, [
+    company,
+    setWorkspaceHeader,
+    clearWorkspaceHeader,
+  ]);
 
   if (loading) {
     return (
       <main className="page">
         <PageHeader
-          eyebrow="Firma Çalışma Alanı"
+          eyebrow="Firma Kaydı"
           title="Firma yükleniyor..."
-          subtitle="Atlas firma kaydını yüklüyor."
+          subtitle="VIAWA firma kaydını yüklüyor."
         />
 
         <Panel>
           <p className="muted">
-            Çalışma alanı verileri yüklenirken lütfen bekleyin.
+            Firma kaydı yüklenirken lütfen bekleyin.
           </p>
         </Panel>
       </main>
@@ -351,289 +500,569 @@ export function CompanyDetailPage() {
     );
   }
 
-  const statusLabel = company.status
-    ? formatStage(company.status)
-    : "Durum atanmadı";
+  const editHref = `/companies/${encodeURIComponent(
+    company.id,
+  )}/edit`;
+  const currentCompanyId = company.id;
+
+  // `contacts` already arrives ordered ascending by created_at — the
+  // query in contactService.ts sorts at the database level. Re-sorting
+  // here client-side was redundant and is removed so there is exactly one
+  // place that decides ordering.
+  const personCardLabels = Array.from(
+    { length: MAX_COMPANY_CONTACTS },
+    (_, index) => `Kişi ${index + 1}`,
+  );
+
+  /**
+   * One entry per card slot (position on screen), each carrying only its
+   * OWN contact record's fields. `is_primary`/`is_signatory` badges must
+   * always be read from `record` here — never from another slot's data —
+   * so a card never shows a role that belongs to a different person.
+   */
+  const personCards = personCardLabels.map(
+    (label, index) => {
+      const record = contacts[index];
+
+      if (!record) {
+        return {
+          id: null,
+          label,
+          name: null,
+          title: null,
+          phone: null,
+          email: null,
+          isPrimary: false,
+          isSignatory: false,
+        };
+      }
+
+      const isPrimary =
+        record.is_primary === true;
+
+      const isSignatory =
+        record.is_signatory === true;
+
+      return {
+        id: record.id,
+        label,
+        name: [
+          record.first_name,
+          record.last_name,
+        ]
+          .filter(Boolean)
+          .join(" "),
+        title: record.title,
+        phone: record.phone,
+        email: record.email,
+        isPrimary,
+        isSignatory,
+      };
+    },
+  );
+
+  const [
+    firstPersonCard,
+    ...otherPersonCards
+  ] = personCards;
+
+  function handleOpenGeneralWorkspace() {
+    if (contacts.length === 0) {
+      navigate(getWorkspaceHref(currentCompanyId));
+      return;
+    }
+
+    if (!selectedContactId) {
+      showToast(
+        "Çalışma alanını açmak için görüşülecek kişiyi seçin.",
+        "error",
+      );
+      return;
+    }
+
+    navigate(
+      `/call?companyId=${encodeURIComponent(currentCompanyId)}&contactId=${encodeURIComponent(selectedContactId)}`,
+    );
+  }
+
+  // Sprint 25.1 / Adım 2 — opens the same Workspace as "Çalışma Alanını
+  // Aç" above (same contact-selection guard, unchanged), plus the
+  // openEmail/template intent CallWorkspacePage/CustomerWorkspace already
+  // consume to auto-open the Workspace Email Panel once, pre-selected to
+  // Information Package. No opportunity is required — the Workspace
+  // itself never requires one (see CustomerWorkspace's draftOpportunity).
+  function handleOpenWorkspaceEmail() {
+    const emailIntentParams =
+      "openEmail=true&template=Information%20Package";
+
+    if (contacts.length === 0) {
+      navigate(
+        `/call?companyId=${encodeURIComponent(currentCompanyId)}&${emailIntentParams}`,
+      );
+      return;
+    }
+
+    if (!selectedContactId) {
+      showToast(
+        "Çalışma alanını açmak için görüşülecek kişiyi seçin.",
+        "error",
+      );
+      return;
+    }
+
+    navigate(
+      `/call?companyId=${encodeURIComponent(currentCompanyId)}&contactId=${encodeURIComponent(selectedContactId)}&${emailIntentParams}`,
+    );
+  }
 
   return (
     <main className="page company-detail-page">
       <CompanyHeader
-        companyId={company.id}
-        companyName={
-          stripLabelPrefix(
-            company.company_name,
-          ) || company.company_name
-        }
-        contactName={contactName}
-        statusLabel={statusLabel}
-        opportunityCount={sortedOpportunities.length}
-        nextAction={nextAction}
-        lastContact={formatDate(
-          latestTimelineEvent?.created_at,
+        industry={stripLabelPrefix(
+          company.industry,
         )}
+        sectors={sectors}
+        productGroups={productGroups}
+        createdAt={formatDate(
+          company.created_at,
+        )}
+        updatedAt={formatDate(
+          company.updated_at,
+        )}
+        companyStatusLabel={companyStatusLabel}
+        activeOpportunityCount={activeOpportunities.length}
+        activeOpportunityLimit={MAX_ACTIVE_OPPORTUNITIES_PER_COMPANY}
+        country={stripLabelPrefix(
+          company.country,
+        )}
+        phone={stripLabelPrefix(
+          company.phone,
+        )}
+        email={stripLabelPrefix(
+          company.email,
+        )}
+        website={stripLabelPrefix(
+          company.website,
+        )}
+        taxOffice={stripLabelPrefix(
+          company.tax_office,
+        )}
+        taxNumber={stripLabelPrefix(
+          company.tax_number,
+        )}
+        postalCode={stripLabelPrefix(
+          company.postal_code,
+        )}
+        address={stripLabelPrefix(
+          company.address,
+        )}
+        city={stripLabelPrefix(
+          company.city,
+        )}
+        district={stripLabelPrefix(
+          company.district,
+        )}
+        editHref={editHref}
       />
 
-      <section className="company-detail-workspace">
-        <CompanyInfoCard
-          contactName={contactName}
-          industry={formatIndustryLabel(
-            company.industry,
-          )}
-          country={stripLabelPrefix(
-            company.country,
-          )}
-          statusLabel={statusLabel}
-          phone={stripLabelPrefix(company.phone)}
-          email={stripLabelPrefix(company.email)}
-          website={stripLabelPrefix(
-            company.website,
-          )}
-          opportunityCount={sortedOpportunities.length}
-          nextReminder={formatDate(
-            nextReminder?.due_date,
-          )}
-          aiConfidence={aiMemory?.confidence}
-        />
+      <div className="company-detail-scroll-area">
+        <div className="company-record-columns">
+          <section className="company-record-section company-record-main">
+            <div className="section-head">
+              <p className="eyebrow">
+                Kişiler
+              </p>
+            </div>
 
-        <QuickActionsCard
-          companyId={company.id}
-          opportunityId={primaryOpportunity?.id}
-        />
-      </section>
+            <div className="company-people-content">
+              <div className="opportunity-list">
+                <PersonContactCard
+                  card={firstPersonCard}
+                  linkHref={getWorkspaceHref(
+                    company.id,
+                    activeOpportunity?.id,
+                  )}
+                  linkTitle="Çalışma Alanını Aç"
+                  nameFallback={contactName}
+                  phoneFallback={company.phone}
+                  emailFallback={company.email}
+                  selected={firstPersonCard.id === selectedContactId}
+                  onSelect={setSelectedContactId}
+                />
 
-      <section className="section-head">
-        <div>
-          <p className="eyebrow">
-            Katılım
-          </p>
+                {otherPersonCards.map(
+                  (contact) => (
+                    <PersonContactCard
+                      key={contact.label}
+                      card={contact}
+                      linkHref={editHref}
+                      linkTitle="Kişi Bilgilerini Güncelle"
+                      nameFallback={contact.label}
+                      emptyStateHref={editHref}
+                      selected={contact.id === selectedContactId}
+                      onSelect={setSelectedContactId}
+                    />
+                  ),
+                )}
+              </div>
 
-          <h2>
-            Katılım Fırsatları
-          </h2>
+            </div>
 
-          <p className="muted">
-            Satış Görüşmesi başlatmadan önce bir satış
-            fırsatı oluşturun.
-          </p>
+          </section>
+
+          <aside className="company-record-side">
+            <section className="company-record-section company-record-side-section">
+              <div className="section-head">
+                <p className="eyebrow">
+                  Firma Notu
+                </p>
+              </div>
+
+              <Panel
+                className="company-note-box company-note-box--interactive"
+                role="button"
+                tabIndex={0}
+                onClick={() => setNotesModalOpen(true)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setNotesModalOpen(true);
+                  }
+                }}
+              >
+                <p className="muted">
+                  {permanentNote}
+                </p>
+              </Panel>
+            </section>
+
+            <section className="company-record-section company-record-side-section company-record-side-section--fill">
+              <div className="section-head">
+                <p className="eyebrow">
+                  Fuar Dosyaları
+                </p>
+              </div>
+
+              <div
+                className="company-files-card-trigger"
+                role="button"
+                tabIndex={0}
+                onClick={() => setFilesModalOpen(true)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setFilesModalOpen(true);
+                  }
+                }}
+              >
+                <ExhibitionFileList
+                  opportunities={sortedOpportunities}
+                  exhibitionsById={exhibitionsById}
+                  formatStage={(value) => getBusinessStatusLabel(value) ?? "—"}
+                />
+              </div>
+            </section>
+          </aside>
         </div>
 
-        {!isOpportunityFormOpen ? (
-          <button
-            className="btn btn-primary"
-            type="button"
-            onClick={() => {
-              setIsOpportunityFormOpen(true);
-              setOpportunityError(null);
-            }}
+        <section className="company-active-exhibitions" aria-labelledby="active-exhibitions-title">
+          <div className="section-head">
+            <p className="eyebrow" id="active-exhibitions-title">Aktif Fuarlar</p>
+          </div>
+
+          <div className="company-active-exhibition-grid">
+            {activeOpportunities
+              .slice(0, MAX_ACTIVE_OPPORTUNITIES_PER_COMPANY)
+              .map((opportunity) => {
+                const exhibition = opportunity.exhibition_id
+                  ? exhibitionsById.get(opportunity.exhibition_id)
+                  : undefined;
+                const snapshot = approvedPriceSnapshots.find(
+                  (candidate) => candidate.opportunityId === opportunity.id,
+                );
+                const repositoryExhibition = snapshot
+                  ? repositoryExhibitions.find(
+                      (candidate) => candidate.id === snapshot.exhibitionId,
+                    )
+                  : undefined;
+                const exhibitionName =
+                  repositoryExhibition?.shortName?.trim() ||
+                  snapshot?.exhibitionName?.trim() ||
+                  exhibition?.name ||
+                  "—";
+                const dateLabel = exhibition?.start_date
+                  ? new Date(exhibition.start_date).getFullYear().toString()
+                  : "—";
+                const total = opportunity.price_grand_total ?? opportunity.estimated_value;
+                const relatedContact = opportunity.contact_id
+                  ? contacts.find((contact) => contact.id === opportunity.contact_id)
+                  : undefined;
+                const relatedContactName = relatedContact
+                  ? [relatedContact.first_name, relatedContact.last_name].filter(Boolean).join(" ").trim()
+                  : "Belirtilmedi";
+
+                // Sprint 25.1 — informational only. Opportunity cards are no
+                // longer an entry point into the workspace (see
+                // "Çalışma Alanını Aç" below, which opens the company
+                // workspace directly); the sidebar's selected fuar is what
+                // now drives the workspace's exhibition context.
+                const nextActivity = opportunity.next_action
+                  ? `${opportunity.next_action}${
+                      opportunity.next_action_date
+                        ? ` — ${formatDate(opportunity.next_action_date)}`
+                        : ""
+                    }`
+                  : "—";
+
+                return (
+                  <Panel
+                    className="company-active-exhibition-card"
+                    key={opportunity.id}
+                  >
+                    <h2 title={exhibitionName}>{exhibitionName}</h2>
+                    <div className="data-list">
+                      <div><span>İlgili Kişi</span><strong>{relatedContactName || "Belirtilmedi"}</strong></div>
+                      <div><span>Yıl</span><strong>{dateLabel}</strong></div>
+                      <div><span>Aşama</span><strong>{getBusinessStatusLabel(opportunity.stage) ?? "—"}</strong></div>
+                      <div><span>Stand</span><strong>{formatStandType(opportunity.price_stand_type)}</strong></div>
+                      <div><span>Alan</span><strong>{opportunity.price_stand_area_sqm != null ? `${opportunity.price_stand_area_sqm} m²` : "—"}</strong></div>
+                      <div><span>Toplam</span><strong>{total != null ? `${total.toLocaleString("tr-TR")} ${opportunity.price_currency ?? ""}`.trim() : "—"}</strong></div>
+                      <div><span>Sonraki Aktivite</span><strong>{nextActivity}</strong></div>
+                    </div>
+                  </Panel>
+                );
+              })}
+
+            {Array.from({
+              length: Math.max(
+                0,
+                MAX_ACTIVE_OPPORTUNITIES_PER_COMPANY - activeOpportunities.length,
+              ),
+            }).map((_, index) => (
+              <Panel className="company-active-exhibition-card company-active-exhibition-card--add" key={`add-exhibition-${index}`}>
+                <Link to={getWorkspaceHref(company.id)} className="company-active-exhibition-add">Fuar Ekle</Link>
+              </Panel>
+            ))}
+          </div>
+
+          <p
+            className={`company-active-exhibition-limit ${
+              activeOpportunities.length >= MAX_ACTIVE_OPPORTUNITIES_PER_COMPANY
+                ? ""
+                : "company-active-exhibition-limit--hidden"
+            }`}
           >
-            + Yeni Katılım Fırsatı
-          </button>
+            Bu sürümde bir firma için en fazla 4 aktif fuar takibi yapılabilir.
+          </p>
+        </section>
+
+        {historicalOpportunities.length > 0 ? (
+          <section
+            className="company-active-exhibitions"
+            aria-labelledby="past-exhibitions-title"
+          >
+            <div className="section-head">
+              <p className="eyebrow" id="past-exhibitions-title">
+                Geçmiş Fırsatlar
+              </p>
+            </div>
+
+            <div className="company-active-exhibition-grid">
+              {historicalOpportunities.map((opportunity) => {
+                const exhibition = opportunity.exhibition_id
+                  ? exhibitionsById.get(opportunity.exhibition_id)
+                  : undefined;
+                const exhibitionName = exhibition?.name || "—";
+                const total =
+                  opportunity.price_grand_total ??
+                  opportunity.estimated_value;
+                const relatedContact = opportunity.contact_id
+                  ? contacts.find(
+                      (contact) => contact.id === opportunity.contact_id,
+                    )
+                  : undefined;
+                const relatedContactName = relatedContact
+                  ? [relatedContact.first_name, relatedContact.last_name]
+                      .filter(Boolean)
+                      .join(" ")
+                      .trim()
+                  : "Belirtilmedi";
+                const lostReasonLabel =
+                  opportunity.stage === "lost"
+                    ? getLostReasonLabel(opportunity.closure_reason)
+                    : undefined;
+
+                return (
+                  <Panel
+                    className="company-active-exhibition-card"
+                    key={opportunity.id}
+                  >
+                    <h2 title={exhibitionName}>{exhibitionName}</h2>
+                    <div className="data-list">
+                      <div>
+                        <span>İlgili Kişi</span>
+                        <strong>{relatedContactName || "Belirtilmedi"}</strong>
+                      </div>
+                      <div>
+                        <span>Durum</span>
+                        <strong>
+                          {getBusinessStatusLabel(opportunity.stage) ?? "—"}
+                        </strong>
+                      </div>
+                      <div>
+                        <span>Kapanış Tarihi</span>
+                        <strong>
+                          {opportunity.closed_at
+                            ? formatDate(opportunity.closed_at)
+                            : "—"}
+                        </strong>
+                      </div>
+                      {lostReasonLabel ? (
+                        <div>
+                          <span>Sebep</span>
+                          <strong>{lostReasonLabel}</strong>
+                        </div>
+                      ) : null}
+                      <div>
+                        <span>Stand</span>
+                        <strong>
+                          {formatStandType(opportunity.price_stand_type)}
+                        </strong>
+                      </div>
+                      <div>
+                        <span>Toplam</span>
+                        <strong>
+                          {total != null
+                            ? `${total.toLocaleString("tr-TR")} ${
+                                opportunity.price_currency ?? ""
+                              }`.trim()
+                            : "—"}
+                        </strong>
+                      </div>
+                    </div>
+                  </Panel>
+                );
+              })}
+            </div>
+          </section>
         ) : null}
+
+        {archivedContracts.length > 0 ? (
+          <section
+            className="company-active-exhibitions"
+            aria-labelledby="company-archive-title"
+          >
+            <div className="section-head">
+              <p className="eyebrow" id="company-archive-title">
+                Firma Arşivi
+              </p>
+            </div>
+
+            <div className="company-active-exhibition-grid">
+              {archivedContracts.map((document) => {
+                const exhibition = document.exhibitionId
+                  ? exhibitionsById.get(document.exhibitionId)
+                  : undefined;
+                const exhibitionName = exhibition?.name || "—";
+
+                return (
+                  <Panel
+                    className="company-active-exhibition-card"
+                    key={document.id}
+                  >
+                    <h2 title={document.contractNumber}>
+                      {document.contractNumber}
+                    </h2>
+                    <div className="data-list">
+                      <div>
+                        <span>Fuar</span>
+                        <strong>{exhibitionName}</strong>
+                      </div>
+                      <div>
+                        <span>Belge</span>
+                        <strong>
+                          {document.signedPdfFileName ??
+                            document.fileName}
+                        </strong>
+                      </div>
+                      <div>
+                        <span>Arşivlenme Tarihi</span>
+                        <strong>
+                          {document.archivedToCompanyArchiveAt
+                            ? formatDate(
+                                document.archivedToCompanyArchiveAt,
+                              )
+                            : "—"}
+                        </strong>
+                      </div>
+                    </div>
+                  </Panel>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
+      </div>
+
+      <section className="company-workspace-transition">
+        <button
+          type="button"
+          className="btn btn-primary company-workspace-cta-btn"
+          onClick={handleOpenGeneralWorkspace}
+        >
+          Çalışma Alanını Aç
+        </button>
+
+        <button
+          type="button"
+          className="btn company-workspace-cta-btn"
+          onClick={handleOpenWorkspaceEmail}
+        >
+          E-posta Gönder
+        </button>
+
+        <div className="company-record-metadata" aria-label="Kayıt bilgileri">
+          <div><span>İlk Kayıt:</span><strong title={formatDate(company.created_at)}>{formatDate(company.created_at)}</strong><span>Kaydı Yapan:</span><strong title="—">—</strong></div>
+          <div><span>Son Güncelleme:</span><strong title={formatDate(company.updated_at)}>{formatDate(company.updated_at)}</strong><span>Güncelleyen:</span><strong title="—">—</strong></div>
+        </div>
       </section>
 
-      {isOpportunityFormOpen ? (
-        <Panel className="opportunity-card">
-          <form
-            onSubmit={handleCreateOpportunity}
-          >
-            <div>
-              <p className="eyebrow">
-                Yeni Fırsat
-              </p>
-
-              <h2>
-                {company.company_name}
-              </h2>
-
-              <p className="muted">
-                Fırsatı oluşturun ve hemen Satış
-                Görüşmesini açın.
-              </p>
-            </div>
-
-            <div className="data-list">
-              <label>
-                <span>Aşama</span>
-
-                <select
-                  value={stage}
-                  disabled={isCreatingOpportunity}
-                  onChange={(event) => {
-                    setStage(event.target.value);
-                  }}
-                >
-                  <option value="new">
-                    Yeni
-                  </option>
-
-                  <option value="contacted">
-                    İletişime Geçildi
-                  </option>
-
-                  <option value="interested">
-                    İlgileniyor
-                  </option>
-
-                  <option value="information-sent">
-                    Bilgi Gönderildi
-                  </option>
-
-                  <option value="quotation-requested">
-                    Teklif Talep Edildi
-                  </option>
-
-                  <option value="quotation-sent">
-                    Teklif Gönderildi
-                  </option>
-
-                  <option value="negotiation">
-                    Müzakere
-                  </option>
-
-                  <option value="contract">
-                    Sözleşme
-                  </option>
-                </select>
-              </label>
-
-              <label>
-                <span>
-                  İlgi Düzeyi
-                </span>
-
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={interestLevel}
-                  disabled={isCreatingOpportunity}
-                  onChange={(event) => {
-                    setInterestLevel(
-                      event.target.value,
-                    );
-                  }}
-                />
-              </label>
-
-              <label>
-                <span>
-                  Tahmini Değer
-                </span>
-
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={estimatedValue}
-                  disabled={isCreatingOpportunity}
-                  onChange={(event) => {
-                    setEstimatedValue(
-                      event.target.value,
-                    );
-                  }}
-                />
-              </label>
-
-              <label>
-                <span>Sonraki Aksiyon</span>
-
-                <input
-                  type="text"
-                  required
-                  value={opportunityNextAction}
-                  disabled={isCreatingOpportunity}
-                  onChange={(event) => {
-                    setOpportunityNextAction(
-                      event.target.value,
-                    );
-                  }}
-                />
-              </label>
-
-              <label>
-                <span>
-                  Sonraki Aksiyon Tarihi
-                </span>
-
-                <input
-                  type="date"
-                  value={
-                    opportunityNextActionDate
-                  }
-                  disabled={isCreatingOpportunity}
-                  onChange={(event) => {
-                    setOpportunityNextActionDate(
-                      event.target.value,
-                    );
-                  }}
-                />
-              </label>
-
-              <label>
-                <span>Sorumlu</span>
-
-                <input
-                  type="text"
-                  placeholder="İsteğe bağlı"
-                  value={owner}
-                  disabled={isCreatingOpportunity}
-                  onChange={(event) => {
-                    setOwner(event.target.value);
-                  }}
-                />
-              </label>
-            </div>
-
-            {opportunityError ? (
-              <p role="alert">
-                {opportunityError}
-              </p>
-            ) : null}
-
-            <div className="company-quick-actions">
-              <button
-                className="btn btn-primary"
-                type="submit"
-                disabled={isCreatingOpportunity}
-              >
-                {isCreatingOpportunity
-                  ? "Oluşturuluyor..."
-                  : "Oluştur ve Satış Görüşmesini Başlat"}
-              </button>
-
-              <button
-                className="btn"
-                type="button"
-                disabled={isCreatingOpportunity}
-                onClick={closeOpportunityForm}
-              >
-                İptal
-              </button>
-            </div>
-          </form>
-        </Panel>
+      {notesModalOpen ? (
+        <CompanyDetailModal
+          title="Firma Notu"
+          onClose={() => {
+            setNotesModalOpen(false);
+            setEditingNote(false);
+            setNoteDraft(permanentNote);
+          }}
+          footer={editingNote ? (
+            <>
+              <button type="button" className="btn btn-secondary" onClick={() => { setEditingNote(false); setNoteDraft(permanentNote); }}>İptal</button>
+              <button type="button" className="btn btn-primary" onClick={() => {
+                const nextNote = noteDraft.trim();
+                const temporaryNote = nextNote || placeholderPermanentNote;
+                setPermanentNote(temporaryNote);
+                setNoteDraft(temporaryNote);
+                setEditingNote(false);
+              }}>Kaydet</button>
+            </>
+          ) : <button type="button" className="btn btn-primary" onClick={() => setEditingNote(true)}>Düzenle</button>}
+        >
+          {editingNote ? (
+            <textarea className="company-note-editor" value={noteDraft} onChange={(event) => setNoteDraft(event.target.value)} autoFocus />
+          ) : <p className="company-note-full-text">{permanentNote}</p>}
+        </CompanyDetailModal>
       ) : null}
 
-      <OpportunityList
-        companyId={company.id}
-        opportunities={sortedOpportunities}
-        exhibitionsById={exhibitionsById}
-        formatDate={formatDate}
-        formatStage={formatStage}
-        formatEstimatedValue={formatEstimatedValue}
-        getInterestLabel={getInterestLabel}
-      />
-
-      <TimelineCard
-        timeline={sortedTimeline}
-        formatDate={formatDate}
-        formatStage={formatStage}
-      />
-
-      <AIMemoryCard
-        aiMemory={aiMemory}
-        formatDate={formatDate}
-      />
+      {filesModalOpen ? (
+        <CompanyDetailModal title="Fuar Dosyaları" onClose={() => setFilesModalOpen(false)}>
+          <div className="company-files-placeholder">
+            <p className="eyebrow">Fuar Klasörleri</p>
+            <h3>Henüz klasör yok</h3>
+            <p className="muted">Bu alan gelecek sprintte sözleşmeler, stand tasarımları, fotoğraflar ve diğer belgeleri içerecek.</p>
+          </div>
+        </CompanyDetailModal>
+      ) : null}
     </main>
   );
 }

@@ -1,0 +1,45 @@
+services:
+  document-service:
+    build:
+      context: ..
+      dockerfile: document-service/Dockerfile
+    env_file:
+      - .env
+    # .env is shared with local (non-Docker) development, where
+    # DOCUMENT_TEMPLATE_PATH/DOCUMENT_TEMP_ROOT/HOST/PORT/NODE_ENV/
+    # LIBREOFFICE_BINARY_PATH point at the developer's host filesystem
+    # (e.g. Windows drive paths). Those values don't exist inside this
+    # container, and DOCUMENT_TEMP_ROOT in particular would fall outside
+    # the one writable mount below (read_only root fs + a single tmpfs
+    # at /tmp/viawa-document-service), causing `mkdir` in server.ts to
+    # fail with EROFS at startup and crash-loop the container.
+    # `environment:` takes precedence over `env_file:` in Compose, so
+    # pinning these keys here to the same values already baked into the
+    # image's Dockerfile ENV (plus the Linux LibreOffice binary apt
+    # installs on PATH) guarantees the container always gets correct
+    # paths regardless of what .env is doing for the host-side npm
+    # scripts.
+    environment:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=8080
+      - DOCUMENT_TEMPLATE_PATH=/opt/viawa/templates/VIAWA_Sozlesme_Sablonu_v2.3_1_Doldurulabilir.docx
+      - DOCUMENT_TEMP_ROOT=/tmp/viawa-document-service
+      - LIBREOFFICE_BINARY_PATH=/usr/bin/libreoffice
+    read_only: true
+    tmpfs:
+      - /tmp/viawa-document-service:rw,noexec,nosuid,nodev,size=128m,uid=1000,gid=1000,mode=0700
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00" # Example only; tune after Linux conversion benchmarks.
+          memory: 512M # Example only; tune and enforce on the chosen platform.
+    # No host volume is mounted: contracts must never persist on the host filesystem.
+    # Supply secrets through the deployment platform's secret manager, not this file.
+    ports:
+      - "127.0.0.1:8080:8080"

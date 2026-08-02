@@ -1,9 +1,11 @@
 import { Panel } from "../../../components/ui/Panel";
 
+import type { CommunicationAttachment } from "../models/CommunicationAttachment";
+
 import { AttachmentPanel } from "./AttachmentPanel";
 
 type Props = {
-  attachments: string[];
+  attachments: CommunicationAttachment[];
 };
 
 export function AttachmentCard({
@@ -13,7 +15,7 @@ export function AttachmentCard({
     <Panel>
       <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
         <p className="eyebrow" style={{ margin: 0 }}>
-          Satış Kiti
+          Satış Kiti ({attachments.length})
         </p>
 
         <AttachmentPanel

@@ -1,11 +1,30 @@
 import * as XLSX from "xlsx";
 
+import { EXCEL_TEMPLATE_SHEET_NAME } from "../excelMapping";
+
 export type ExcelPreview = {
   rows: Record<string, unknown>[];
   totalRows: number;
 };
 
-export function readExcelFile(file: File): Promise<ExcelPreview> {
+/**
+ * The official template (resources/templates/
+ * VIAWA_Toplu_Firma_Yukleme_Sablonu.xlsx) has three sheets: "Firma Veri
+ * Girişi" (the only one to import), "Kullanım Talimatı" (instructions —
+ * not data), and "Örnek Kayıt" (a sample record — not real data). Only
+ * "Firma Veri Girişi" is read here, by name, so the other two are never
+ * mistaken for company rows.
+ *
+ * Within that sheet, row 1 is a title, row 2 an instructions line, and
+ * row 3 a group-header row (e.g. "KİŞİ 1" spanning its 7 columns) — the
+ * actual column headers are row 4, so parsing starts there (range: 3,
+ * 0-indexed).
+ */
+const HEADER_ROW_INDEX = 3;
+
+export function readExcelFile(
+  file: File,
+): Promise<ExcelPreview> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
@@ -17,16 +36,27 @@ export function readExcelFile(file: File): Promise<ExcelPreview> {
           type: "array",
         });
 
-        const firstSheet = workbook.SheetNames[0];
+        const worksheet =
+          workbook.Sheets[
+            EXCEL_TEMPLATE_SHEET_NAME
+          ];
 
-        const worksheet = workbook.Sheets[firstSheet];
+        if (!worksheet) {
+          reject(
+            new Error(
+              `"${EXCEL_TEMPLATE_SHEET_NAME}" sheet not found. Use the official VIAWA import template.`,
+            ),
+          );
 
-        const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
-          worksheet,
-          {
-            defval: "",
-          }
-        );
+          return;
+        }
+
+        const rows = XLSX.utils.sheet_to_json<
+          Record<string, unknown>
+        >(worksheet, {
+          defval: "",
+          range: HEADER_ROW_INDEX,
+        });
 
         resolve({
           rows,

@@ -47,6 +47,10 @@ export type WorkspaceOpportunity = {
   estimatedValue: number | null;
   currency: string;
   formattedEstimatedValue: string;
+  standTypeLabel: string;
+  priceCalculatedAt: string | null;
+  priceCalculatedDateLabel: string;
+  quotationSent: boolean;
 
   probability: number | null;
   probabilityLabel: string;
@@ -66,6 +70,7 @@ export type WorkspaceOpportunity = {
 export type WorkspaceExhibition = {
   id: string | null;
   name: string;
+  organizer?: string;
   hall: string;
   booth: string;
 

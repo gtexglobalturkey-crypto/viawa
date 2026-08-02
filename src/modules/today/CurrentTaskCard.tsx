@@ -47,8 +47,14 @@ const EXACT_TASK_TEXT_TRANSLATIONS: Record<
   "This email draft has been waiting and should be completed before it becomes outdated.":
     "Bu taslak e-posta bekliyor ve güncelliğini kaybetmeden tamamlanmalı.",
   "Completing this record will allow ATLAS to prepare more accurate future actions.":
-    "Bu kaydı tamamlamak Atlas'ın daha doğru gelecek aksiyonları hazırlamasını sağlayacak.",
+    "Bu kaydı tamamlamak VIAWA'nın daha doğru gelecek aksiyonları hazırlamasını sağlayacak.",
   "Schedule follow-up call":
+    "Takip araması planlayın",
+  // WorkflowEngine.ts's cleanStoredText() strips hyphens to spaces before
+  // this dictionary is checked, so the hyphenated key above never
+  // actually matches a task title coming from that path — only this
+  // space variant does.
+  "Schedule follow up call":
     "Takip araması planlayın",
   "Wait for quotation feedback":
     "Teklif geri bildirimini bekleyin",
@@ -68,6 +74,10 @@ const EXACT_TASK_TEXT_TRANSLATIONS: Record<
     "Bilgi paketini gönderin",
   "The customer could not be reached previously.":
     "Müşteriye daha önce ulaşılamadı.",
+  "Initial sales call":
+    "İlk satış görüşmesi",
+  "Sales opportunity":
+    "Satış fırsatı",
 };
 
 const SCORE_REASON_TRANSLATIONS: Record<
@@ -129,6 +139,11 @@ const TASK_TITLE_PATTERNS: TextPattern[] = [
     pattern: /^Call (.+) again$/,
     translate: (m) =>
       `${m[1]} ile tekrar görüşün`,
+  },
+  {
+    pattern: /^Call (.+)$/,
+    translate: (m) =>
+      `${m[1]} ile görüşün`,
   },
   {
     pattern:
@@ -484,7 +499,7 @@ export function CurrentTaskCard({
               <span className="current-task-source">
                 {isUsingCustomTask
                   ? "Manuel seçildi"
-                  : "Atlas Önerisi"}
+                  : "VIAWA Önerisi"}
               </span>
             </div>
 
@@ -615,7 +630,7 @@ export function CurrentTaskCard({
                 }
               >
                 <RotateCcw size={13} />
-                Atlas önerisini kullan
+                VIAWA önerisini kullan
               </button>
             ) : null}
           </div>

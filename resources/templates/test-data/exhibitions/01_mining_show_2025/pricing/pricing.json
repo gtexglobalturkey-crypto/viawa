@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "1.0",
+  "exhibitionId": "mining-turkey-2027",
+  "exhibitionName": "Mining Türkiye 2027",
+  "currency": "EUR",
+  "updatedAt": "2026-07-29",
+  "status": "active",
+
+  "standTypes": [
+    {
+      "id": "space-only",
+      "label": "Boş Alan",
+      "unitPricePerSqm": 250
+    },
+    {
+      "id": "shell-scheme",
+      "label": "Standart Stand",
+      "unitPricePerSqm": 320
+    },
+    {
+      "id": "custom",
+      "label": "Özel Stand",
+      "unitPricePerSqm": 390
+    },
+    {
+      "id": "outdoor",
+      "label": "Açık Alan",
+      "unitPricePerSqm": 180
+    }
+  ],
+
+  "locationSurcharges": [
+    {
+      "id": "standard",
+      "label": "Standart Konum",
+      "rate": 0
+    },
+    {
+      "id": "corner",
+      "label": "Köşe Stand",
+      "rate": 0.10
+    },
+    {
+      "id": "island",
+      "label": "Ada Stand",
+      "rate": 0.20
+    }
+  ],
+
+  "fees": {
+    "registrationFee": 500,
+    "representativeServiceFee": 750,
+    "additionalServicesFee": 0
+  },
+
+  "tax": {
+    "vatRate": 0.20
+  },
+
+  "discount": {
+    "enabled": true,
+    "maxPercent": 100
+  }
+}

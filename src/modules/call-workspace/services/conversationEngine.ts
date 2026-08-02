@@ -33,7 +33,7 @@ function formatDate(
   }
 
   return new Intl.DateTimeFormat(
-    "en-GB",
+    "tr-TR",
     {
       day: "2-digit",
       month: "short",
@@ -180,8 +180,11 @@ function getStageAction(
     case "information-sent":
       return "Takip edin ve müşterinin belgeleri inceleyip incelemediğini teyit edin.";
 
-    case "quotation-requested":
-      return "Talep edilen teklifi hazırlayıp gönderin.";
+    case "quotation-ready":
+      return "Onaylanan fiyattan teklif belgesini oluşturun.";
+
+    case "proposal-ready":
+      return "Teklif belgesi hazır, Teklif e-postasını müşteriye gönderin.";
 
     case "quotation-sent":
       return "Teklifi gözden geçirmek ve itirazları belirlemek için müşteriyle iletişime geçin.";

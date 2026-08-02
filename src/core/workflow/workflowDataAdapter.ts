@@ -423,6 +423,15 @@ export function adaptWorkflowData(
             record,
           );
 
+        const taskType =
+          findNestedString(
+            record,
+            [
+              "task_type",
+              "taskType",
+            ],
+          );
+
         const companyId =
           resolveCompanyId(
             record,
@@ -452,6 +461,7 @@ export function adaptWorkflowData(
           companyId,
           companyName,
           opportunityId,
+          taskType,
           reminderId:
             findNestedString(
               record,

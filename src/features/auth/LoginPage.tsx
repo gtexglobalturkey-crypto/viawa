@@ -26,7 +26,7 @@ export function LoginPage() {
 
     if (!email.trim() || !password) {
       showToast(
-        "Email and password are required.",
+        "E-posta ve şifre zorunludur.",
         "error",
       );
 
@@ -53,7 +53,7 @@ export function LoginPage() {
     }
 
     showToast(
-      "Welcome back to ATLAS.",
+      "VIAWA'ya tekrar hoş geldiniz.",
       "success",
     );
   }
@@ -62,20 +62,20 @@ export function LoginPage() {
     <main className="auth-page">
       <section className="auth-card">
         <div className="auth-brand">
-          <span>ATLAS</span>
+          <span>VIAWA</span>
 
-          <p>Sales Intelligence Workspace</p>
+          <p>Satış Zekası Çalışma Alanı</p>
         </div>
 
         <div className="auth-heading">
           <p className="eyebrow">
-            Secure access
+            Güvenli erişim
           </p>
 
-          <h1>Sign in</h1>
+          <h1>Giriş yap</h1>
 
           <p className="muted">
-            Enter your ATLAS account details.
+            VIAWA hesap bilgilerinizi girin.
           </p>
         </div>
 
@@ -84,7 +84,7 @@ export function LoginPage() {
           onSubmit={handleSubmit}
         >
           <label>
-            <span>Email address</span>
+            <span>E-posta adresi</span>
 
             <div className="auth-input">
               <Mail size={18} />
@@ -95,14 +95,14 @@ export function LoginPage() {
                 onChange={(event) =>
                   setEmail(event.target.value)
                 }
-                placeholder="name@company.com"
+                placeholder="ad@sirket.com"
                 autoComplete="email"
               />
             </div>
           </label>
 
           <label>
-            <span>Password</span>
+            <span>Şifre</span>
 
             <div className="auth-input">
               <LockKeyhole size={18} />
@@ -115,7 +115,7 @@ export function LoginPage() {
                     event.target.value,
                   )
                 }
-                placeholder="Enter your password"
+                placeholder="Şifrenizi girin"
                 autoComplete="current-password"
               />
             </div>
@@ -127,8 +127,8 @@ export function LoginPage() {
             disabled={isSubmitting}
           >
             {isSubmitting
-              ? "Signing in..."
-              : "Sign in"}
+              ? "Giriş yapılıyor..."
+              : "Giriş yap"}
           </button>
         </form>
       </section>

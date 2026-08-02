@@ -1,4 +1,18 @@
+import { translateSystemGeneratedText } from "../../features/execution/atlasTextTranslations";
+import { TEMPLATE_DISPLAY_NAMES } from "../../modules/communication/services/templateService";
 import { Panel } from "../ui/Panel";
+
+// Timeline entries created from a Communication template send store the
+// raw English template id (e.g. "Quotation") as their title — the same
+// ids already have a Turkish label wherever the template picker shows
+// them, reused here instead of inventing a second mapping.
+function translateTimelineTitle(
+  title: string,
+): string {
+  return (
+    TEMPLATE_DISPLAY_NAMES[title] ?? title
+  );
+}
 
 type TimelineItem = {
   id: string;
@@ -31,8 +45,6 @@ export function TimelineCard({
             Aktivite
           </p>
 
-          <h2>Son Zaman Çizelgesi</h2>
-
           <p className="muted">
             Bu firma için en son aktiviteler.
           </p>
@@ -54,11 +66,18 @@ export function TimelineCard({
                   )}
                 </p>
 
-                <h2>{event.title}</h2>
+                <h2>
+                  {translateTimelineTitle(
+                    event.title,
+                  )}
+                </h2>
 
                 <p className="muted">
-                  {event.description ??
-                    "Açıklama kaydedilmedi."}
+                  {event.description
+                    ? translateSystemGeneratedText(
+                        event.description,
+                      )
+                    : "Açıklama kaydedilmedi."}
                 </p>
 
                 <div className="data-list">

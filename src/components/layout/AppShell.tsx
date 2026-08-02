@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { ExhibitionSelectionProvider } from "../../modules/exhibitions/context/ExhibitionSelectionContext";
+
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { WorkspaceHeaderProvider } from "./workspaceHeaderContext";
@@ -13,15 +15,17 @@ export function AppShell({
 }: Props) {
   return (
     <WorkspaceHeaderProvider>
-      <div className="atlas-shell">
-        <Sidebar />
+      <ExhibitionSelectionProvider>
+        <div className="atlas-shell">
+          <Sidebar />
 
-        <div className="atlas-main">
-          <Topbar />
+          <div className="atlas-main">
+            <Topbar />
 
-          {children}
+            {children}
+          </div>
         </div>
-      </div>
+      </ExhibitionSelectionProvider>
     </WorkspaceHeaderProvider>
   );
 }

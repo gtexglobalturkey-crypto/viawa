@@ -36,6 +36,7 @@ export type ExecuteActionInput = {
   companyId: string;
   opportunityId?: string | null;
   reminderId?: string | null;
+  description?: string | null;
   workflowFeedback?:
     WorkflowCompletionFeedback;
 };
@@ -159,11 +160,7 @@ function buildActionDescription(
       "information package",
     )
   ) {
-    return (
-      "The information package was sent to the " +
-      "customer. A follow-up should be completed " +
-      "after the customer has reviewed the documents."
-    );
+    return "The information package was sent to the customer.";
   }
 
   if (
@@ -174,11 +171,7 @@ function buildActionDescription(
       "revised quotation",
     )
   ) {
-    return (
-      "The revised quotation was sent to the " +
-      "customer. The opportunity should be reviewed " +
-      "again after the customer evaluates the new terms."
-    );
+    return "A revised quotation was sent to the customer.";
   }
 
   if (
@@ -189,11 +182,7 @@ function buildActionDescription(
       "quote",
     )
   ) {
-    return (
-      "The quotation was sent to the customer. " +
-      "A follow-up should be scheduled to discuss " +
-      "the offer and answer any questions."
-    );
+    return "A quotation was sent to the customer.";
   }
 
   if (
@@ -201,11 +190,7 @@ function buildActionDescription(
       "contract",
     )
   ) {
-    return (
-      "The contract was sent to the customer for " +
-      "review. The next action is to follow up on " +
-      "approval, requested changes or signature."
-    );
+    return "The contract was sent to the customer for review.";
   }
 
   if (
@@ -216,11 +201,7 @@ function buildActionDescription(
       "additional document",
     )
   ) {
-    return (
-      "The requested additional documents were sent " +
-      "to the customer. The opportunity should remain " +
-      "active until receipt is confirmed."
-    );
+    return "The requested additional documents were sent to the customer.";
   }
 
   if (
@@ -234,11 +215,7 @@ function buildActionDescription(
       "follow-up call",
     )
   ) {
-    return (
-      "The customer follow-up call was completed. " +
-      "The conversation outcome and next action " +
-      "should guide the opportunity forward."
-    );
+    return "The customer follow-up call was completed.";
   }
 
   if (
@@ -266,11 +243,7 @@ function buildActionDescription(
       "meeting",
     )
   ) {
-    return (
-      "A customer meeting was scheduled. Preparation " +
-      "and follow-up activities should be completed " +
-      "around the meeting date."
-    );
+    return "A customer meeting was scheduled.";
   }
 
   if (
@@ -316,6 +289,7 @@ export async function executeAction({
   companyId,
   opportunityId,
   reminderId,
+  description: descriptionOverride,
   workflowFeedback,
 }: ExecuteActionInput) {
   const normalizedActionId =
@@ -366,6 +340,7 @@ export async function executeAction({
     );
 
   const description =
+    normalizeValue(descriptionOverride) ||
     buildActionDescription(
       normalizedActionId,
       normalizedTitle,

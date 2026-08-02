@@ -1,3 +1,5 @@
+import { translateSystemGeneratedText } from "../../features/execution/atlasTextTranslations";
+
 import { Panel } from "../ui/Panel";
 
 type AIMemory = {
@@ -28,13 +30,11 @@ export function AIMemoryCard({
       <div className="section-head">
         <div>
           <p className="eyebrow">
-            Atlas AI
+            VIAWA AI
           </p>
 
-          <h2>Müşteri Hafızası</h2>
-
           <p className="muted">
-            Atlas'ın bir sonraki etkileşimde hatırlaması
+            VIAWA'nın bir sonraki etkileşimde hatırlaması
             gereken önemli bağlam.
           </p>
         </div>
@@ -48,8 +48,11 @@ export function AIMemoryCard({
             </p>
 
             <h2>
-              {aiMemory.summary ??
-                "Henüz AI özeti kaydedilmedi."}
+              {aiMemory.summary
+                ? translateSystemGeneratedText(
+                    aiMemory.summary,
+                  )
+                : "Henüz AI özeti kaydedilmedi."}
             </h2>
           </div>
 
@@ -79,8 +82,11 @@ export function AIMemoryCard({
             <span>Risk</span>
 
             <strong>
-              {aiMemory.risk ??
-                "Henüz risk analizi kaydedilmedi."}
+              {aiMemory.risk
+                ? translateSystemGeneratedText(
+                    aiMemory.risk,
+                  )
+                : "Henüz risk analizi kaydedilmedi."}
             </strong>
           </div>
 
@@ -88,8 +94,11 @@ export function AIMemoryCard({
             <span>Öneri</span>
 
             <strong>
-              {aiMemory.recommendation ??
-                "Henüz öneri kaydedilmedi."}
+              {aiMemory.recommendation
+                ? translateSystemGeneratedText(
+                    aiMemory.recommendation,
+                  )
+                : "Henüz öneri kaydedilmedi."}
             </strong>
           </div>
         </div>

@@ -1,0 +1,78 @@
+{
+  "schemaVersion": "1.0",
+  "exhibitionId": "wampex-2027",
+  "exhibitionName": "WAMPEX 2027",
+  "currency": "USD",
+  "updatedAt": "2026-07-29",
+  "status": "draft",
+
+  "standTypes": [
+    {
+      "id": "space-only",
+      "label": "Boş Alan (Space Only)",
+      "unitPricePerSqm": 0
+    },
+    {
+      "id": "shell-scheme",
+      "label": "Standart Stand (Shell Scheme)",
+      "unitPricePerSqm": 0
+    },
+    {
+      "id": "premium-shell",
+      "label": "Premium Stand (Premium Shell Scheme)",
+      "unitPricePerSqm": 0
+    },
+    {
+      "id": "custom-stand",
+      "label": "Özel Stand (Custom Stand)",
+      "unitPricePerSqm": 0
+    },
+    {
+      "id": "outdoor",
+      "label": "Dış Alan (Outdoor)",
+      "unitPricePerSqm": 0
+    }
+  ],
+
+  "locationSurcharges": [
+    {
+      "id": "standard",
+      "label": "Standart Konum",
+      "rate": 0
+    },
+    {
+      "id": "corner",
+      "label": "Köşe Stand",
+      "rate": 0.10
+    },
+    {
+      "id": "peninsula",
+      "label": "Yarımada Stand",
+      "rate": 0.15
+    },
+    {
+      "id": "island",
+      "label": "Ada Stand",
+      "rate": 0.20
+    },
+    {
+      "id": "double-deck",
+      "label": "Çift Katlı Stand",
+      "rate": 0.50
+    }
+  ],
+
+  "fees": {
+    "additionalServicesFee": 0
+  },
+
+  "tax": {
+    "vatRate": 0.15
+  },
+
+  "discount": {
+    "enabled": true,
+    "maxPercent": null,
+    "requiresManualApproval": true
+  }
+}

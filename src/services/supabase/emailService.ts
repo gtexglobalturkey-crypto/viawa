@@ -87,3 +87,34 @@ export async function deleteEmail(
 
   if (error) throw error;
 }
+
+export async function createEmailForSendOperation(
+  email: Omit<EmailRecord, "id" | "created_at" | "updated_at"> & {
+    send_operation_key: string;
+  },
+): Promise<{ email: EmailRecord; created: boolean }> {
+  const { data, error } = await supabase
+    .from("emails")
+    .insert(email)
+    .select()
+    .single();
+
+  if (!error) {
+    return { email: data, created: true };
+  }
+
+  if (error.code !== "23505") {
+    throw error;
+  }
+
+  const { data: existingEmail, error: lookupError } = await supabase
+    .from("emails")
+    .select("*")
+    .eq("send_operation_key", email.send_operation_key)
+    .maybeSingle();
+
+  if (lookupError) throw lookupError;
+  if (!existingEmail) throw error;
+
+  return { email: existingEmail, created: false };
+}

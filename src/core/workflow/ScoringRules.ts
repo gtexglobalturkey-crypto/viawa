@@ -35,9 +35,15 @@ export const TASK_SCORING_RULES = {
     points: 15,
   },
 
-  quotationRequested: {
-    id: "quotation-requested",
-    label: "Quotation requested",
+  quotationReady: {
+    id: "quotation-ready",
+    label: "Quotation ready",
+    points: 20,
+  },
+
+  proposalReady: {
+    id: "proposal-ready",
+    label: "Proposal ready to send",
     points: 20,
   },
 

@@ -44,6 +44,7 @@ export type WorkflowPhase =
 export type WorkflowEntityReference = {
   companyId?: string;
   opportunityId?: string;
+  taskType?: string;
   contactId?: string;
   emailId?: string;
   reminderId?: string;

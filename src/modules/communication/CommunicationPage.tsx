@@ -1,7 +1,15 @@
-import { useSearchParams } from "react-router-dom";
+import { useMemo } from "react";
+import {
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 
 import { Panel } from "../../components/ui/Panel";
 import { useCommunicationWorkspace } from "../../hooks/useCommunicationWorkspace";
+
+import { sanitizeSelectedDocumentBasketItems } from "../call-workspace/document-basket";
+import { sanitizeSelectedExhibitionDocuments } from "../exhibitions/utils/sanitizeSelectedExhibitionDocuments";
 
 import { AttachmentCard } from "./components/AttachmentCard";
 import { CommunicationHeader } from "./components/CommunicationHeader";
@@ -23,12 +31,17 @@ const VALID_TEMPLATE_IDS = [
 
 export function CommunicationPage() {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const companyId =
     searchParams.get("companyId") ?? undefined;
 
   const opportunityId =
     searchParams.get("opportunityId");
+
+  const selectedContactId =
+    searchParams.get("selectedContactId");
 
   const requestedTemplate =
     searchParams.get("template");
@@ -41,6 +54,55 @@ export function CommunicationPage() {
       ? requestedTemplate
       : "Information Package";
 
+  const originRoute = useMemo(() => {
+    const candidate = (
+      location.state as { originRoute?: unknown } | null
+    )?.originRoute;
+
+    if (typeof candidate !== "string" || !companyId || !opportunityId) {
+      return null;
+    }
+
+    try {
+      const parsed = new URL(candidate, window.location.origin);
+
+      return parsed.pathname === "/call" &&
+        parsed.searchParams.get("companyId") === companyId &&
+        parsed.searchParams.get("opportunityId") === opportunityId
+        ? `${parsed.pathname}${parsed.search}`
+        : null;
+    } catch {
+      return null;
+    }
+  }, [companyId, location.state, opportunityId]);
+
+  // Populated only when arriving from the Working Space's "E-posta" tool
+  // (via navigate(..., { state })); a direct visit to /communication has
+  // no history state, so this safely falls back to an empty list.
+  const documentBasketItems = useMemo(() => {
+    const routerState = location.state as
+      | { documentBasketItems?: unknown }
+      | null
+      | undefined;
+
+    return sanitizeSelectedDocumentBasketItems(
+      routerState?.documentBasketItems,
+    );
+  }, [location.state]);
+
+  // Same idea, for the real per-exhibition documents checked off in
+  // Exhibition Workspace.
+  const exhibitionDocuments = useMemo(() => {
+    const routerState = location.state as
+      | { exhibitionDocuments?: unknown }
+      | null
+      | undefined;
+
+    return sanitizeSelectedExhibitionDocuments(
+      routerState?.exhibitionDocuments,
+    );
+  }, [location.state]);
+
   const {
     company,
     loading,
@@ -50,17 +112,57 @@ export function CommunicationPage() {
     subject,
     body,
     attachments,
+    recipientOptions,
+    toRecipients,
+    ccRecipients,
+    bccRecipients,
     communicationHistory,
+    communicationContext,
     sending,
     sendError,
     sendSuccess,
     handleTemplateSelect,
     handleSendEmail,
+    setToRecipients,
+    setCcRecipients,
+    setBccRecipients,
   } = useCommunicationWorkspace({
     companyId,
     opportunityId,
+    selectedContactId,
     initialTemplate,
+    documentBasketItems,
+    exhibitionDocuments,
   });
+
+  async function handleCompletedSend(
+    emailSubject: string,
+    emailBody: string,
+  ): Promise<void> {
+    const completion = await handleSendEmail(
+      emailSubject,
+      emailBody,
+    );
+
+    if (!completion) return;
+
+    const fallbackRoute = `/call?companyId=${encodeURIComponent(
+      completion.companyId,
+    )}&opportunityId=${encodeURIComponent(
+      completion.opportunityId,
+    )}`;
+
+    navigate(originRoute ?? fallbackRoute, {
+      replace: true,
+      state: {
+        quotationSent: true,
+        companyId: completion.companyId,
+        opportunityId: completion.opportunityId,
+        emailId: completion.emailId,
+        sentAt: completion.sentAt,
+      },
+    });
+  }
 
   if (loading) {
     return (
@@ -75,7 +177,7 @@ export function CommunicationPage() {
           </h2>
 
           <p className="muted">
-            Atlas müşteri ve fırsat bilgilerini
+            VIAWA müşteri ve fırsat bilgilerini
             yüklüyor.
           </p>
         </Panel>
@@ -105,7 +207,8 @@ export function CommunicationPage() {
 
   if (
     !company ||
-    !selectedOpportunity
+    !selectedOpportunity ||
+    !communicationContext
   ) {
     return (
       <main className="page">
@@ -145,9 +248,7 @@ export function CommunicationPage() {
           />
 
           <QuickActionsCard
-            companyName={
-              company.company_name
-            }
+            context={communicationContext}
             selectedTemplate={
               selectedTemplate
             }
@@ -158,10 +259,17 @@ export function CommunicationPage() {
           <ComposerCard
             subject={subject}
             body={body}
+            recipientOptions={recipientOptions}
+            toRecipients={toRecipients}
+            ccRecipients={ccRecipients}
+            bccRecipients={bccRecipients}
+            onToChange={setToRecipients}
+            onCcChange={setCcRecipients}
+            onBccChange={setBccRecipients}
             sending={sending}
             sendError={sendError}
             sendSuccess={sendSuccess}
-            onSend={handleSendEmail}
+            onSend={handleCompletedSend}
           />
         </div>
 
