@@ -231,7 +231,35 @@ const VALIDATION_ERROR_MESSAGES: Record<
     "Sözleşme ayarları eksik.",
   REQUIRED_TEMPLATE_FIELD_MISSING:
     "Sözleşme için gerekli bilgiler eksik.",
+  // RC-02 — generic fallback only; the real message (with the exact
+  // eksik/fazla fark tutarı) comes from the server's own
+  // validationErrors[].message for this code, see
+  // DYNAMIC_VALIDATION_MESSAGE_CODES below.
+  PAYMENT_PLAN_TOTAL_MISMATCH:
+    "Ödeme planı toplamı, genel toplam ile eşleşmelidir.",
 };
+
+// RC-02 — every other validation code above maps to a fixed, generic
+// Turkish sentence regardless of what the server actually sent. This
+// one code's server-side message already IS the exact, final Turkish
+// sentence (it embeds the real eksik/fazla fark tutarı) — so it's used
+// as-is here instead of being discarded in favor of the static table.
+const DYNAMIC_VALIDATION_MESSAGE_CODES = new Set<string>([
+  "PAYMENT_PLAN_TOTAL_MISMATCH",
+]);
+
+function resolveValidationMessage(
+  error: ContractPdfValidationError,
+): string | undefined {
+  if (
+    DYNAMIC_VALIDATION_MESSAGE_CODES.has(error.code) &&
+    error.message
+  ) {
+    return error.message;
+  }
+
+  return VALIDATION_ERROR_MESSAGES[error.code];
+}
 
 const TOP_LEVEL_ERROR_MESSAGES: Record<
   string,
@@ -269,12 +297,7 @@ export function describeContractPdfFailure(
 ): string {
   const firstValidationMessage =
     failure.validationErrors
-      .map(
-        (error) =>
-          VALIDATION_ERROR_MESSAGES[
-            error.code
-          ],
-      )
+      .map(resolveValidationMessage)
       .find(
         (message): message is string =>
           Boolean(message),

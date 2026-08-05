@@ -1,7 +1,10 @@
 import { SuggestedWorkGenerator } from "./SuggestedWorkGenerator";
 import { TaskScoreEngine } from "./TaskScoreEngine";
 
-import { normalizeLegacyOpportunityStage } from "../../types/businessStatus";
+import {
+  isTerminalBusinessStatus,
+  normalizeLegacyOpportunityStage,
+} from "../../types/businessStatus";
 
 import type {
   WorkflowCompletionResult,
@@ -137,6 +140,7 @@ export class WorkflowEngine {
     const reminderTasks =
       this.collectReminderTasks(
         context.reminders,
+        context.opportunities,
         context.now,
         aiMemoryIndex,
       );
@@ -285,11 +289,26 @@ export class WorkflowEngine {
       });
   }
 
+  // Kritik Akış Düzeltmesi 9 — a reminder whose own `completed` is still
+  // false must still never produce a Today task once the opportunity it
+  // belongs to has reached a terminal stage (lost/signed/...). This is
+  // the safety net collectOpportunityTasks's own requiresFollowUp
+  // already has for opportunity-derived tasks (see its `stage ===
+  // "signed" || stage === "lost"` check below) — reminder-derived tasks
+  // never had the equivalent check. Reuses isTerminalBusinessStatus
+  // (businessStatus.ts) — the same shared rule every other terminal-stage
+  // check in the app uses; no separate/duplicate stage list.
   private collectReminderTasks(
     reminders: unknown[],
+    opportunities: unknown[],
     now: string,
     aiMemoryIndex: AiMemoryIndex,
   ): WorkflowTask[] {
+    const opportunityStageById =
+      this.indexOpportunityStagesById(
+        opportunities,
+      );
+
     return reminders
       .map((reminder) =>
         this.toRecord(reminder),
@@ -302,6 +321,13 @@ export class WorkflowEngine {
       )
       .filter((reminder) =>
         this.isPendingReminder(reminder),
+      )
+      .filter(
+        (reminder) =>
+          !this.belongsToTerminalOpportunity(
+            reminder,
+            opportunityStageById,
+          ),
       )
       .map((reminder, index) => {
         const reminderId =
@@ -1366,6 +1392,84 @@ export class WorkflowEngine {
       requiresReply;
 
     return isDraft || isIncomingReply;
+  }
+
+  // Kritik Akış Düzeltmesi 9 — id -> stage lookup built once per
+  // collectReminderTasks call, from the exact same context.opportunities
+  // already passed to collectOpportunityTasks. Values are the raw
+  // (un-normalized) stage string; isTerminalBusinessStatus normalizes it.
+  private indexOpportunityStagesById(
+    opportunities: unknown[],
+  ): Map<string, string> {
+    const stagesById = new Map<
+      string,
+      string
+    >();
+
+    for (const opportunity of opportunities) {
+      const record =
+        this.toRecord(opportunity);
+
+      if (!record) {
+        continue;
+      }
+
+      const opportunityId =
+        this.readString(
+          record,
+          "id",
+          "opportunityId",
+          "opportunity_id",
+        );
+
+      const stage = this.readString(
+        record,
+        "stage",
+      );
+
+      if (!opportunityId || !stage) {
+        continue;
+      }
+
+      stagesById.set(opportunityId, stage);
+    }
+
+    return stagesById;
+  }
+
+  // A reminder with no opportunity_id (manual/company-level task) is
+  // never touched here — untouched="false" (never terminal). An
+  // opportunity_id that isn't found in this context's opportunities list
+  // also leaves existing behavior alone (no record deleted or force-
+  // completed) — only a reminder whose opportunity IS present AND
+  // confirmed terminal is excluded from producing a task.
+  private belongsToTerminalOpportunity(
+    reminder: UnknownRecord,
+    opportunityStageById: Map<
+      string,
+      string
+    >,
+  ): boolean {
+    const opportunityId =
+      this.readString(
+        reminder,
+        "opportunityId",
+        "opportunity_id",
+      );
+
+    if (!opportunityId) {
+      return false;
+    }
+
+    const stage = opportunityStageById.get(
+      opportunityId,
+    );
+
+    if (stage === undefined) {
+      return false;
+    }
+
+    return isTerminalBusinessStatus(stage);
   }
 
   private isPendingReminder(

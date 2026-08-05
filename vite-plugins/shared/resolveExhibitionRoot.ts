@@ -4,23 +4,44 @@ import path from "node:path";
 import { normalizeFolderName } from "./normalizeFolderName";
 
 // Real per-exhibition folders live under here, one subfolder per
-// exhibition (e.g. "01_mining_show_2025", "02_wampex_2026"). Shared by
-// every dev-middleware plugin that needs to resolve "which real folder
-// does this sidebar-selected fuar correspond to" — the document basket
-// and the pricing config both reuse this single resolver rather than
-// each growing their own independent folder-matching system.
+// exhibition (e.g. "mining türkiye 2027", "wampex 2027" — see Sprint
+// 25.10). Shared by every dev-middleware plugin that needs to resolve
+// "which real folder does this sidebar-selected fuar correspond to" —
+// the document basket and the pricing config both reuse this single
+// resolver rather than each growing their own independent
+// folder-matching system.
 export const EXHIBITIONS_ROOT = path.resolve(
   process.cwd(),
   "resources/templates/test-data/exhibitions",
 );
 
 // Only used when the caller doesn't specify an exhibition at all (the
-// original Document Basket tool never did) — preserves that exact old
-// behavior untouched.
-const DEFAULT_EXHIBITION_ROOT = path.join(
-  EXHIBITIONS_ROOT,
-  "01_mining_show_2025",
-);
+// original Document Basket tool never did) — preserves that old
+// behavior's intent (some folder, rather than nothing) without hardcoding
+// a specific folder's name, which previously went stale (was
+// "01_mining_show_2025", a folder that no longer exists on disk — see
+// Sprint 25.10) the moment the on-disk test-data folders were renamed.
+// Picks the first exhibition folder in directory order; there is no
+// real "default exhibition" concept, this only avoids returning nothing
+// when literally no exhibition was specified at all.
+function resolveDefaultExhibitionRoot(): ResolvedExhibitionRoot | null {
+  if (!existsSync(EXHIBITIONS_ROOT)) {
+    return null;
+  }
+
+  const firstEntry = readdirSync(EXHIBITIONS_ROOT, {
+    withFileTypes: true,
+  }).find((entry) => entry.isDirectory());
+
+  if (!firstEntry) {
+    return null;
+  }
+
+  return {
+    absolutePath: path.join(EXHIBITIONS_ROOT, firstEntry.name),
+    folderName: firstEntry.name,
+  };
+}
 
 function stripNumericPrefix(
   folderName: string,
@@ -84,23 +105,18 @@ export type ResolvedExhibitionRoot = {
 // naming convention at all (a user can type anything, e.g. a venue's full
 // official name that shares no substring with the on-disk folder), while
 // the short name is much more likely to match how template folders are
-// actually named on disk (e.g. "02_wampex_2026"). Each candidate is
+// actually named on disk (e.g. "wampex 2027"). Each candidate is
 // normalized and stripped of its trailing year before either side's
 // substring is checked against the other (e.g. "WAMPEX 2027" against
-// "02_wampex_2026" → cores "wampex" / "wampex" → match).
+// "wampex 2027" → cores "wampex" / "wampex" → match; this also means a
+// name whose year has drifted out of sync with the folder, e.g. "Mining
+// Türkiye 2026" against folder "mining türkiye 2027", still matches).
 export function resolveExhibitionRoot(
   exhibitionName: string | null,
   exhibitionShortName: string | null,
 ): ResolvedExhibitionRoot | null {
   if (exhibitionName === null) {
-    if (!existsSync(DEFAULT_EXHIBITION_ROOT)) {
-      return null;
-    }
-
-    return {
-      absolutePath: DEFAULT_EXHIBITION_ROOT,
-      folderName: "01_mining_show_2025",
-    };
+    return resolveDefaultExhibitionRoot();
   }
 
   if (!existsSync(EXHIBITIONS_ROOT)) {

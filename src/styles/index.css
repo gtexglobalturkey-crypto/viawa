@@ -1144,28 +1144,51 @@ main.company-detail-page {
   letter-spacing: -0.01em;
 }
 
+.exhibition-file-count {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--atlas-soft);
+  color: var(--atlas-muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
 .exhibition-file-body {
   padding: 0 14px 14px;
   border-top: 1px solid var(--atlas-border);
 }
 
-.exhibition-file-meta {
-  display: flex;
-  flex-direction: row;
-  gap: 24px;
-  margin-top: 12px;
-}
-
-.exhibition-file-docs-label {
-  margin: 14px 0 6px;
-}
-
 .exhibition-file-docs {
-  margin: 0;
-  padding-left: 18px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
   color: var(--atlas-text);
-  font-size: 11px;
-  line-height: 1.7;
+  font-size: 12px;
+}
+
+.exhibition-file-doc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+}
+
+.exhibition-file-doc-row + .exhibition-file-doc-row {
+  border-top: 1px solid var(--atlas-border);
+}
+
+.exhibition-file-doc-row a {
+  flex-shrink: 0;
+  font-weight: 800;
+  color: var(--atlas-primary);
+  text-decoration: none;
+}
+
+.exhibition-file-doc-row a:hover {
+  text-decoration: underline;
 }
 
 .company-timeline-section .opportunity-list {
@@ -1483,7 +1506,19 @@ main.company-detail-page {
 }
 
 .company-files-card-trigger {
-  display: contents;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+  padding: 12px;
+  text-align: center;
+}
+
+.company-files-card-trigger-icon {
+  font-size: 22px;
 }
 
 .company-people-notes-subhead {
@@ -1788,9 +1823,21 @@ main.company-detail-page {
   white-space: nowrap;
 }
 
-.company-active-exhibitions {
+/* Sprint 25.11 / Adım 1.1 — owns the grid cell that every
+   .company-active-exhibitions section used to individually (and
+   conflictingly) claim; see the JSX comment at its usage site. */
+.company-active-exhibitions-column {
   grid-column: 2;
   grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.company-active-exhibitions {
   flex: 0 0 auto;
   margin-top: 0;
   min-width: 0;
@@ -1810,10 +1857,35 @@ main.company-detail-page {
 }
 
 .company-active-exhibition-card {
+  position: relative;
   height: 128px;
   min-width: 0;
   overflow: hidden;
   padding: 10px 12px;
+}
+
+.company-active-exhibition-card--cancellable h2 {
+  padding-right: 44px;
+}
+
+.company-active-exhibition-cancel-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  border: none;
+  background: transparent;
+  color: var(--atlas-danger, #b42318);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 3px 5px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.company-active-exhibition-cancel-btn:hover {
+  background: rgba(180, 35, 24, 0.08);
 }
 
 .company-active-exhibition-card h2 {
@@ -1879,6 +1951,92 @@ main.company-detail-page {
 
 .company-active-exhibition-limit--hidden {
   visibility: hidden;
+}
+
+/* Sprint 25.11 / Adım 1 — Katılım Geçmişi: two folder buttons, no
+   document is listed inline on the main page. */
+.company-history-folder-grid {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.company-history-folder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 160px;
+  padding: 12px 16px;
+  border: 1px solid var(--atlas-border);
+  border-radius: 14px;
+  background: var(--atlas-panel);
+  font-size: 13px;
+  font-weight: 700;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.company-history-folder:hover {
+  border-color: var(--atlas-primary);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.09);
+}
+
+.company-history-folder-icon {
+  font-size: 18px;
+}
+
+.company-history-folder-count {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--atlas-soft);
+  color: var(--atlas-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.company-history-record-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.company-history-record {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.company-history-record h3 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.company-history-record-version {
+  color: var(--atlas-muted);
+  font-weight: 700;
+}
+
+.company-history-record .data-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 12px;
+}
+
+.company-history-record .data-list span { font-size: 10px; }
+.company-history-record .data-list strong { font-size: 12px; }
+
+.company-history-record-pdf-link {
+  align-self: flex-start;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--atlas-primary);
+  text-decoration: none;
+}
+
+.company-history-record-pdf-link:hover {
+  text-decoration: underline;
 }
 
 .company-opportunity-scroll .opportunity-card > .btn,
@@ -2604,7 +2762,7 @@ main.company-detail-page {
   }
 
   .company-record-main,
-  .company-active-exhibitions,
+  .company-active-exhibitions-column,
   .company-record-side {
     grid-column: 1;
     grid-row: auto;

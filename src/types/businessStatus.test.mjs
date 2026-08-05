@@ -109,18 +109,24 @@ test("closureOutcomeToStage always resolves to a terminal stage", () => {
   assert.equal(isTerminalBusinessStatus(closureOutcomeToStage("lost")), true);
 });
 
-test("canCloseOpportunity: every non-closed stage (including signed) can still be closed", () => {
+// RC-05 — canCloseOpportunity now shares the exact same terminal
+// definition as isTerminalBusinessStatus (Company Detail, the active
+// count, and the opportunity limit already used this). "signed" is no
+// longer a special case: Katılım Onaylandı writing stage="signed" is
+// itself the terminal event, not a still-open "awaiting Kazanıldı"
+// state (the old Sprint 25.5 rule this test previously encoded).
+test("canCloseOpportunity: every non-terminal stage can still be closed, every terminal stage cannot", () => {
   for (const status of BUSINESS_STATUSES) {
-    const expected = status.id !== "won" && status.id !== "lost";
     assert.equal(
       canCloseOpportunity(status.id),
-      expected,
+      !status.isTerminal,
       `stage "${status.id}" closeability mismatch`,
     );
   }
 });
 
-test("canCloseOpportunity: won and lost themselves can never be closed again", () => {
+test("canCloseOpportunity: signed, won and lost can never be closed again", () => {
+  assert.equal(canCloseOpportunity("signed"), false);
   assert.equal(canCloseOpportunity("won"), false);
   assert.equal(canCloseOpportunity("lost"), false);
 });

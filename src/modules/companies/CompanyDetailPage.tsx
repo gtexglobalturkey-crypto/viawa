@@ -22,17 +22,25 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { Panel } from "../../components/ui/Panel";
 import { useCompanyWorkspace } from "../../hooks/useCompanyWorkspace";
 import { useExhibitionSelection } from "../exhibitions/context/ExhibitionSelectionContext";
+import { CloseOpportunityModal } from "../call-workspace/components/CloseOpportunityModal";
 import { loadApprovedPriceSnapshots } from "../call-workspace/pricing/services/approvedPriceSnapshotStorage";
 import { loadGeneratedDocuments } from "../document-engine/services/generatedDocumentStorage";
+import type { GeneratedDocumentRecord } from "../document-engine/models/GeneratedDocumentRecord";
 import { getCompanyProductGroups } from "../../services/supabase/productGroupService";
 import { getCompanySectors } from "../../services/supabase/sectorService";
+import { updateOpportunity } from "../../services/supabase/opportunityService";
+import { createTimelineEvent } from "../../services/supabase/timelineService";
+import { completeOpenRemindersForOpportunity } from "../../services/supabase/reminderService";
 import {
   getBusinessStatusLabel,
   isTerminalBusinessStatus,
   MAX_ACTIVE_OPPORTUNITIES_PER_COMPANY,
   resolveCompanyStatus,
 } from "../../types/businessStatus";
-import { getLostReasonLabel } from "../../types/opportunityClosure";
+import {
+  buildLostTimelineDescription,
+  type LostReasonId,
+} from "../../types/opportunityClosure";
 
 function stripLabelPrefix<
   T extends string | null | undefined,
@@ -110,6 +118,85 @@ function CompanyDetailModal({ title, onClose, children, footer }: CompanyDetailM
         {footer ? <footer className="company-detail-modal-footer">{footer}</footer> : null}
       </section>
     </div>
+  );
+}
+
+type GeneratedDocumentRecordCardProps = {
+  document: GeneratedDocumentRecord;
+  exhibitionsById: Map<string, { name?: string | null }>;
+  formatDate: (value?: string | null) => string;
+};
+
+// Belge Yaşam Döngüsü — one shared card for both "Teklifler" and
+// "Sözleşmeler" modals: both now list the exact same record type
+// (GeneratedDocumentRecord), only filtered differently by
+// record.status. Kept as a single render so the two lists can never
+// visually drift apart.
+function GeneratedDocumentRecordCard({
+  document,
+  exhibitionsById,
+  formatDate,
+}: GeneratedDocumentRecordCardProps) {
+  const exhibition = document.exhibitionId
+    ? exhibitionsById.get(document.exhibitionId)
+    : undefined;
+  const openablePdfUrl =
+    document.signedPdfDataUrl ??
+    document.pdfDataUrl ??
+    null;
+
+  return (
+    <Panel
+      className="company-history-record"
+    >
+      <h3 title={document.contractNumber}>
+        {document.contractNumber}{" "}
+        <span className="company-history-record-version">
+          v{document.version}
+        </span>
+      </h3>
+      <div className="data-list">
+        <div>
+          <span>Fuar</span>
+          <strong>{exhibition?.name ?? "—"}</strong>
+        </div>
+        <div>
+          <span>Belge</span>
+          <strong>
+            {document.signedPdfFileName ??
+              document.fileName}
+          </strong>
+        </div>
+        <div>
+          <span>Oluşturulma</span>
+          <strong>
+            {formatDate(document.createdAt)}
+          </strong>
+        </div>
+        <div>
+          <span>Durum</span>
+          <strong>
+            {document.status === "signed"
+              ? "İmzalandı"
+              : document.status ===
+                  "sent-for-signature"
+                ? "İmzaya Gönderildi"
+                : "PDF Oluşturuldu"}
+          </strong>
+        </div>
+      </div>
+
+      {openablePdfUrl ? (
+        <a
+          className="company-history-record-pdf-link"
+          href={openablePdfUrl}
+          target="_blank"
+          rel="noreferrer"
+        >
+          PDF'i Aç
+        </a>
+      ) : null}
+    </Panel>
   );
 }
 
@@ -294,7 +381,96 @@ export function CompanyDetailPage() {
     contacts,
     exhibitionsById,
     formatDate,
+    refresh,
+    reminders,
   } = useCompanyWorkspace(id);
+
+  // Kritik Akış Düzeltmesi 3 — "❌ İptal" on an active fuar card opens
+  // the existing Katılım Nedeni (Lost reason) modal directly against
+  // that one opportunity, without requiring a Workspace visit. Mirrors
+  // CustomerWorkspace.closeOpportunityAsLost's own write (stage/
+  // closed_at/closure_reason/closure_note + one timeline event) — same
+  // fields, same timeline wording — just triggered from here instead.
+  const [
+    cancellingOpportunityId,
+    setCancellingOpportunityId,
+  ] = useState<string | null>(null);
+  const [cancelSubmitting, setCancelSubmitting] =
+    useState(false);
+
+  async function handleCancelOpportunity(
+    reasonId: LostReasonId,
+    note: string | null,
+  ): Promise<void> {
+    if (!cancellingOpportunityId || !company) {
+      return;
+    }
+
+    setCancelSubmitting(true);
+
+    try {
+      await updateOpportunity(
+        cancellingOpportunityId,
+        {
+          stage: "lost",
+          closed_at: new Date().toISOString(),
+          closure_reason: reasonId,
+          closure_note:
+            reasonId === "other" ? note : null,
+        },
+      );
+
+      await createTimelineEvent({
+        company_id: company.id,
+        opportunity_id: cancellingOpportunityId,
+        type: "opportunity-lost",
+        title: "Fırsat kaybedildi",
+        description: buildLostTimelineDescription({
+          reasonId,
+          note,
+        }),
+      });
+
+      // Kritik Akış Düzeltmesi 5 — same shared close-out
+      // CustomerWorkspace's Kaybedildi/Kazanıldı/İmzalar Tamamlandı
+      // flows use, so "İptal" here produces the exact same Today
+      // behavior: this opportunity's own open reminders (and only
+      // those) are marked completed. Isolated in its own try/catch so a
+      // failure here never turns an otherwise-successful cancellation
+      // into a reported error.
+      try {
+        await completeOpenRemindersForOpportunity(
+          reminders,
+          cancellingOpportunityId,
+        );
+      } catch (reminderError) {
+        console.error(
+          "Opportunity reminder close-out error:",
+          reminderError,
+        );
+      }
+
+      await refresh();
+
+      setCancellingOpportunityId(null);
+      showToast(
+        "Fırsat iptal edildi ve arşive taşındı.",
+        "success",
+      );
+    } catch (cancelError) {
+      console.error(
+        "Opportunity cancel error:",
+        cancelError,
+      );
+
+      showToast(
+        "Fırsat iptal edilemedi. Lütfen tekrar deneyin.",
+        "error",
+      );
+    } finally {
+      setCancelSubmitting(false);
+    }
+  }
 
   const approvedPriceSnapshots = useMemo(
     () =>
@@ -306,37 +482,50 @@ export function CompanyDetailPage() {
     [company?.id],
   );
 
-  // BUG-S26.003.2 — Firma Arşivi: signed contracts a Won closure has
-  // archived (see CustomerWorkspace.closeOpportunityAsWon). Read-only —
-  // this page never writes to generatedDocuments, it only displays the
-  // archived subset. Same read-once-per-company pattern as
-  // approvedPriceSnapshots above.
-  const archivedContracts = useMemo(
+  // Sprint 25.11 / Adım 1 — Katılım Geçmişi → "Teklifler"/"Sözleşmeler"
+  // folders. Every generated contract record for this company (any
+  // version) — read-only, this page never writes to generatedDocuments.
+  // Newest first.
+  const allGeneratedDocuments = useMemo(
     () =>
       company?.id
-        ? loadGeneratedDocuments(company.id).filter((document) =>
-            Boolean(document.archivedToCompanyArchiveAt),
+        ? [...loadGeneratedDocuments(company.id)].sort(
+            (a, b) =>
+              new Date(b.createdAt).getTime() -
+              new Date(a.createdAt).getTime(),
           )
         : [],
     [company?.id],
+  );
+
+  // Belge Yaşam Döngüsü sadeleştirmesi — hangi buton/ekrandan üretildiği
+  // artık ayrım kriteri değil: imzalanana kadar üretilen HER PDF
+  // (ilk teklif, revize teklif, "Sözleşme Hazırla" ile üretilen her
+  // versiyon, imzaya gönderilen son PDF) "Teklifler"dedir.
+  // record.status === "signed" (yalnızca "🟢 Katılım Onaylandı" ile
+  // imzalı PDF yüklendiğinde yazılır — CustomerWorkspace.
+  // handleSignedPdfUploaded) tek ayrım kriteridir; "Sözleşmeler" yalnızca
+  // bu durumdaki kayıtları gösterir.
+  const unsignedGeneratedDocuments = useMemo(
+    () =>
+      allGeneratedDocuments.filter(
+        (document) => document.status !== "signed",
+      ),
+    [allGeneratedDocuments],
+  );
+
+  const signedGeneratedDocuments = useMemo(
+    () =>
+      allGeneratedDocuments.filter(
+        (document) => document.status === "signed",
+      ),
+    [allGeneratedDocuments],
   );
 
   const activeOpportunities =
     sortedOpportunities.filter(
       (opportunity) =>
         !isTerminalBusinessStatus(
-          opportunity.stage,
-        ),
-    );
-
-  // Sprint 25.5 Section 5 — "Geçmiş Fırsatlar": every terminal record
-  // (Won, Lost, and still Signed-but-not-yet-verdicted) — the exact
-  // inverse of activeOpportunities above, so a record can never appear
-  // in both or neither.
-  const historicalOpportunities =
-    sortedOpportunities.filter(
-      (opportunity) =>
-        isTerminalBusinessStatus(
           opportunity.stage,
         ),
     );
@@ -360,6 +549,11 @@ export function CompanyDetailPage() {
 
   const [notesModalOpen, setNotesModalOpen] = useState(false);
   const [filesModalOpen, setFilesModalOpen] = useState(false);
+  // Sprint 25.11 / Adım 1 — Katılım Geçmişi's two folders. No documents
+  // are listed inline on the main page anymore; each folder opens this
+  // same CompanyDetailModal shell with the existing records.
+  const [proposalsModalOpen, setProposalsModalOpen] = useState(false);
+  const [contractsModalOpen, setContractsModalOpen] = useState(false);
   const [editingNote, setEditingNote] = useState(false);
   const placeholderPermanentNote =
     "Bu bölüm uzun süre geçerli kurumsal bilgileri içerir. Henüz kalıcı not eklenmedi.";
@@ -585,36 +779,6 @@ export function CompanyDetailPage() {
     );
   }
 
-  // Sprint 25.1 / Adım 2 — opens the same Workspace as "Çalışma Alanını
-  // Aç" above (same contact-selection guard, unchanged), plus the
-  // openEmail/template intent CallWorkspacePage/CustomerWorkspace already
-  // consume to auto-open the Workspace Email Panel once, pre-selected to
-  // Information Package. No opportunity is required — the Workspace
-  // itself never requires one (see CustomerWorkspace's draftOpportunity).
-  function handleOpenWorkspaceEmail() {
-    const emailIntentParams =
-      "openEmail=true&template=Information%20Package";
-
-    if (contacts.length === 0) {
-      navigate(
-        `/call?companyId=${encodeURIComponent(currentCompanyId)}&${emailIntentParams}`,
-      );
-      return;
-    }
-
-    if (!selectedContactId) {
-      showToast(
-        "Çalışma alanını açmak için görüşülecek kişiyi seçin.",
-        "error",
-      );
-      return;
-    }
-
-    navigate(
-      `/call?companyId=${encodeURIComponent(currentCompanyId)}&contactId=${encodeURIComponent(selectedContactId)}&${emailIntentParams}`,
-    );
-  }
-
   return (
     <main className="page company-detail-page">
       <CompanyHeader
@@ -755,16 +919,38 @@ export function CompanyDetailPage() {
                   }
                 }}
               >
-                <ExhibitionFileList
-                  opportunities={sortedOpportunities}
-                  exhibitionsById={exhibitionsById}
-                  formatStage={(value) => getBusinessStatusLabel(value) ?? "—"}
-                />
+                {/* Kritik Akış Düzeltmesi (Adım 1.1) — ExhibitionFileList
+                    itself renders one open-able card per TERMINAL
+                    opportunity; it must never render inline on the main
+                    page (that is exactly the "geçmiş kart ana sayfada
+                    açık görünüyor" regression). It now renders only
+                    inside filesModalOpen below — this trigger is a
+                    plain, static opener, same shape as the Katılım
+                    Geçmişi folders. */}
+                <span
+                  className="company-files-card-trigger-icon"
+                  aria-hidden="true"
+                >
+                  📁
+                </span>
+                <span className="muted">
+                  Kayıtlı fuar dosyalarını görüntülemek için tıklayın.
+                </span>
               </div>
             </section>
           </aside>
         </div>
 
+        {/* Sprint 25.11 / Adım 1.1 — .company-active-exhibitions was
+            hard-pinned to a single grid cell (grid-column:2; grid-row:1)
+            back when only "Aktif Fuarlar" ever used that class. Once a
+            second section ("Katılım Geçmişi") reused the same class,
+            both landed in the exact same cell and rendered on top of
+            each other — the reported header/card overlap. This wrapper
+            owns that grid cell instead and stacks its children
+            (flex column), so any number of sections here lay out one
+            below the other, never overlapping. */}
+        <div className="company-active-exhibitions-column">
         <section className="company-active-exhibitions" aria-labelledby="active-exhibitions-title">
           <div className="section-head">
             <p className="eyebrow" id="active-exhibitions-title">Aktif Fuarlar</p>
@@ -816,9 +1002,22 @@ export function CompanyDetailPage() {
 
                 return (
                   <Panel
-                    className="company-active-exhibition-card"
+                    className="company-active-exhibition-card company-active-exhibition-card--cancellable"
                     key={opportunity.id}
                   >
+                    <button
+                      type="button"
+                      className="company-active-exhibition-cancel-btn"
+                      title="Fırsatı İptal Et"
+                      aria-label={`${exhibitionName} fırsatını iptal et`}
+                      onClick={() =>
+                        setCancellingOpportunityId(
+                          opportunity.id,
+                        )
+                      }
+                    >
+                      ❌ İptal
+                    </button>
                     <h2 title={exhibitionName}>{exhibitionName}</h2>
                     <div className="data-list">
                       <div><span>İlgili Kişi</span><strong>{relatedContactName || "Belirtilmedi"}</strong></div>
@@ -856,152 +1055,60 @@ export function CompanyDetailPage() {
           </p>
         </section>
 
-        {historicalOpportunities.length > 0 ? (
-          <section
-            className="company-active-exhibitions"
-            aria-labelledby="past-exhibitions-title"
-          >
-            <div className="section-head">
-              <p className="eyebrow" id="past-exhibitions-title">
-                Geçmiş Fırsatlar
-              </p>
-            </div>
+        <section
+          className="company-active-exhibitions"
+          aria-labelledby="participation-history-title"
+        >
+          <div className="section-head">
+            <p
+              className="eyebrow"
+              id="participation-history-title"
+            >
+              Katılım Geçmişi
+            </p>
+          </div>
 
-            <div className="company-active-exhibition-grid">
-              {historicalOpportunities.map((opportunity) => {
-                const exhibition = opportunity.exhibition_id
-                  ? exhibitionsById.get(opportunity.exhibition_id)
-                  : undefined;
-                const exhibitionName = exhibition?.name || "—";
-                const total =
-                  opportunity.price_grand_total ??
-                  opportunity.estimated_value;
-                const relatedContact = opportunity.contact_id
-                  ? contacts.find(
-                      (contact) => contact.id === opportunity.contact_id,
-                    )
-                  : undefined;
-                const relatedContactName = relatedContact
-                  ? [relatedContact.first_name, relatedContact.last_name]
-                      .filter(Boolean)
-                      .join(" ")
-                      .trim()
-                  : "Belirtilmedi";
-                const lostReasonLabel =
-                  opportunity.stage === "lost"
-                    ? getLostReasonLabel(opportunity.closure_reason)
-                    : undefined;
+          <div className="company-history-folder-grid">
+            <button
+              type="button"
+              className="company-history-folder"
+              onClick={() =>
+                setProposalsModalOpen(true)
+              }
+            >
+              <span
+                className="company-history-folder-icon"
+                aria-hidden="true"
+              >
+                📁
+              </span>
+              Teklifler
+              <span className="company-history-folder-count">
+                {unsignedGeneratedDocuments.length}
+              </span>
+            </button>
 
-                return (
-                  <Panel
-                    className="company-active-exhibition-card"
-                    key={opportunity.id}
-                  >
-                    <h2 title={exhibitionName}>{exhibitionName}</h2>
-                    <div className="data-list">
-                      <div>
-                        <span>İlgili Kişi</span>
-                        <strong>{relatedContactName || "Belirtilmedi"}</strong>
-                      </div>
-                      <div>
-                        <span>Durum</span>
-                        <strong>
-                          {getBusinessStatusLabel(opportunity.stage) ?? "—"}
-                        </strong>
-                      </div>
-                      <div>
-                        <span>Kapanış Tarihi</span>
-                        <strong>
-                          {opportunity.closed_at
-                            ? formatDate(opportunity.closed_at)
-                            : "—"}
-                        </strong>
-                      </div>
-                      {lostReasonLabel ? (
-                        <div>
-                          <span>Sebep</span>
-                          <strong>{lostReasonLabel}</strong>
-                        </div>
-                      ) : null}
-                      <div>
-                        <span>Stand</span>
-                        <strong>
-                          {formatStandType(opportunity.price_stand_type)}
-                        </strong>
-                      </div>
-                      <div>
-                        <span>Toplam</span>
-                        <strong>
-                          {total != null
-                            ? `${total.toLocaleString("tr-TR")} ${
-                                opportunity.price_currency ?? ""
-                              }`.trim()
-                            : "—"}
-                        </strong>
-                      </div>
-                    </div>
-                  </Panel>
-                );
-              })}
-            </div>
-          </section>
-        ) : null}
-
-        {archivedContracts.length > 0 ? (
-          <section
-            className="company-active-exhibitions"
-            aria-labelledby="company-archive-title"
-          >
-            <div className="section-head">
-              <p className="eyebrow" id="company-archive-title">
-                Firma Arşivi
-              </p>
-            </div>
-
-            <div className="company-active-exhibition-grid">
-              {archivedContracts.map((document) => {
-                const exhibition = document.exhibitionId
-                  ? exhibitionsById.get(document.exhibitionId)
-                  : undefined;
-                const exhibitionName = exhibition?.name || "—";
-
-                return (
-                  <Panel
-                    className="company-active-exhibition-card"
-                    key={document.id}
-                  >
-                    <h2 title={document.contractNumber}>
-                      {document.contractNumber}
-                    </h2>
-                    <div className="data-list">
-                      <div>
-                        <span>Fuar</span>
-                        <strong>{exhibitionName}</strong>
-                      </div>
-                      <div>
-                        <span>Belge</span>
-                        <strong>
-                          {document.signedPdfFileName ??
-                            document.fileName}
-                        </strong>
-                      </div>
-                      <div>
-                        <span>Arşivlenme Tarihi</span>
-                        <strong>
-                          {document.archivedToCompanyArchiveAt
-                            ? formatDate(
-                                document.archivedToCompanyArchiveAt,
-                              )
-                            : "—"}
-                        </strong>
-                      </div>
-                    </div>
-                  </Panel>
-                );
-              })}
-            </div>
-          </section>
-        ) : null}
+            <button
+              type="button"
+              className="company-history-folder"
+              onClick={() =>
+                setContractsModalOpen(true)
+              }
+            >
+              <span
+                className="company-history-folder-icon"
+                aria-hidden="true"
+              >
+                📁
+              </span>
+              Sözleşmeler
+              <span className="company-history-folder-count">
+                {signedGeneratedDocuments.length}
+              </span>
+            </button>
+          </div>
+        </section>
+        </div>
       </div>
 
       <section className="company-workspace-transition">
@@ -1011,14 +1118,6 @@ export function CompanyDetailPage() {
           onClick={handleOpenGeneralWorkspace}
         >
           Çalışma Alanını Aç
-        </button>
-
-        <button
-          type="button"
-          className="btn company-workspace-cta-btn"
-          onClick={handleOpenWorkspaceEmail}
-        >
-          E-posta Gönder
         </button>
 
         <div className="company-record-metadata" aria-label="Kayıt bilgileri">
@@ -1056,11 +1155,96 @@ export function CompanyDetailPage() {
 
       {filesModalOpen ? (
         <CompanyDetailModal title="Fuar Dosyaları" onClose={() => setFilesModalOpen(false)}>
-          <div className="company-files-placeholder">
-            <p className="eyebrow">Fuar Klasörleri</p>
-            <h3>Henüz klasör yok</h3>
-            <p className="muted">Bu alan gelecek sprintte sözleşmeler, stand tasarımları, fotoğraflar ve diğer belgeleri içerecek.</p>
-          </div>
+          <ExhibitionFileList
+            opportunities={sortedOpportunities}
+            exhibitionsById={exhibitionsById}
+          />
+        </CompanyDetailModal>
+      ) : null}
+
+      {cancellingOpportunityId ? (
+        <CloseOpportunityModal
+          initialStep="lost-reason"
+          submitting={cancelSubmitting}
+          onClose={() => {
+            if (!cancelSubmitting) {
+              setCancellingOpportunityId(null);
+            }
+          }}
+          onContinue={() =>
+            setCancellingOpportunityId(null)
+          }
+          onConfirmWon={() =>
+            setCancellingOpportunityId(null)
+          }
+          onConfirmLost={(reasonId, note) =>
+            void handleCancelOpportunity(
+              reasonId,
+              note,
+            )
+          }
+        />
+      ) : null}
+
+      {proposalsModalOpen ? (
+        <CompanyDetailModal
+          title="Teklifler"
+          onClose={() =>
+            setProposalsModalOpen(false)
+          }
+        >
+          {unsignedGeneratedDocuments.length ===
+          0 ? (
+            <p className="muted">
+              Henüz oluşturulmuş bir teklif yok.
+            </p>
+          ) : (
+            <div className="company-history-record-list">
+              {unsignedGeneratedDocuments.map(
+                (document) => (
+                  <GeneratedDocumentRecordCard
+                    key={document.id}
+                    document={document}
+                    exhibitionsById={
+                      exhibitionsById
+                    }
+                    formatDate={formatDate}
+                  />
+                ),
+              )}
+            </div>
+          )}
+        </CompanyDetailModal>
+      ) : null}
+
+      {contractsModalOpen ? (
+        <CompanyDetailModal
+          title="Sözleşmeler"
+          onClose={() =>
+            setContractsModalOpen(false)
+          }
+        >
+          {signedGeneratedDocuments.length ===
+          0 ? (
+            <p className="muted">
+              Henüz imzalanmış bir sözleşme yok.
+            </p>
+          ) : (
+            <div className="company-history-record-list">
+              {signedGeneratedDocuments.map(
+                (document) => (
+                  <GeneratedDocumentRecordCard
+                    key={document.id}
+                    document={document}
+                    exhibitionsById={
+                      exhibitionsById
+                    }
+                    formatDate={formatDate}
+                  />
+                ),
+              )}
+            </div>
+          )}
         </CompanyDetailModal>
       ) : null}
     </main>

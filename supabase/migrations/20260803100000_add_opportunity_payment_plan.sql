@@ -1,0 +1,32 @@
+-- Sprint 25.8 / Adım 2 — Ödeme Planı Veri Giriş Alanı.
+--
+-- Same situation as stand_materials (see
+-- 20260803090000_add_opportunity_stand_materials.sql): the participation
+-- contract's Ödeme Planı has been merge-ready for a while
+-- (PaymentPlan.Payment1-5.DueDate/.Amount/.Payee in
+-- src/modules/document-engine/merge/participationContractMapping.ts,
+-- and DocumentPaymentPlanItem/payment_plan in
+-- src/modules/document-engine/merge/models.ts), but this table had no
+-- column for it, so every generated contract's Ödeme Planı rendered
+-- fully blank. This adds the one column the existing mapping already
+-- reads by name.
+--
+-- payment_plan is a JSON array of up to 5 independent entries, each
+-- shaped as { "dueDate"?: string, "amount"?: number, "payee"?: string }
+-- (the master template's own visible column header for "payee" is
+-- "AÇIKLAMA" — see Sprint 25.4 — but the Content Control tag itself,
+-- which this column is unchanged from, is Payee). Rows are independent:
+-- a shorter array (e.g. only index 0 filled) is valid and simply leaves
+-- PaymentPlan.Payment2-5 blank, exactly like today's behavior for an
+-- opportunity with no payment_plan at all.
+--
+-- Nullable, no default, no backfill: an opportunity that predates this
+-- migration (or hasn't had its payment plan edited yet) simply has
+-- payment_plan as null, which the existing mapping already treats as
+-- "all 5 rows blank" — identical to today's behavior.
+--
+-- Run this manually in the Supabase SQL Editor (or via `supabase db
+-- push`) — matches every other migration in this folder.
+
+alter table public.opportunities
+  add column if not exists payment_plan jsonb;

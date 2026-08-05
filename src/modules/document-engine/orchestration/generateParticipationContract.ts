@@ -1,3 +1,4 @@
+import { formatContractDate } from "../engine/formatContractDate";
 import { resolveTemplateMerge } from "../merge/mergeEngine";
 import { participationContractMapping } from "../merge/participationContractMapping";
 import type { DocumentMergeContext } from "../merge/models";
@@ -8,6 +9,67 @@ import type {
   GenerateParticipationContractInput,
   GenerateParticipationContractResult,
 } from "./models";
+import type { OpportunityPaymentPlanItem } from "../../../types/database";
+
+function maskId(value: string): string {
+  return value.length <= 8 ? value : `${value.slice(0, 8)}…`;
+}
+
+// RC-02 — v1 güvenlik kuralı: ödeme planı vadeleri toplamı, onaylı
+// fiyatın genel toplamıyla (kuruş/cent farkları hariç) birebir eşit
+// olmalıdır. Boş satırlar 0 kabul edilir, dolayısıyla genel toplam
+// pozitifken boş bir ödeme planı da bu kontrolden geçemez — ayrı bir
+// "boş plan" özel durumu yok, tek bir eşitlik kontrolü hepsini kapsar.
+const PAYMENT_PLAN_AMOUNT_TOLERANCE = 0.01;
+
+function isCloseEnough(a: number, b: number): boolean {
+  return Math.abs(a - b) <= PAYMENT_PLAN_AMOUNT_TOLERANCE;
+}
+
+function sumPaymentPlanAmounts(
+  paymentPlan:
+    | readonly OpportunityPaymentPlanItem[]
+    | null
+    | undefined,
+): number {
+  return (paymentPlan ?? []).reduce((total, row) => {
+    const amount = row?.amount;
+    return Number.isFinite(amount)
+      ? total + (amount as number)
+      : total;
+  }, 0);
+}
+
+function formatMoneyForMessage(
+  value: number,
+  currency: string,
+): string {
+  try {
+    return new Intl.NumberFormat("tr-TR", {
+      style: "currency",
+      currency,
+      currencyDisplay: "code",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  } catch {
+    return `${value.toFixed(2)} ${currency}`;
+  }
+}
+
+function buildPaymentPlanMismatchMessage(
+  paymentPlanTotal: number,
+  grandTotal: number,
+  currency: string,
+): string {
+  const difference = paymentPlanTotal - grandTotal;
+  const detail =
+    difference < 0
+      ? `Ödeme planı toplamı genel toplamdan ${formatMoneyForMessage(-difference, currency)} eksiktir.`
+      : `Ödeme planı toplamı genel toplamdan ${formatMoneyForMessage(difference, currency)} fazladır.`;
+
+  return `Ödeme planı toplamı, genel toplam ile eşleşmelidir. ${detail}`;
+}
 
 function failedResult(input: {
   request: GenerateParticipationContractInput;
@@ -161,6 +223,34 @@ export async function generateParticipationContract(
     });
   }
 
+  dependencies.logCheckpoint?.("approved_price_snapshot_loaded", {
+    companyId: maskId(company.id),
+    opportunityId: maskId(opportunity.id),
+  });
+
+  const paymentPlanTotal = sumPaymentPlanAmounts(
+    opportunity.payment_plan,
+  );
+  const grandTotal = priceSnapshot.priceResult.grandTotal;
+
+  if (!isCloseEnough(paymentPlanTotal, grandTotal)) {
+    return failedResult({
+      request,
+      generatedAt,
+      exhibitionId: exhibition.id,
+      errors: [
+        {
+          code: "PAYMENT_PLAN_TOTAL_MISMATCH",
+          message: buildPaymentPlanMismatchMessage(
+            paymentPlanTotal,
+            grandTotal,
+            priceSnapshot.priceResult.currency,
+          ),
+        },
+      ],
+    });
+  }
+
   const settings = await dataSource.loadSettings();
 
   if (!settings) {
@@ -177,6 +267,11 @@ export async function generateParticipationContract(
     });
   }
 
+  dependencies.logCheckpoint?.("document_settings_loaded", {
+    companyId: maskId(company.id),
+    opportunityId: maskId(opportunity.id),
+  });
+
   const contractNumber = await dataSource.resolveContractNumber({
     companyId: company.id,
     opportunityId: opportunity.id,
@@ -192,13 +287,30 @@ export async function generateParticipationContract(
     settings,
     document: {
       contractNumber,
-      issueDate: generatedAt.toISOString(),
+      // Sprint 25.3 — the raw ISO datetime (with time/ms/Z) was wrapping
+      // onto a second line in the header's narrow "Düzenleme Tarihi"
+      // cell. formatContractDate is the same dd.MM.yyyy formatter the
+      // live preview (ParticipationContractDocument.tsx) already uses
+      // for this exact field.
+      issueDate: formatContractDate(
+        generatedAt.toISOString(),
+      ),
     },
   };
+  dependencies.logCheckpoint?.("contract_mapping_started", {
+    companyId: maskId(company.id),
+    opportunityId: maskId(opportunity.id),
+  });
+
   const mergeResult = resolveTemplateMerge(
     participationContractMapping,
     context,
   );
+
+  dependencies.logCheckpoint?.("contract_mapping_completed", {
+    companyId: maskId(company.id),
+    opportunityId: maskId(opportunity.id),
+  });
 
   if (mergeResult.missingRequiredTags.length > 0) {
     return failedResult({

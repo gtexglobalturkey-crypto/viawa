@@ -13,7 +13,6 @@ import type {
 
 import {
   createActiveReminderIfAbsent,
-  createReminder,
   updateReminder,
 } from "../../services/supabase/reminderService";
 
@@ -471,33 +470,32 @@ export function initializeExecutionListeners() {
 
     let nextActionScheduled = false;
 
+    // RC-03 — this whole "next task" mechanism only ever means one thing:
+    // an automatic follow-up reminder FOR THIS OPPORTUNITY's own
+    // progression (call review, quotation feedback, contract tracking,
+    // ...). It must never create a reminder it can't attach to a real
+    // opportunity: an opportunity_id:null / task_type:null row is
+    // indistinguishable from a genuine manual company task, so it can
+    // never be completed when that opportunity later closes (see the
+    // RC-03 diagnostic report — this is exactly how the 4 orphan
+    // reminders were produced). When there's no real opportunity context
+    // (payload.opportunityId missing) or no matching task type, no
+    // reminder is created at all — not "created without a link".
     if (
       payload.companyId &&
+      payload.opportunityId &&
       nextTask &&
+      nextTaskType &&
       reminderDate
     ) {
-      if (
-        payload.opportunityId &&
-        nextTaskType
-      ) {
-        await createActiveReminderIfAbsent({
-          companyId: payload.companyId,
-          opportunityId:
-            payload.opportunityId,
-          taskType: nextTaskType,
-          title: nextTask,
-          dueDate: reminderDate,
-        });
-      } else {
-        await createReminder({
-          company_id:
-            payload.companyId,
-          title: nextTask,
-          due_date:
-            reminderDate,
-          completed: false,
-        });
-      }
+      await createActiveReminderIfAbsent({
+        companyId: payload.companyId,
+        opportunityId:
+          payload.opportunityId,
+        taskType: nextTaskType,
+        title: nextTask,
+        dueDate: reminderDate,
+      });
 
       nextActionScheduled = true;
     }

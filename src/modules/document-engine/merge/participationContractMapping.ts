@@ -20,7 +20,7 @@ const STAND_TYPE_LABELS: Readonly<
   outdoor: "Dış Alan",
 };
 
-const MATERIAL_KEYS = [
+export const MATERIAL_KEYS = [
   "HeaderText",
   "DigitalPrints",
   "Table",
@@ -35,7 +35,9 @@ const MATERIAL_KEYS = [
   "Other",
 ] as const;
 
-const QUANTITY_MATERIAL_KEYS = [
+export type MaterialKey = (typeof MATERIAL_KEYS)[number];
+
+export const QUANTITY_MATERIAL_KEYS = [
   "Table",
   "Shelf",
   "HangingRail",
@@ -47,8 +49,44 @@ const QUANTITY_MATERIAL_KEYS = [
   "WasteBin",
 ] as const;
 
+// Sprint 25.8 — the master DOCX template's Stand Malzemeleri row labels
+// are static text next to each StandMaterials.{key} checkbox/quantity
+// Content Control (verified directly against
+// resources/templates/VIAWA_Sozlesme_Sablonu_v2.3_1_Doldurulabilir.docx),
+// not a Content Control themselves. Kept here, alongside MATERIAL_KEYS,
+// as the single place a data-entry UI reads real key/label pairs from —
+// never a UI-side guess or a second hardcoded copy.
+export const MATERIAL_LABELS: Readonly<Record<MaterialKey, string>> = {
+  HeaderText: "Alınlık Yazısı",
+  DigitalPrints: "Dijital Baskılar",
+  Table: "Masa",
+  Shelf: "Raf",
+  HangingRail: "Askılık Boru",
+  Spotlight: "Spot",
+  PowerSocket: "Priz",
+  Refrigerator: "Buzdolabı",
+  InfoDesk: "Info Desk",
+  Chair: "Sandalye",
+  WasteBin: "Çöp Kovası",
+  Other: "Diğer",
+};
+
+// Sprint 25.3 — document_settings' issuer/bank rows use the literal
+// string "TO_BE_DEFINED" as their own deliberate not-yet-configured
+// sentinel (see the row's own `status: "DEMO_CONFIGURATION"` marker,
+// already surfaced today by document-service's /ready endpoint as
+// `businessConfiguration: "demo"`). The merge/mapping layer never saw
+// that sentinel before and passed it straight through into the PDF as
+// literal visible text. Treated exactly like an empty value (never
+// invents a real address/bank name) — the Content Control simply
+// renders blank, same as any other genuinely-empty optional field.
+const UNCONFIGURED_SENTINEL = "TO_BE_DEFINED";
+
 function clean(value: string | null | undefined) {
-  return value?.trim() || undefined;
+  const trimmed = value?.trim();
+  return trimmed && trimmed !== UNCONFIGURED_SENTINEL
+    ? trimmed
+    : undefined;
 }
 
 function fullName(contact: Contact | undefined) {
@@ -248,6 +286,18 @@ const fields: TemplateFieldMapping<DocumentMergeContext>[] = [
     resolve: ({ company }) => clean(company.address),
   },
   {
+    tag: "Company.City",
+    title: "Company City",
+    source: "company",
+    resolve: ({ company }) => clean(company.city),
+  },
+  {
+    tag: "Company.Country",
+    title: "Company Country",
+    source: "company",
+    resolve: ({ company }) => clean(company.country),
+  },
+  {
     tag: "Company.TaxOffice",
     title: "Company Tax Office",
     source: "company",
@@ -270,6 +320,12 @@ const fields: TemplateFieldMapping<DocumentMergeContext>[] = [
     title: "Primary Contact Email",
     source: "contact.primary",
     resolve: (context) => clean(primaryContact(context)?.email),
+  },
+  {
+    tag: "Company.Website",
+    title: "Company Website",
+    source: "company",
+    resolve: ({ company }) => clean(company.website),
   },
   {
     tag: "Contact.ExhibitionContact",

@@ -1,6 +1,33 @@
 import { isActiveBusinessStatus } from "../../../types/businessStatus";
 import type { Opportunity } from "../../../types/database";
 
+// Kritik Akış Düzeltmesi 2 — when a company/fuar combination has more
+// than one opportunity for the same exhibition_id (e.g. one already
+// lost, a newer one still open), the fuar-only heuristic below cannot
+// tell them apart by intent — it can only guess "prefer active, else
+// most recent". A specific opportunity requested by id (Today task
+// links, "?opportunityId=" in the URL) must always win over that guess:
+// its own real id and stage decide the workspace's open/closed state,
+// never a sibling's. Scoped to the given selectedExhibitionId so an id
+// left over from a since-abandoned fuar selection never leaks in.
+function findExplicitOpportunityMatch(
+  opportunities: readonly Opportunity[],
+  selectedExhibitionId: string | null,
+  explicitOpportunityId: string | null | undefined,
+): Opportunity | null {
+  if (!explicitOpportunityId || !selectedExhibitionId) {
+    return null;
+  }
+
+  const match = opportunities.find(
+    (opportunity) => opportunity.id === explicitOpportunityId,
+  );
+
+  return match && match.exhibition_id === selectedExhibitionId
+    ? match
+    : null;
+}
+
 /**
  * Sprint 25.1 — the workspace's opportunity, if any, is derived FROM the
  * sidebar's selected fuar (selectedExhibitionId), never the other way
@@ -12,13 +39,29 @@ import type { Opportunity } from "../../../types/database";
  * recent non-active one (opportunities are expected pre-sorted
  * newest-first, as getOpportunitiesByCompany returns them) so a
  * closed/won record for that fuar still surfaces instead of nothing.
+ *
+ * Kritik Akış Düzeltmesi 2 — explicitOpportunityId (optional), when it
+ * resolves to a real opportunity for this exact exhibitionId, is used
+ * directly instead of the active-first/most-recent guess below — see
+ * findExplicitOpportunityMatch.
  */
 export function selectOpportunityForExhibition(
   opportunities: readonly Opportunity[],
   selectedExhibitionId: string | null,
+  explicitOpportunityId?: string | null,
 ): Opportunity | null {
   if (!selectedExhibitionId) {
     return null;
+  }
+
+  const explicitMatch = findExplicitOpportunityMatch(
+    opportunities,
+    selectedExhibitionId,
+    explicitOpportunityId,
+  );
+
+  if (explicitMatch) {
+    return explicitMatch;
   }
 
   const matches = opportunities.filter(
@@ -48,25 +91,46 @@ export function selectOpportunityForExhibition(
  * new opportunity in CustomerWorkspace) is checked first so an opportunity
  * created earlier in the same session is reused immediately, without
  * waiting for the `opportunities` prop to refresh from Supabase.
+ *
+ * Kritik Akış Düzeltmesi 2 — explicitOpportunityId (optional) is tried
+ * next, before the fuar-only heuristic, via selectOpportunityForExhibition
+ * — same as viewedOpportunity. Still subject to the terminal exclusion
+ * just below: an explicitly requested but closed opportunity is exactly
+ * as unusable for actions here as no match at all, so it still resolves
+ * to null (matching), never reused/reactivated.
  */
 export function resolveSessionOpportunity(input: {
   opportunities: readonly Opportunity[];
   selectedExhibitionId: string | null;
   sessionOpportunityId: string | null;
+  explicitOpportunityId?: string | null;
 }): Opportunity | null {
   const {
     opportunities,
     selectedExhibitionId,
     sessionOpportunityId,
+    explicitOpportunityId,
   } = input;
 
+  // RC-05 — sessionOpportunityId can outlive the record it points to
+  // becoming terminal within the same session (e.g. it was created
+  // earlier for this fuar, then "Katılım Onaylandı" moved it to
+  // "signed" without the sidebar fuar ever changing, which is the only
+  // thing that clears this id). A terminal sessionMatch must fall
+  // through to the same active-only rule below, exactly like this
+  // function's own doc comment above already promises for the
+  // explicitOpportunityId/fuar-heuristic path — otherwise a just-closed
+  // opportunity keeps being treated as reusable for actions.
   if (sessionOpportunityId) {
     const sessionMatch = opportunities.find(
       (opportunity) =>
         opportunity.id === sessionOpportunityId,
     );
 
-    if (sessionMatch) {
+    if (
+      sessionMatch &&
+      isActiveBusinessStatus(sessionMatch.stage)
+    ) {
       return sessionMatch;
     }
   }
@@ -74,6 +138,7 @@ export function resolveSessionOpportunity(input: {
   const matched = selectOpportunityForExhibition(
     opportunities,
     selectedExhibitionId,
+    explicitOpportunityId,
   );
 
   return matched && isActiveBusinessStatus(matched.stage)

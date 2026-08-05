@@ -185,9 +185,44 @@ export interface Opportunity {
   closure_reason?: string | null;
   closure_note?: string | null;
 
+  // Sprint 25.8 — the participation contract's "Stand Malzemeleri" data
+  // entry (see
+  // supabase/migrations/20260803090000_add_opportunity_stand_materials.sql).
+  // Keyed by the same material keys
+  // participationContractMapping.ts's MATERIAL_KEYS already reads
+  // (Table, Shelf, HangingRail, Spotlight, PowerSocket, Refrigerator,
+  // InfoDesk, Chair, WasteBin, HeaderText, DigitalPrints, Other).
+  // extra_information holds up to 3 free-text lines (ExtraInformation.Line1-3).
+  // Both null until a user has edited stand materials for this opportunity.
+  stand_materials?: Readonly<
+    Record<string, OpportunityStandMaterial>
+  > | null;
+  extra_information?: readonly string[] | null;
+
+  // Sprint 25.8 / Adım 2 — the participation contract's "Ödeme Planı"
+  // data entry (see
+  // supabase/migrations/20260803100000_add_opportunity_payment_plan.sql).
+  // Up to 5 independent entries, matching
+  // PaymentPlan.Payment1-5.DueDate/.Amount/.Payee in
+  // participationContractMapping.ts. Rows are independent — a shorter
+  // array (or null) simply leaves the remaining rows blank, never
+  // auto-filled or auto-totaled.
+  payment_plan?: readonly OpportunityPaymentPlanItem[] | null;
+
   created_at: string;
   updated_at: string;
 }
+
+export type OpportunityStandMaterial = {
+  selected: boolean;
+  quantity?: number | null;
+};
+
+export type OpportunityPaymentPlanItem = {
+  dueDate?: string | null;
+  amount?: number | null;
+  payee?: string | null;
+};
 
 export interface TimelineEvent {
   id: string;

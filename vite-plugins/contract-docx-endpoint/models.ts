@@ -40,6 +40,8 @@ export type ContractDocxEndpointDependencies = {
     cleanup?: () => Promise<void>;
   }>;
   logError?: (message: string, error: unknown) => void;
+  logCheckpoint?: (stage: string, context?: Record<string, unknown>) => void;
+  isDevelopment?: boolean;
 };
 
 export type ContractDocxHttpRequest = {

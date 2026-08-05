@@ -18,6 +18,7 @@ export type ContractGenerationValidationCode =
   | "PRIMARY_CONTACT_NOT_FOUND"
   | "SIGNATORY_CONTACT_NOT_FOUND"
   | "APPROVED_PRICE_NOT_FOUND"
+  | "PAYMENT_PLAN_TOTAL_MISMATCH"
   | "SETTINGS_NOT_FOUND"
   | "REQUIRED_TEMPLATE_FIELD_MISSING";
 
@@ -96,4 +97,5 @@ export type ContractGenerationOrchestratorDependencies = {
   dataSource: ContractGenerationDataSource;
   docxGenerator: ContractDocxGenerationPort;
   now?: () => Date;
+  logCheckpoint?: (stage: string, context?: Record<string, unknown>) => void;
 };

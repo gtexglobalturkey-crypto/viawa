@@ -52,10 +52,6 @@ import {
 } from "../../services/supabase/contactService";
 
 import {
-  createOpportunity,
-} from "../../services/supabase/opportunityService";
-
-import {
   createTimelineEvent,
 } from "../../services/supabase/timelineService";
 
@@ -160,15 +156,6 @@ const initialFormState: CompanyFormState = {
   contact4IsPrimary: false,
   contact4IsSignatory: false,
 };
-
-function getDefaultNextActionDate(): string {
-  const date = new Date();
-
-  date.setDate(date.getDate() + 1);
-  date.setHours(10, 0, 0, 0);
-
-  return date.toISOString();
-}
 
 type PersonInput = {
   name: string;
@@ -823,54 +810,13 @@ export function NewCompanyPage() {
           );
         }
 
-        try {
-          const opportunity =
-            await createOpportunity(
-              {
-                company_id:
-                  company.id,
-                exhibition_id: null,
-                stage: "new",
-                interest_level: 25,
-                estimated_value: 0,
-                next_action:
-                  "Initial sales call",
-                next_action_date:
-                  getDefaultNextActionDate(),
-                owner: null,
-              },
-            );
-
-          try {
-            await createTimelineEvent(
-              {
-                company_id:
-                  company.id,
-                opportunity_id:
-                  opportunity.id,
-                type: "opportunity-created",
-                title:
-                  "Katılım fırsatı oluşturuldu",
-                description: `${companyName} için yeni bir katılım fırsatı oluşturuldu.`,
-              },
-            );
-          } catch (timelineError) {
-            console.error(
-              "Opportunity timeline creation error:",
-              timelineError,
-            );
-          }
-        } catch (opportunityError) {
-          console.error(
-            "Opportunity creation error:",
-            opportunityError,
-          );
-
-          showToast(
-            "Firma oluşturuldu ancak katılım fırsatı oluşturulamadı.",
-            "error",
-          );
-        }
+        // UAT-01 — yeni firma oluşturulduğunda hiçbir opportunity kaydı
+        // OLUŞTURULMAMALI. Daha önce burada otomatik olarak boş/draft
+        // bir "hoş geldin" opportunity'si (stage:"new",
+        // exhibition_id:null) yaratılıyordu — Company Detail'in "Aktif
+        // Fırsatlar" alanını yanlışlıkla 0/4 yerine 1/4 gösteriyordu.
+        // Gerçek opportunity'ler yalnızca bir fuar seçilip Workspace'te
+        // "Görüşmeyi Tamamla" ile (ensureActiveOpportunity) oluşturulur.
       }
 
       let contactsFailed = false;

@@ -39,16 +39,29 @@ import {
 } from "../../services/supabase/productGroupService";
 
 import {
-  COMPANY_STATUS_LABELS,
   getBusinessStatusLabel,
   isTerminalBusinessStatus,
-  resolveCompanyStatus,
+  MAX_ACTIVE_OPPORTUNITIES_PER_COMPANY,
   type CompanyStatusLabel,
 } from "../../types/businessStatus";
+import { resolveCompanyRowSummary } from "./models/companyRowSummary";
+
+// Kritik Akış Düzeltmesi 8 — Companies satırı (bkz.
+// resolveCompanyRowSummary, Kritik Akış Düzeltmesi 7) artık yalnızca bu
+// iki durumu üretebiliyor. businessStatus.ts'in kendi COMPANY_STATUS_LABELS
+// listesi (Yeni Firma/Sözleşmeli Firma dahil, 4 durumlu) kasıtlı olarak
+// KULLANILMIYOR ve değiştirilmedi — CompanyDetailPage gibi başka
+// ekranlarda hâlâ o daha geniş modeli kullanıyor. Bu, yalnızca Companies
+// listesinin filtre dropdown'ını kendi özet mantığıyla uyumlu tutan,
+// bu sayfaya özel bir liste.
+const COMPANIES_STATUS_FILTER_OPTIONS = [
+  "Potansiyel Firma",
+  "Pasif Firma",
+] as const satisfies readonly CompanyStatusLabel[];
 
 type StatusFilter =
   | "all"
-  | CompanyStatusLabel;
+  | (typeof COMPANIES_STATUS_FILTER_OPTIONS)[number];
 
 function normalizeValue(
   value: string | null | undefined,
@@ -60,13 +73,13 @@ function formatDate(
   value: string | null | undefined,
 ): string {
   if (!value) {
-    return "Planlanmadı";
+    return "—";
   }
 
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return "Planlanmadı";
+    return "—";
   }
 
   return new Intl.DateTimeFormat("tr-TR", {
@@ -620,39 +633,23 @@ export function CompaniesPage() {
                 company.id,
             );
 
-          const orderedOpportunities =
-            [...companyOpportunities].sort(
-              (
-                firstOpportunity,
-                secondOpportunity,
-              ) => {
-                const firstDate =
-                  firstOpportunity
-                    .next_action_date
-                    ? new Date(
-                        firstOpportunity
-                          .next_action_date,
-                      ).getTime()
-                    : Number.POSITIVE_INFINITY;
-
-                const secondDate =
-                  secondOpportunity
-                    .next_action_date
-                    ? new Date(
-                        secondOpportunity
-                          .next_action_date,
-                      ).getTime()
-                    : Number.POSITIVE_INFINITY;
-
-                return (
-                  firstDate - secondDate
-                );
-              },
-            );
-
-          const nextOpportunity =
-            orderedOpportunities[0] ??
-            null;
+          // Kritik Akış Düzeltmesi 7 — Companies satırı yalnızca aktif
+          // (terminal olmayan) opportunity'lerden beslenir. Kaybedildi/
+          // İmzalar Tamamlandı gibi terminal kayıtlar burada asla
+          // aşama/sonraki aksiyon/durum üretmez — onlar artık yalnızca
+          // Timeline, Katılım Geçmişi ve Belge Arşivi içinde yaşar (bkz.
+          // CompanyDetailPage). companyOpportunities.length hâlâ ham
+          // (aktif+terminal) sayıyı taşıyor — yalnızca "Fırsatlar"
+          // sütununun KENDİSİ artık bunu değil, activeOpportunities'i
+          // kullanıyor (aşağıda). Asıl kural resolveCompanyRowSummary'de
+          // (birim testli — bkz. companyRowSummary.test.mjs).
+          const {
+            activeOpportunities,
+            nextOpportunity,
+            companyStatus,
+          } = resolveCompanyRowSummary(
+            companyOpportunities,
+          );
 
           const sectors =
             companySectorsByCompanyId.get(
@@ -669,13 +666,11 @@ export function CompaniesPage() {
             sectors,
             opportunities:
               companyOpportunities,
+            activeOpportunities,
             productGroups:
               companyProductGroups,
             nextOpportunity,
-            companyStatus:
-              resolveCompanyStatus(
-                companyOpportunities,
-              ),
+            companyStatus,
           };
         },
       );
@@ -849,7 +844,7 @@ export function CompaniesPage() {
       "Ülke",
       "Sektör",
       "Durum",
-      "Fırsatlar",
+      "Aktif Fırsatlar",
       "Aşama",
       "Sonraki Aksiyon",
       "Sonraki Aksiyon Tarihi",
@@ -858,8 +853,7 @@ export function CompaniesPage() {
     const rows = filteredRows.map(
       ({
         company,
-        opportunities:
-          companyOpportunities,
+        activeOpportunities,
         nextOpportunity,
         companyStatus,
       }) => [
@@ -870,7 +864,7 @@ export function CompaniesPage() {
         company.country ?? "",
         company.industry ?? "",
         companyStatus,
-        companyOpportunities.length,
+        `${activeOpportunities.length} / ${MAX_ACTIVE_OPPORTUNITIES_PER_COMPANY}`,
         formatStageLabel(
           nextOpportunity?.stage,
         ) ?? "",
@@ -1071,7 +1065,7 @@ export function CompaniesPage() {
                 Tüm Durumlar
               </option>
 
-              {COMPANY_STATUS_LABELS.map(
+              {COMPANIES_STATUS_FILTER_OPTIONS.map(
                 (status) => (
                   <option key={status} value={status}>
                     {status}
@@ -1243,8 +1237,7 @@ export function CompaniesPage() {
               {filteredRows.map(
                 ({
                   company,
-                  opportunities:
-                    companyOpportunities,
+                  activeOpportunities,
                   nextOpportunity,
                   companyStatus,
                 }) => {
@@ -1263,7 +1256,7 @@ export function CompaniesPage() {
                   const stage =
                     formatStageLabel(
                       nextOpportunity?.stage,
-                    ) ?? "Fırsat yok";
+                    ) ?? "—";
 
                   return (
                     <Panel
@@ -1315,12 +1308,16 @@ export function CompaniesPage() {
 
                       <div>
                         <span>
-                          Fırsatlar
+                          Aktif Fırsatlar
                         </span>
 
                         <strong>
                           {
-                            companyOpportunities.length
+                            activeOpportunities.length
+                          }{" "}
+                          /{" "}
+                          {
+                            MAX_ACTIVE_OPPORTUNITIES_PER_COMPANY
                           }
                         </strong>
                       </div>

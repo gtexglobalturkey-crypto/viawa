@@ -133,6 +133,7 @@ export async function mergeDocxFile(options: {
   templatePath: string;
   outputPath: string;
   mergeResult: TemplateMergeResult;
+  onCheckpoint?: (stage: "template_file_opened" | "docx_merge_completed") => void;
 }): Promise<DocxMergeAdapterResult> {
   const templatePath = path.resolve(options.templatePath);
   const outputPath = path.resolve(options.outputPath);
@@ -153,6 +154,8 @@ export async function mergeDocxFile(options: {
     );
   }
 
+  options.onCheckpoint?.("template_file_opened");
+
   const result = mergeDocxBuffer({
     templateBuffer,
     mergeResult: options.mergeResult,
@@ -167,6 +170,8 @@ export async function mergeDocxFile(options: {
       }`,
     );
   }
+
+  options.onCheckpoint?.("docx_merge_completed");
 
   return { ...result, outputPath };
 }

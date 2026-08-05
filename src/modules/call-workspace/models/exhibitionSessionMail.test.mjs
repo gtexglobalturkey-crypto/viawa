@@ -741,3 +741,80 @@ test("buildContractMailtoUrl: the address segment never double-encodes a plain a
   );
   assert.doesNotMatch(addressSegment, /%25/);
 });
+
+// Sprint 25.2.2 — real Outlook test showed the subject/body rendering
+// with literal "+" instead of spaces (URLSearchParams.toString() uses
+// application/x-www-form-urlencoded, which RFC 6068 mailto hfields do
+// not speak — Outlook decodes %20, not "+"). These assert the raw URL
+// string itself (not a re-parsed/decoded value), which is the only way
+// to actually catch this class of bug.
+test("buildContractMailtoUrl: a multi-word subject uses %20 for spaces in the raw URL, never a literal +", () => {
+  const url = buildContractMailtoUrl({
+    to: ["contact@example.com"],
+    cc: [],
+    bcc: [],
+    subject: "Mining Türkiye 2026 Katılım Sözleşmesi",
+    body: "Hello",
+  });
+
+  assert.doesNotMatch(url, /\+/);
+  assert.match(
+    url,
+    /subject=Mining%20T%C3%BCrkiye%202026%20Kat%C4%B1l%C4%B1m%20S%C3%B6zle%C5%9Fmesi/,
+  );
+});
+
+test("buildContractMailtoUrl: a multi-word body uses %20 for spaces in the raw URL, never a literal +", () => {
+  const url = buildContractMailtoUrl({
+    to: ["contact@example.com"],
+    cc: [],
+    bcc: [],
+    subject: "Test",
+    body: "Sayın Expovia Uluslararası Fuarcılık ekibi",
+  });
+
+  assert.doesNotMatch(url, /\+/);
+  assert.match(url, /body=Say%C4%B1n%20Expovia/);
+});
+
+test("buildContractMailtoUrl: the subject is never prefixed with a literal \"name:\" or any other stray field name", () => {
+  const url = buildContractMailtoUrl({
+    to: ["contact@example.com"],
+    cc: ["cc@example.com"],
+    bcc: [],
+    subject: "Mining Türkiye 2026 Katılım Sözleşmesi",
+    body: "Sayın Expovia Uluslararası Fuarcılık ekibi",
+  });
+
+  assert.doesNotMatch(url, /name[:=]/i);
+
+  const [, query] = url.split("?");
+  const params = new URLSearchParams(query);
+
+  assert.equal(
+    params.get("subject"),
+    "Mining Türkiye 2026 Katılım Sözleşmesi",
+  );
+});
+
+test("buildContractMailtoUrl: subject and body hfields come before cc/bcc, for maximum real-world mail client compatibility", () => {
+  const url = buildContractMailtoUrl({
+    to: ["contact@example.com"],
+    cc: ["cc@example.com"],
+    bcc: ["bcc@example.com"],
+    subject: "Test",
+    body: "Hello",
+  });
+
+  const [, query] = url.split("?");
+  const fieldNames = query
+    .split("&")
+    .map((field) => field.split("=")[0]);
+
+  assert.deepEqual(fieldNames, [
+    "subject",
+    "body",
+    "cc",
+    "bcc",
+  ]);
+});

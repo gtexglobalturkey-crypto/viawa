@@ -26,9 +26,24 @@ services:
       - DOCUMENT_TEMPLATE_PATH=/opt/viawa/templates/VIAWA_Sozlesme_Sablonu_v2.3_1_Doldurulabilir.docx
       - DOCUMENT_TEMP_ROOT=/tmp/viawa-document-service
       - LIBREOFFICE_BINARY_PATH=/usr/bin/libreoffice
+      # BUG-S25.3.2 — LibreOffice's headless IPC pipe socket is created
+      # directly under the system /tmp (hardcoded by soffice's pipe
+      # bootstrap, independent of -env:UserInstallation, TMPDIR or HOME)
+      # and its dconf/fontconfig caches default to $HOME/.cache. Proven
+      # via `docker exec`/`docker run` bisection: mounting the tmpfs only
+      # at a DOCUMENT_TEMP_ROOT subdirectory left real /tmp on the
+      # read-only root fs, so soffice failed every conversion with
+      # "no valid pipe path found" (exit code 1). Pointing HOME at the
+      # same writable tmpfs removes the (non-fatal but noisy) dconf/
+      # fontconfig cache warnings on every conversion.
+      - HOME=/tmp
     read_only: true
     tmpfs:
-      - /tmp/viawa-document-service:rw,noexec,nosuid,nodev,size=128m,uid=1000,gid=1000,mode=0700
+      # Mounted at the whole /tmp (not just DOCUMENT_TEMP_ROOT) so
+      # LibreOffice's hardcoded pipe path is writable. DOCUMENT_TEMP_ROOT
+      # is still created as a subdirectory of this same tmpfs by the
+      # server on startup, so the app's own file layout is unchanged.
+      - /tmp:rw,noexec,nosuid,nodev,size=128m,uid=1000,gid=1000,mode=0700
     security_opt:
       - no-new-privileges:true
     cap_drop:

@@ -23,26 +23,17 @@ export type TemplateDataSource =
   | "settings"
   | "document";
 
-export type DocumentPaymentPlanItem = {
-  dueDate?: string | null;
-  amount?: number | null;
-  payee?: string | null;
-};
-
-export type DocumentStandMaterial = {
-  selected: boolean;
-  quantity?: number | null;
-};
+// Sprint 25.8 — stand_materials/extra_information/payment_plan now live
+// directly on the base Opportunity type (see src/types/database.ts);
+// re-exported here under their established document-engine names so
+// existing imports keep working unchanged.
+export type { OpportunityStandMaterial as DocumentStandMaterial } from "../../../types/database";
+export type { OpportunityPaymentPlanItem as DocumentPaymentPlanItem } from "../../../types/database";
 
 export type DocumentMergeOpportunity = Opportunity & {
   hall?: string | null;
   stand_number?: string | null;
   stand_shape?: string | null;
-  payment_plan?: readonly DocumentPaymentPlanItem[] | null;
-  stand_materials?: Readonly<
-    Record<string, DocumentStandMaterial>
-  > | null;
-  extra_information?: readonly string[] | null;
 };
 
 export type DocumentMergeSettings = {

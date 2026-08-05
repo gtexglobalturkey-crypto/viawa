@@ -22,6 +22,14 @@ function safeOutputName(preferredFileName: string) {
   return fileName;
 }
 
+function maskId(value: string): string {
+  return value.length <= 8 ? value : `${value.slice(0, 8)}…`;
+}
+
+function logCheckpoint(stage: string, context: Record<string, unknown> = {}) {
+  console.log(JSON.stringify({ level: "info", stage, ...context }));
+}
+
 export function createRequestScopedContractGenerator(input: {
   projectRoot: string;
   templatePath?: string;
@@ -52,15 +60,19 @@ export function createRequestScopedContractGenerator(input: {
     const cleanup = () =>
       rm(temporaryDirectory, { recursive: true, force: true });
 
+    const ids = { companyId: maskId(companyId), opportunityId: maskId(opportunityId) };
+
     try {
       const docxGenerator: ContractDocxGenerationPort = {
         async generate({ mergeResult, preferredFileName }) {
           const outputFileName = safeOutputName(preferredFileName);
           const outputPath = path.join(temporaryDirectory, outputFileName);
+          logCheckpoint("docx_merge_started", ids);
           const result = await mergeDocxFile({
             templatePath,
             outputPath,
             mergeResult,
+            onCheckpoint: (stage) => logCheckpoint(stage, ids),
           });
           return { outputFileName, outputPath, warnings: result.warnings };
         },
@@ -72,11 +84,13 @@ export function createRequestScopedContractGenerator(input: {
           dataSource: input.createDataSource({ user, accessToken }),
           docxGenerator,
           now: input.now,
+          logCheckpoint: (stage, context) => logCheckpoint(stage, { ...ids, ...context }),
         },
       );
       const docxBuffer = result.success
         ? await readFile(result.outputPath)
         : undefined;
+      if (result.success) logCheckpoint("generated_docx_validated", ids);
 
       handedOffCleanup = true;
       return { result, docxBuffer, cleanup };

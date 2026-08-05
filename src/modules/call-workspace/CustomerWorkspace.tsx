@@ -31,12 +31,12 @@ import {
 } from "../../types/businessStatus";
 import {
   buildLostTimelineDescription,
-  buildWonTimelineDescription,
 } from "../../types/opportunityClosure";
 import type { LostReasonId } from "../../types/opportunityClosure";
 import type { OpportunityStage } from "../../types/salesAction";
 import {
   createActiveReminderIfAbsent,
+  completeOpenRemindersForOpportunity as completeOpenRemindersForOpportunityInStorage,
   updateReminder,
 } from "../../services/supabase/reminderService";
 import {
@@ -51,6 +51,8 @@ import type {
   EmailRecord,
   Exhibition,
   Opportunity,
+  OpportunityPaymentPlanItem,
+  OpportunityStandMaterial,
   Reminder,
   TimelineEvent,
 } from "../../types/database";
@@ -128,6 +130,8 @@ import {
 import type {
   GeneratedDocumentRecord,
 } from "../document-engine";
+import { ParticipationConfirmedModal } from "../document-engine/components/ParticipationConfirmedModal";
+import { selectLatestUnsignedDocument } from "../document-engine/engine/selectLatestUnsignedDocument";
 import {
   loadGeneratedDocuments,
   saveGeneratedDocuments,
@@ -601,6 +605,18 @@ export function CustomerWorkspace({
     nextAction: string;
   } | null>(null);
 
+  // RC-01 — "Katılım Onaylandı" modalının tek, paylaşılan durumu.
+  // Hem "Sözleşme Hazırla" (ContractPreviewModal'daki "🟢 Katılım
+  // Onaylandı" butonu) hem de "Görüşmeyi Tamamla → Kazanıldı" bu aynı
+  // modalı, aynı kayıt üzerinde açar — iki paralel akış yerine tek akış.
+  // Modal, bu değer null olmadığında açık sayılır.
+  const [
+    participationConfirmationTarget,
+    setParticipationConfirmationTarget,
+  ] = useState<GeneratedDocumentRecord | null>(
+    null,
+  );
+
   // Owned here (not inside DocumentBasketModal) so the selection survives
   // closing/reopening the modal for as long as this Working Space stays
   // mounted, and so other tools (e.g. the email module) can read it.
@@ -658,6 +674,14 @@ export function CustomerWorkspace({
     setSessionOpportunityId(null);
   }, [selectedSidebarExhibitionId]);
 
+  // RC-04 — guards the terminal empty state's "Yeni Fuar Fırsatı
+  // Oluştur" button against a double-click racing two creates while the
+  // first is still in flight.
+  const [
+    isStartingNewOpportunity,
+    setIsStartingNewOpportunity,
+  ] = useState(false);
+
   // Sprint 25.1/25.2 — the workspace's one fuar context is
   // selectedSidebarExhibitionId (ExhibitionSelectionContext); the
   // opportunity shown here, if any, is derived FROM it — never the other
@@ -676,6 +700,12 @@ export function CustomerWorkspace({
   // sessionOpportunityId takes priority so an opportunity created
   // earlier in this session (ensureActiveOpportunity below) is reused
   // immediately, without waiting for the opportunities prop to refresh.
+  //
+  // Kritik Akış Düzeltmesi 2 — initialOpportunityId (a specific record
+  // requested via URL, e.g. a Today task link) is passed through as
+  // explicitOpportunityId so that exact opportunity's own id/stage
+  // decides the result whenever a fuar has more than one opportunity —
+  // never a sibling picked by the active-first/most-recent guess.
   const selectedOpportunity = useMemo(
     () =>
       resolveSessionOpportunity({
@@ -683,11 +713,14 @@ export function CustomerWorkspace({
         selectedExhibitionId:
           selectedSidebarExhibitionId,
         sessionOpportunityId,
+        explicitOpportunityId:
+          initialOpportunityId,
       }),
     [
       opportunities,
       selectedSidebarExhibitionId,
       sessionOpportunityId,
+      initialOpportunityId,
     ],
   );
 
@@ -709,8 +742,13 @@ export function CustomerWorkspace({
       selectOpportunityForExhibition(
         opportunities,
         selectedSidebarExhibitionId,
+        initialOpportunityId,
       ),
-    [opportunities, selectedSidebarExhibitionId],
+    [
+      opportunities,
+      selectedSidebarExhibitionId,
+      initialOpportunityId,
+    ],
   );
 
   // Sprint 25.2 — a real opportunity is never required just to open and
@@ -1121,6 +1159,33 @@ export function CustomerWorkspace({
     }
   }
 
+  // RC-04 — the terminal/closed empty state's "Yeni Fuar Fırsatı
+  // Oluştur" button. Reuses ensureActiveOpportunity as-is: it already
+  // never reuses a terminal (won/lost) match for this fuar (see
+  // selectedOpportunity's own doc comment above), already enforces the
+  // 4-active-opportunity limit with the existing toast, and already
+  // scopes the new row to whichever fuar is currently selected in the
+  // sidebar — so this handler adds nothing except the explicit refresh
+  // needed to make the fresh opportunity replace the closed-state
+  // notice (opportunities is a prop; only onRefresh() can update it).
+  async function handleStartNewOpportunityFromClosedState(): Promise<void> {
+    if (isStartingNewOpportunity) {
+      return;
+    }
+
+    setIsStartingNewOpportunity(true);
+
+    try {
+      const created = await ensureActiveOpportunity();
+
+      if (created) {
+        await refreshWorkspaceSafely();
+      }
+    } finally {
+      setIsStartingNewOpportunity(false);
+    }
+  }
+
   // Sprint 25.2.1 — "Not Kaydet" never creates or requires an
   // opportunity. Returns whether it actually persisted (LiveInteraction
   // only clears the note textarea when true) — false covers both the
@@ -1174,15 +1239,19 @@ export function CustomerWorkspace({
   //   5. Draft Price uygula
   //   6. Draft Next Activity uygula — outcome "won"/"lost" iken atlanır
   //      (BUG-S26-003.1: terminal bir kayıtta yeni takip/reminder
-  //      oluşmaz — bkz. closeOpportunityAsWon/Lost'un kendi reminder
-  //      temizliği ve next_action sıfırlaması).
+  //      oluşmaz — Lost için bkz. closeOpportunityAsLost'un kendi
+  //      reminder temizliği ve next_action sıfırlaması; Won artık
+  //      burada hiç sonuçlanmıyor — bkz. handleCallResultWon/RC-01, o
+  //      da yalnızca "Katılım Onaylandı" onaylandığında
+  //      completeCustomerSignatureWonTransition ile sonuçlanır).
   //   7. Call Note kaydet
   //   8. Timeline / Stage / Reminder (executeAction → execution engine)
   //      — outcome "won"/"lost" iken atlanır: executionListeners.ts
   //      kendi otomatik takip reminder'ını oluşturur (bu dosyaya
-  //      dokunulmadan önlenemez); Won/Lost'un kendi timeline kaydı
-  //      (closeOpportunityAsWon/Lost) zaten "ne olduğunu" doğru ve daha
-  //      spesifik şekilde kaydediyor.
+  //      dokunulmadan önlenemez); Lost'un kendi timeline kaydı
+  //      (closeOpportunityAsLost) / Won'un nihai timeline kaydı
+  //      (completeCustomerSignatureWonTransition) zaten "ne olduğunu"
+  //      doğru ve daha spesifik şekilde kaydediyor.
   //   8.5. Workspace Email event'lerini (varsa) timeline'a bağla —
   //        Sprint 25.4B Section L, idempotent (sendOperationKey bazlı).
   //        Tüm outcome'larda çalışır.
@@ -1628,20 +1697,20 @@ export function CustomerWorkspace({
   // `reminders` prop already in scope (no new fetch) — safe to call
   // again on a retry, since marking an already-completed reminder
   // completed again is a harmless no-op.
+  //
+  // Kritik Akış Düzeltmesi 5 — the actual filter+write now lives once,
+  // shared, in reminderService.completeOpenRemindersForOpportunity (also
+  // used by CompanyDetailPage's "İptal" and, below, by
+  // completeCustomerSignatureWonTransition) — this stays a thin wrapper
+  // around it so its existing call site here (closeOpportunityAsLost)
+  // needs zero changes.
   async function completeOpenRemindersForOpportunity(
     opportunityId: string,
   ): Promise<void> {
-    const openReminders = reminders.filter(
-      (reminder) =>
-        reminder.opportunity_id === opportunityId &&
-        !reminder.completed,
+    await completeOpenRemindersForOpportunityInStorage(
+      reminders,
+      opportunityId,
     );
-
-    for (const reminder of openReminders) {
-      await updateReminder(reminder.id, {
-        completed: true,
-      });
-    }
   }
 
   // Same repair-check pattern completeCustomerSignatureWonTransition
@@ -1665,179 +1734,23 @@ export function CustomerWorkspace({
     );
   }
 
-  // BUG-S26.003.2 — "Won yalnızca Opportunity'nin kapanması değildir";
-  // Won'un gerçekleşebilmesi için bu opportunity'ye ait, status'u
-  // "signed" olan bir GeneratedDocumentRecord bulunmalı. Mevcut
-  // company-scoped `generatedDocuments` state'inden okur (aynı kaynak
-  // handleSignedPdfUploaded'ın zaten yazdığı) — yeni bir fetch/storage
-  // okuması yok.
-  function findSignedContractForOpportunity(
+  // RC-01 — "Kazanıldı" artık ayrı bir won-stage kapanışı denemez
+  // (eski closeOpportunityAsWon buradaydı — kaldırıldı, çünkü "Kazanıldı"
+  // olabilmek için sözleşmenin ÖNCEDEN imzalı olmasını şart koşuyordu:
+  // döngüsel bir çıkmaz, çünkü imzalı hale gelmenin TEK yolu zaten bu
+  // akıştı). Kilitli ürün kararı: tek terminal geçiş "signed" — bkz.
+  // completeCustomerSignatureWonTransition. Bu, o akış için "en güncel,
+  // henüz imzalanmamış gerçek Katılım Belgesi" kaydını bulur — asıl kural
+  // selectLatestUnsignedDocument'ta (birim testli), burada yalnızca
+  // component'in kendi generatedDocuments state'ine bağlanan ince bir
+  // sarmalayıcı.
+  function findLatestUnsignedDocumentForOpportunity(
     opportunityId: string,
   ): GeneratedDocumentRecord | null {
-    return (
-      generatedDocuments.find(
-        (document) =>
-          document.opportunityId === opportunityId &&
-          document.status === "signed",
-      ) ?? null
+    return selectLatestUnsignedDocument(
+      generatedDocuments,
+      opportunityId,
     );
-  }
-
-  // Zaten var olan storage kaydına (storageBucket/storagePath) yeni bir
-  // upload yapmadan, yalnızca bu kaydı "Firma Arşivi'ne taşındı" olarak
-  // işaretler. İdempotent: kayıt zaten arşivlenmişse aynen döner, state'e
-  // dokunmaz.
-  function archiveSignedContractToCompanyArchive(
-    record: GeneratedDocumentRecord,
-  ): GeneratedDocumentRecord {
-    if (record.archivedToCompanyArchiveAt) {
-      return record;
-    }
-
-    const archivedRecord: GeneratedDocumentRecord = {
-      ...record,
-      archivedToCompanyArchiveAt:
-        new Date().toISOString(),
-    };
-
-    setGeneratedDocuments((current) =>
-      current.map((document) =>
-        document.id === record.id
-          ? archivedRecord
-          : document,
-      ),
-    );
-
-    return archivedRecord;
-  }
-
-  // BUG-S26-003 — the two actual closure writes (stage/closed_at/
-  // (closure_reason/closure_note) + one timeline event) — parameterized
-  // by an explicit `opportunity` instead of reading `viewedOpportunity`
-  // from closure, since the opportunity being closed may be one
-  // commitWorkspaceSession itself just created moments earlier (see
-  // resolveJustCommittedOpportunity below) — a same-render React state
-  // value could never reflect that.
-  //
-  // BUG-S26-003.1 — returns a plain boolean (success) instead of
-  // navigating/showing its own final state itself: the caller
-  // (handleCallResultWon/Lost) is now the single place that decides
-  // whether to navigate, precisely because it must only ever do so once
-  // this has actually succeeded (Section 3 atomicity). Also now: clears
-  // next_action/next_action_date (a terminal opportunity has no future
-  // follow-up), closes any still-open reminder for it first, and is
-  // idempotent against a retry after a partial prior failure — it only
-  // (re)writes whichever of "stage" / "timeline event" isn't already
-  // true, so a retry can never produce a duplicate timeline entry.
-  // BUG-S26.003.2 — Won artık, mevcut idempotent stage/timeline
-  // yazımlarına ek olarak, bir imzalı sözleşme ön koşuluyla ve arşivleme
-  // adımıyla genişletildi. Sözleşme kontrolü BÜTÜN yazma işlemlerinden
-  // önce yapılır (fonksiyonun en başında, try bloğunun dışında): bu
-  // sayede sözleşme yoksa stage/closed_at/timeline hiçbir şekilde
-  // yazılmaz — "yarım Won" durumu hiç oluşamaz (Section 3 atomiklik
-  // ilkesiyle birebir aynı gerekçe: BUG-S26-003.1'in "Won/Lost update
-  // başarısızsa Today'e yönlenme" kuralının burada karşılığı "sözleşme
-  // yoksa hiçbir Won yazımı başlamaz").
-  async function closeOpportunityAsWon(
-    opportunity: Opportunity,
-  ): Promise<boolean> {
-    const signedContract =
-      findSignedContractForOpportunity(opportunity.id);
-
-    if (!signedContract) {
-      showToast(
-        "Bu fırsatı Kazanıldı olarak kapatabilmek için imzalı sözleşmenin firma arşivinde bulunması gerekir.",
-        "error",
-      );
-
-      return false;
-    }
-
-    try {
-      const alreadyRecorded =
-        await hasOpportunityClosureTimelineEvent(
-          opportunity.id,
-          "opportunity-won",
-        );
-
-      const alreadyArchiveRecorded =
-        await hasOpportunityClosureTimelineEvent(
-          opportunity.id,
-          "contract-archived",
-        );
-
-      if (
-        opportunity.stage === "won" &&
-        alreadyRecorded &&
-        signedContract.archivedToCompanyArchiveAt &&
-        alreadyArchiveRecorded
-      ) {
-        return true;
-      }
-
-      await completeOpenRemindersForOpportunity(
-        opportunity.id,
-      );
-
-      if (opportunity.stage !== "won") {
-        await updateOpportunity(opportunity.id, {
-          stage: "won",
-          closed_at: new Date().toISOString(),
-          next_action: null,
-          next_action_date: null,
-        });
-      }
-
-      if (!alreadyRecorded) {
-        await createTimelineEvent({
-          company_id: company.id,
-          opportunity_id: opportunity.id,
-          type: "opportunity-won",
-          title: "Fırsat kazanıldı",
-          description: buildWonTimelineDescription(),
-        });
-      }
-
-      // Section 4-5 — mevcut storage kaydı (storageBucket/storagePath)
-      // referans alınarak sözleşme Firma Arşivi'ne taşınır: PDF yeniden
-      // oluşturulmaz, Storage'a ikinci kez upload yapılmaz, yalnızca bu
-      // kaydın arşiv metadata'sı güncellenir.
-      archiveSignedContractToCompanyArchive(
-        signedContract,
-      );
-
-      if (!alreadyArchiveRecorded) {
-        await createTimelineEvent({
-          company_id: company.id,
-          opportunity_id: opportunity.id,
-          type: "contract-archived",
-          title: "Sözleşme arşivlendi",
-          description:
-            "İmzalı sözleşme firma arşivine aktarıldı.",
-        });
-      }
-
-      await onRefresh();
-
-      showToast(
-        "Fırsat kazanıldı olarak kapatıldı.",
-        "success",
-      );
-
-      return true;
-    } catch (closeError) {
-      console.error(
-        "Opportunity close (won) error:",
-        closeError,
-      );
-
-      showToast(
-        "Görüşme kaydedildi ancak fırsat kazanıldı olarak işaretlenemedi. Lütfen tekrar deneyin.",
-        "error",
-      );
-
-      return false;
-    }
   }
 
   async function closeOpportunityAsLost(
@@ -1992,17 +1905,32 @@ export function CustomerWorkspace({
         return;
       }
 
-      const closed = await closeOpportunityAsWon(
-        opportunity,
-      );
+      // RC-01 — "Kazanıldı" artık kendi başına bir kapanış yazımı
+      // yapmıyor: en güncel, henüz imzalanmamış gerçek Katılım Belgesi'ni
+      // bulur ve "Katılım Onaylandı" modalını açar. Gerçek stage/timeline/
+      // reminder yazımı yalnızca kullanıcı orada imzalı PDF'yi onayladığında
+      // (handleSignedPdfUploaded → completeCustomerSignatureWonTransition)
+      // gerçekleşir — bu yüzden burada Workspace'i kapatmıyoruz/yönlendirmi
+      // yoruz, yalnızca modalı açıyoruz.
+      const latestUnsignedDocument =
+        findLatestUnsignedDocumentForOpportunity(
+          opportunity.id,
+        );
 
-      if (!closed) {
+      if (!latestUnsignedDocument) {
+        showToast(
+          "Bu fırsat için henüz bir Katılım Belgesi oluşturulmamış. Önce \"Sözleşme Hazırla\" ile belge oluşturun.",
+          "error",
+        );
+
         return;
       }
 
       setIsCloseOpportunityModalOpen(false);
       setPendingSessionCompletion(null);
-      navigate("/today");
+      setParticipationConfirmationTarget(
+        latestUnsignedDocument,
+      );
     } finally {
       setClosingOpportunity(false);
     }
@@ -2182,6 +2110,15 @@ export function CustomerWorkspace({
           price_grand_total:
             result.grandTotal,
           price_calculated_at: approvedAt,
+          // Kritik Akış Düzeltmesi 1 — a payment plan is entered against
+          // a specific approved price/teklif. The moment a *new* price
+          // snapshot is approved for this opportunity (this exact write),
+          // any payment_plan left over from the previous teklif no longer
+          // corresponds to the new figures, so it must not silently carry
+          // forward into the next contract. Stand materials/extra
+          // information are opportunity-level facts (not tied to a price
+          // snapshot) and are deliberately left untouched here.
+          payment_plan: null,
         },
         onPersisted: (snapshot) => {
           setApprovedPrices((current) => ({
@@ -2983,6 +2920,25 @@ export function CustomerWorkspace({
       return;
     }
 
+    // Kritik Akış Düzeltmesi 5 — "İmzalar Tamamlandı" is one of the four
+    // ways an opportunity reaches a terminal stage (alongside Won, Lost,
+    // and Firma Sayfası "İptal"), so it must close out this opportunity's
+    // open reminders exactly like the other three — same shared helper,
+    // called unconditionally (idempotent: a retry after stage/timeline
+    // already succeeded still safely no-ops on already-completed
+    // reminders). Its own failure never blocks the stage/timeline repair
+    // below.
+    try {
+      await completeOpenRemindersForOpportunity(
+        opportunityId,
+      );
+    } catch (reminderError) {
+      console.error(
+        "Opportunity reminder close-out error:",
+        reminderError,
+      );
+    }
+
     const stageAlreadySigned =
       opportunityRecord?.stage ===
       CUSTOMER_SIGNED_WON_STAGE;
@@ -3134,17 +3090,14 @@ export function CustomerWorkspace({
     // backward transition) — no toast.
   }
 
-  // SPRINT 26.2 — NOT the official signature flow (that's Workspace
-  // Email "Sözleşme Gönder" → handleSendForSignature → real Dropbox
-  // Sign webhook, once that exists). Intentionally has no UI trigger
-  // anywhere (no "İmzalı PDF Yükle" button — that lived only inside the
-  // removed "Belge ve İmza Durumu" card): kept callable only for test/
-  // migration/emergency-recovery use, never a normal user action. This
-  // is still the sole place that ever transitions a document to status
-  // "signed", which gates Won closure (findSignedContractForOpportunity)
-  // and Firma Arşivi (archiveSignedContractToCompanyArchive).
-  // İlk sürümde gerçek Dropbox Sign webhook'u yok — kullanıcı imzalı PDF'yi
-  // manuel yükler ve belge otomatik olarak "signed" durumuna geçer.
+  // RC-01 — the one function that ever transitions a document to status
+  // "signed". Manual this sprint (no Zoho/Adobe/Dropbox Sign, no
+  // webhook/API — see the sprint's own locked product decision): the
+  // rep gets the signed PDF back over Outlook and uploads it here. Two
+  // real UI triggers now share this exact same function, both through
+  // the single participationConfirmationTarget modal above: "Sözleşme
+  // Hazırla"'s own "🟢 Katılım Onaylandı" button, and "Görüşmeyi
+  // Tamamla" → "Kazanıldı" (handleCallResultWon).
   function handleSignedPdfUploaded(
     record: GeneratedDocumentRecord,
     file: File,
@@ -3235,6 +3188,44 @@ export function CustomerWorkspace({
         company.id,
       )}`,
     );
+  }
+
+  // Sprint 25.8 — Stand Malzemeleri / Ekstra Malzeme persistence. Follows
+  // the same write-then-refresh pattern as every other opportunity field
+  // update in this file (see e.g. handleGenerateContractPdf's stage
+  // write above) so activeOpportunity reflects the save the next time
+  // the Sözleşme Önizleme modal is reopened.
+  async function handleSaveStandDetails(updates: {
+    standMaterials: Record<
+      string,
+      OpportunityStandMaterial
+    >;
+    extraInformation: string[];
+  }): Promise<void> {
+    await updateOpportunity(
+      activeOpportunity.id,
+      {
+        stand_materials:
+          updates.standMaterials,
+        extra_information:
+          updates.extraInformation,
+      },
+    );
+
+    await refreshWorkspaceSafely();
+  }
+
+  // Sprint 25.8 / Adım 2 — Ödeme Planı persistence. Same write-then-
+  // refresh pattern as handleSaveStandDetails just above.
+  async function handleSavePaymentPlan(
+    paymentPlan: OpportunityPaymentPlanItem[],
+  ): Promise<void> {
+    await updateOpportunity(
+      activeOpportunity.id,
+      { payment_plan: paymentPlan },
+    );
+
+    await refreshWorkspaceSafely();
   }
 
   function handleSalesKitToolSelect(
@@ -3395,8 +3386,54 @@ export function CustomerWorkspace({
             </p>
           ) : null}
 
-          <LiveInteraction
-            workspace={activeWorkspace}
+          {/* Kritik Akış Düzeltmesi 6 — a terminal (Kaybedildi/İmzalar
+              Tamamlandı) opportunity's live work area (fuar/stand/m²/
+              fiyat/not/sonraki aktivite + Fiyat Hesapla/Sözleşme Hazırla/
+              E-posta/Takip Et — all of it lives inside LiveInteraction,
+              see its own `workspace` prop) must never render as if work
+              were still ongoing. isOpportunityClosed already exists
+              (unchanged — still based on viewedOpportunity, see its own
+              note above) and already gates every write path; this is
+              the one missing piece — using that same flag to swap the
+              live work area for a plain closed-state notice instead of
+              LiveInteraction. selectedOpportunity (used elsewhere for
+              the Commit Engine's reuse/create decision, and — via
+              resolveSessionOpportunity's own active-first preference —
+              already resolves to another active opportunity for this
+              exact fuar when one exists, e.g. BUG-Kritik-2's lost+active
+              pair) is untouched. TimelinePanel below is untouched on
+              purpose — Timeline is explicitly preserved, not part of
+              the "live work area". */}
+          {isOpportunityClosed ? (
+            <div className="sw-closed-opportunity-notice">
+              <h2>
+                Bu fırsat tamamlanmıştır.
+              </h2>
+              <p>
+                Bu fuar için aktif çalışma
+                bulunmuyor.
+              </p>
+              <p className="muted">
+                Yeni bir fuar fırsatı
+                oluşturabilir veya başka bir
+                aktif fırsat seçebilirsiniz.
+              </p>
+              <button
+                type="button"
+                className="sw-start-new-opportunity-button"
+                onClick={() =>
+                  void handleStartNewOpportunityFromClosedState()
+                }
+                disabled={isStartingNewOpportunity}
+              >
+                {isStartingNewOpportunity
+                  ? "Oluşturuluyor..."
+                  : "Yeni Fuar Fırsatı Oluştur"}
+              </button>
+            </div>
+          ) : (
+            <LiveInteraction
+              workspace={activeWorkspace}
             saving={noteSaving}
             draftNote={activeSessionDraft.note}
             onDraftNoteChange={
@@ -3452,7 +3489,8 @@ export function CustomerWorkspace({
             closedOpportunityReason={
               closedOpportunityReason
             }
-          />
+            />
+          )}
 
           <TimelinePanel
             conversation={
@@ -3485,6 +3523,24 @@ export function CustomerWorkspace({
         existingRecords={
           generatedDocuments
         }
+        standMaterials={
+          activeOpportunity.stand_materials ??
+          null
+        }
+        extraInformation={
+          activeOpportunity.extra_information ??
+          null
+        }
+        onSaveStandDetails={
+          handleSaveStandDetails
+        }
+        paymentPlan={
+          activeOpportunity.payment_plan ??
+          null
+        }
+        onSavePaymentPlan={
+          handleSavePaymentPlan
+        }
         onClose={
           handleCloseContractPreview
         }
@@ -3494,7 +3550,30 @@ export function CustomerWorkspace({
         onEditCompanyInfo={
           handleEditCompanyInfo
         }
+        onOpenParticipationConfirmation={
+          setParticipationConfirmationTarget
+        }
       />
+
+      {participationConfirmationTarget ? (
+        <ParticipationConfirmedModal
+          submitting={false}
+          onClose={() =>
+            setParticipationConfirmationTarget(
+              null,
+            )
+          }
+          onConfirm={(file) => {
+            handleSignedPdfUploaded(
+              participationConfirmationTarget,
+              file,
+            );
+            setParticipationConfirmationTarget(
+              null,
+            );
+          }}
+        />
+      ) : null}
 
       <DocumentBasketModal
         open={isDocumentBasketOpen}

@@ -31,6 +31,7 @@ function errorResponse(
   details: {
     validationErrors?: readonly unknown[];
     warnings?: readonly string[];
+    diagnosticCode?: string;
   } = {},
 ) {
   return jsonResponse(status, {
@@ -39,7 +40,12 @@ function errorResponse(
     message,
     validationErrors: details.validationErrors ?? [],
     warnings: details.warnings ?? [],
+    ...(details.diagnosticCode ? { diagnosticCode: details.diagnosticCode } : {}),
   });
+}
+
+function maskId(value: string): string {
+  return value.length <= 8 ? value : `${value.slice(0, 8)}…`;
 }
 
 function headerValue(
@@ -158,6 +164,8 @@ export async function handleContractDocxHttpRequest(
     });
   }
 
+  dependencies.logCheckpoint?.("contract_request_accepted");
+
   const accessToken = accessTokenFromRequest(request);
 
   if (!accessToken) {
@@ -216,6 +224,12 @@ export async function handleContractDocxHttpRequest(
     );
   }
 
+  dependencies.logCheckpoint?.("auth_authz_completed", {
+    userId: maskId(user.id),
+    companyId: maskId(parsed.companyId),
+    opportunityId: maskId(parsed.opportunityId),
+  });
+
   let cleanup: (() => Promise<void>) | undefined;
 
   try {
@@ -262,6 +276,9 @@ export async function handleContractDocxHttpRequest(
       500,
       "CONTRACT_GENERATION_FAILED",
       "The contract document could not be generated.",
+      dependencies.isDevelopment
+        ? { diagnosticCode: error instanceof Error ? error.name : "NonErrorThrow" }
+        : {},
     );
   } finally {
     if (cleanup) {

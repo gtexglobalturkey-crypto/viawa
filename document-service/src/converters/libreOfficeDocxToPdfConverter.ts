@@ -120,6 +120,18 @@ export function createLibreOfficeDocxToPdfConverter(
             shell: false,
           });
         } catch (error) {
+          // Node's execFile rejection embeds raw process stdout/stderr in
+          // .message, which may echo document-derived text -- only the
+          // structural, content-free fields are safe to log here.
+          const processError = error as Error & { code?: string | number; killed?: boolean; signal?: string };
+          console.error(JSON.stringify({
+            level: "error",
+            message: "LibreOffice conversion process failed.",
+            errorName: processError.name,
+            errorCode: processError.code,
+            killed: processError.killed,
+            signal: processError.signal,
+          }));
           throw new DocxToPdfConversionError(
             isTimeoutError(error) ? "TIMEOUT" : "CONVERSION_FAILED",
             isTimeoutError(error)
@@ -131,13 +143,26 @@ export function createLibreOfficeDocxToPdfConverter(
         let outputInfo;
         try {
           outputInfo = await lstat(outputPath);
-        } catch {
+        } catch (error) {
+          const fsError = error as Error & { code?: string };
+          console.error(JSON.stringify({
+            level: "error",
+            message: "LibreOffice conversion output file is missing.",
+            errorName: fsError.name,
+            errorCode: fsError.code,
+          }));
           throw new DocxToPdfConversionError(
             "CONVERSION_FAILED",
             "DOCX to PDF conversion failed.",
           );
         }
         if (!outputInfo.isFile() || outputInfo.isSymbolicLink()) {
+          console.error(JSON.stringify({
+            level: "error",
+            message: "LibreOffice conversion output is not a regular file.",
+            isFile: outputInfo.isFile(),
+            isSymbolicLink: outputInfo.isSymbolicLink(),
+          }));
           throw new DocxToPdfConversionError(
             "CONVERSION_FAILED",
             "DOCX to PDF conversion failed.",

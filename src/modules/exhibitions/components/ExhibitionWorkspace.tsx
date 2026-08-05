@@ -94,10 +94,17 @@ export function ExhibitionWorkspace({
       null,
     );
 
+  // Sprint 25.10 — a previous exhibition's checked-off selection and open
+  // preview must never survive a fuar switch (even though both fuars may
+  // happen to offer the same document *roles*, e.g. both have a
+  // "Broşür"). Reset alongside the status refetch below, on the same
+  // exhibition-identity change.
   useEffect(() => {
     if (!exhibition) {
       setDocumentStatuses(null);
       setLoadError(null);
+      setSelectedRoleIds(new Set());
+      setPreviewedDocumentId(null);
 
       return;
     }
@@ -106,6 +113,8 @@ export function ExhibitionWorkspace({
 
     setDocumentStatuses(null);
     setLoadError(null);
+    setSelectedRoleIds(new Set());
+    setPreviewedDocumentId(null);
 
     fetchExhibitionDocumentStatus(
       exhibition.name,

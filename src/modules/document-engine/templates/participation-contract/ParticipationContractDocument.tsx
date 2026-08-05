@@ -1,3 +1,10 @@
+// Sprint 25.3 — formatDate moved to engine/formatContractDate.ts (a
+// plain .ts file, no React/JSX dependency) so the server-side DOCX
+// generation orchestrator can share the exact same dd.MM.yyyy formatter
+// instead of ever emitting a raw ISO datetime — see
+// generateParticipationContract.ts. Logic is unchanged; only its home
+// moved, aliased back to its original local name here.
+import { formatContractDate as formatDate } from "../../engine/formatContractDate";
 import type { ContractDocumentData } from "../../models/ContractDocumentData";
 import { CONTRACT_CLAUSES } from "./contractClauses";
 
@@ -39,26 +46,6 @@ function formatMoney(
   } catch {
     return `${value.toFixed(2)} ${currency}`;
   }
-}
-
-function formatDate(
-  value: string | undefined,
-): string {
-  if (!hasText(value)) {
-    return "—";
-  }
-
-  const parsedDate = new Date(value);
-
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("tr-TR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(parsedDate);
 }
 
 function formatDateRange(

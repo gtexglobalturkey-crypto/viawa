@@ -336,17 +336,17 @@ export function closureOutcomeToStage(
   return outcome === "won" ? "won" : "lost";
 }
 
-// Sprint 25.5 — "Fırsatı Kapat" is offered for any opportunity that
-// hasn't already been explicitly closed this way. This is intentionally
-// NOT isActiveBusinessStatus: "signed" (contract signed, but not yet
-// marked Won or Lost by the user) must still be closeable — only "won"
-// and "lost" themselves end the lifecycle. A missing/empty stage can't
-// be closed (there is nothing to close).
-const CLOSED_LIFECYCLE_STAGES: readonly string[] = [
-  "won",
-  "lost",
-];
-
+// RC-05 — "Fırsatı Kapat"/Workspace'in terminal kararı artık
+// isTerminalBusinessStatus ile aynı ortak kataloğu okuyor, kendi ayrı bir
+// terminal listesi tutmuyor. Sprint 25.5'in "signed hâlâ kapatılabilir,
+// yalnızca won/lost lifecycle'ı bitirir" kararı artık geçersiz: Katılım
+// Onaylandı akışı (CustomerWorkspace.completeCustomerSignatureWonTransition)
+// stage="signed" yazdığı anda satış tamamlanmış sayılıyor ve fırsat
+// terminaldir — ayrı bir "Kazanıldı" onayı beklenmiyor (RC-05 kilitli ürün
+// kararı). Kataloğun kendisi zaten "signed"i isTerminal: true işaretliyor
+// (Company Detail/aktif fırsat sayacı/limit hep bunu kullanıyordu) — bu
+// fonksiyon artık onunla çelişmiyor. A missing/empty stage still can't be
+// closed (there is nothing to close).
 export function canCloseOpportunity(
   rawValue: string | null | undefined,
 ): boolean {
@@ -354,13 +354,7 @@ export function canCloseOpportunity(
     return false;
   }
 
-  const normalizedValue = normalize(
-    normalizeLegacyOpportunityStage(rawValue),
-  );
-
-  return !CLOSED_LIFECYCLE_STAGES.includes(
-    normalizedValue,
-  );
+  return !isTerminalBusinessStatus(rawValue);
 }
 
 /**

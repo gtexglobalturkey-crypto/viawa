@@ -16,6 +16,7 @@ import { createLibreOfficeDocxToPdfConverter } from "./converters/libreOfficeDoc
 import { createRequestScopedPdfGenerator } from "./pdf/requestScopedPdfGeneration.ts";
 import { createStoredPdfEndpointDependencies } from "./pdf/contractPdfEndpoint.ts";
 import { createContractPdfStorage } from "./storage/contractPdfStorage.ts";
+import { serializeErrorForLog } from "./diagnostics/serializeError.ts";
 
 export async function createDocumentServiceServer(environment: DocumentServiceEnvironment) {
   await mkdir(environment.documentTempRoot, { recursive: true });
@@ -31,7 +32,13 @@ export async function createDocumentServiceServer(environment: DocumentServiceEn
       temporaryRoot: environment.documentTempRoot,
       createDataSource,
     }),
-    logError(message: string) { console.error(JSON.stringify({ level: "error", message })); },
+    logError(message: string, error: unknown) {
+      console.error(JSON.stringify({ level: "error", message, ...serializeErrorForLog(error) }));
+    },
+    logCheckpoint(stage: string, context?: Record<string, unknown>) {
+      console.log(JSON.stringify({ level: "info", stage, ...context }));
+    },
+    isDevelopment: environment.nodeEnv !== "production",
   };
   const converter = createLibreOfficeDocxToPdfConverter({
     binaryPath: environment.libreOfficeBinaryPath,

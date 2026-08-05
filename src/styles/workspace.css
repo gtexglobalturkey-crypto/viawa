@@ -100,6 +100,59 @@
   gap: 9px;
 }
 
+/* Kritik Akış Düzeltmesi 6 — replaces LiveInteraction entirely once the
+   selected fuar's opportunity is terminal (Kaybedildi / İmzalar
+   Tamamlandı), so the live work area never implies ongoing work on a
+   closed opportunity. */
+.sw-closed-opportunity-notice {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  padding: 32px 24px;
+  border: 1px solid var(--atlas-border);
+  border-radius: 14px;
+  background: var(--atlas-panel);
+}
+
+.sw-closed-opportunity-notice h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.sw-closed-opportunity-notice p {
+  margin: 0;
+  font-size: 13px;
+  max-width: 380px;
+}
+
+/* RC-04 — the terminal empty state's own exit: creates a fresh
+   opportunity for the currently selected fuar without reopening the
+   closed one (see CustomerWorkspace's ensureActiveOpportunity). */
+.sw-start-new-opportunity-button {
+  margin-top: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--atlas-primary);
+  border-radius: 6px;
+  color: white;
+  background: var(--atlas-primary);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sw-start-new-opportunity-button:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+.sw-start-new-opportunity-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .customer-snapshot-panel,
 .exhibition-snapshot-panel {
   flex: 0 0 auto;

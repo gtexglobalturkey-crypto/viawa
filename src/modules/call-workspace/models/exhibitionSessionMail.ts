@@ -397,16 +397,39 @@ function encodeMailtoAddress(
   return encodeURI(address.trim());
 }
 
+// Sprint 25.2.2 — RFC 6068 hfield values need RFC 3986 percent-encoding
+// (the same generic-URI encoding encodeMailtoAddress above already uses
+// for the address segment) — NOT URLSearchParams. URLSearchParams
+// serializes with application/x-www-form-urlencoded (RFC 1866/the HTML
+// form-submission convention), which encodes a space as "+". That "+"
+// is only ever meant to be decoded back to a space by something that
+// itself speaks x-www-form-urlencoded (an HTTP server reading a query
+// string, or URLSearchParams's own parser) — a mailto: URI is not that;
+// RFC 6068 mail clients decode hfields as plain percent-encoded text, so
+// a literal "+" a strict client like Outlook receives stays a literal
+// "+", never a space. encodeURIComponent has no such ambiguity: a space
+// always becomes %20, and a literal "+" in the source text (e.g. a
+// plus-addressed CC) is itself escaped to %2B, so it can never be
+// misread as an encoded space either.
+function encodeMailtoFieldValue(
+  value: string,
+): string {
+  return encodeURIComponent(value);
+}
+
 /**
- * Sprint 25.2 / Adım 2 → 2.1 — the Contract template's replacement for
- * "Gönder": builds a mailto: URL from the draft's own to/cc/bcc/subject/
- * body, unchanged/unregenerated, so the user's default mail client
- * (Outlook) opens pre-filled and they attach the already-downloaded PDF
- * themselves. The primary recipient(s) go in the mailto: address segment
- * itself (RFC 6068 — comma-joined, each address individually encoded via
- * encodeMailtoAddress above), which is the form most mail clients
- * (including Outlook) parse most reliably; cc/bcc/subject/body stay in
- * the query string via URLSearchParams — no manual concatenation of
+ * Sprint 25.2 / Adım 2 → 2.1 → 2.2 — the Contract template's replacement
+ * for "Gönder": builds a mailto: URL from the draft's own to/cc/bcc/
+ * subject/body, unchanged/unregenerated, so the user's default mail
+ * client (Outlook) opens pre-filled and they attach the already-
+ * downloaded PDF themselves. The primary recipient(s) go in the mailto:
+ * address segment itself (RFC 6068 — comma-joined, each address
+ * individually encoded via encodeMailtoAddress above); subject/body are
+ * listed before cc/bcc — RFC 6068 itself doesn't require a particular
+ * hfield order, but this is the conventional, widely-documented order
+ * for maximum compatibility with real-world mailto parsers (notably
+ * Outlook's), which are known to be sensitive to it. Every hfield goes
+ * through encodeMailtoFieldValue above — no manual concatenation of
  * unescaped values anywhere. An empty draft.to still produces a valid
  * `mailto:?...` (no address segment at all), never a broken URL.
  */
@@ -416,24 +439,28 @@ export function buildContractMailtoUrl(
     "to" | "cc" | "bcc" | "subject" | "body"
   >,
 ): string {
-  const params = new URLSearchParams();
+  const hfields: string[] = [
+    `subject=${encodeMailtoFieldValue(draft.subject)}`,
+    `body=${encodeMailtoFieldValue(draft.body)}`,
+  ];
 
   if (draft.cc.length > 0) {
-    params.set("cc", draft.cc.join(","));
+    hfields.push(
+      `cc=${encodeMailtoFieldValue(draft.cc.join(","))}`,
+    );
   }
 
   if (draft.bcc.length > 0) {
-    params.set("bcc", draft.bcc.join(","));
+    hfields.push(
+      `bcc=${encodeMailtoFieldValue(draft.bcc.join(","))}`,
+    );
   }
-
-  params.set("subject", draft.subject);
-  params.set("body", draft.body);
 
   const primaryRecipients = draft.to
     .map(encodeMailtoAddress)
     .join(",");
 
-  return `mailto:${primaryRecipients}?${params.toString()}`;
+  return `mailto:${primaryRecipients}?${hfields.join("&")}`;
 }
 
 export type QuotationPriceSource = {

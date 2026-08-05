@@ -1,7 +1,9 @@
 import { supabase } from "./client";
 import type { Reminder } from "../../types/database";
+import { selectOpenRemindersForOpportunity } from "./reminderClosureRule";
 
 export type { Reminder } from "../../types/database";
+export { selectOpenRemindersForOpportunity } from "./reminderClosureRule";
 
 type CreateActiveReminderInput = {
   companyId: string;
@@ -141,4 +143,34 @@ export async function deleteReminder(
     .eq("id", id);
 
   if (error) throw error;
+}
+
+// Kritik Akış Düzeltmesi 5 — the one shared close-out for any opportunity
+// that just became terminal (lost, won, or signed), regardless of which
+// screen triggered it (Firma Sayfası "İptal", Workspace "Kaybedildi" /
+// "Kazanıldı" / İmzalar Tamamlandı). Takes the caller's own already-
+// loaded `reminders` (every caller already has this from its own
+// data-fetch — see useWorkspaceData/useCompanyWorkspace) instead of
+// fetching again, so this stays a small, reusable, storage-agnostic
+// helper rather than a second parallel data source. Only ever touches
+// reminders already linked to this exact opportunityId — a company's
+// manual, opportunity-less reminders are never in this set to begin
+// with. Naturally idempotent: reminders already completed are filtered
+// out before the write, so re-running this for the same terminal
+// opportunity is always a safe no-op.
+export async function completeOpenRemindersForOpportunity(
+  reminders: readonly Reminder[],
+  opportunityId: string,
+): Promise<void> {
+  const openReminders =
+    selectOpenRemindersForOpportunity(
+      reminders,
+      opportunityId,
+    );
+
+  for (const reminder of openReminders) {
+    await updateReminder(reminder.id, {
+      completed: true,
+    });
+  }
 }

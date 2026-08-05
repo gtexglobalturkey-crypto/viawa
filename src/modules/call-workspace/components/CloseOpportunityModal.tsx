@@ -6,6 +6,8 @@ import {
 } from "../../../types/opportunityClosure";
 import type { LostReasonId } from "../../../types/opportunityClosure";
 
+type Step = "result" | "lost-reason";
+
 type CloseOpportunityModalProps = {
   onClose: () => void;
   /** "Görüşme Devam Ediyor" — today's unchanged "Görüşmeyi Tamamla" outcome. */
@@ -16,9 +18,16 @@ type CloseOpportunityModalProps = {
     note: string | null,
   ) => void;
   submitting: boolean;
+  /**
+   * Kritik Akış Düzeltmesi 3 — Firma Sayfası's "❌ İptal" opens straight
+   * to the reason picker (there is no call/"Görüşme Sonucu" context to
+   * ask about outside the Workspace). Defaults to "result", matching
+   * every existing "Görüşmeyi Tamamla" caller unchanged. The modal
+   * itself is not otherwise touched — this only changes which step is
+   * shown first.
+   */
+  initialStep?: Step;
 };
-
-type Step = "result" | "lost-reason";
 
 /**
  * BUG-S26-003 — "Görüşme Sonucu": the modal "Görüşmeyi Tamamla" now opens
@@ -39,8 +48,9 @@ export function CloseOpportunityModal({
   onConfirmWon,
   onConfirmLost,
   submitting,
+  initialStep = "result",
 }: CloseOpportunityModalProps) {
-  const [step, setStep] = useState<Step>("result");
+  const [step, setStep] = useState<Step>(initialStep);
   const [selectedReasonId, setSelectedReasonId] =
     useState<LostReasonId | null>(null);
   const [note, setNote] = useState("");
