@@ -6,7 +6,6 @@ import {
 import { NavLink } from "react-router-dom";
 
 import viawaLogo from "../../assets/viawa-logo.png";
-import { useAuth } from "../../features/auth/AuthContext";
 import { useExhibitionSelection } from "../../modules/exhibitions/context/ExhibitionSelectionContext";
 import { ExhibitionSidebarSection } from "../../modules/exhibitions/components/ExhibitionSidebarSection";
 
@@ -14,12 +13,12 @@ import { useWorkspaceHeader } from "./workspaceHeaderContext";
 
 const items = [
   {
-    label: "Today",
+    label: "Bugün",
     to: "/today",
     icon: Home,
   },
   {
-    label: "Companies",
+    label: "Firmalar",
     to: "/companies",
     icon: Building2,
   },
@@ -31,8 +30,6 @@ const items = [
 ];
 
 export function Sidebar() {
-  const { user } = useAuth();
-
   const {
     aiConfidence,
     mode,
@@ -51,15 +48,6 @@ export function Sidebar() {
   const showWorkspaceMode =
     aiConfidence !== null;
 
-  const displayName =
-    user?.user_metadata?.full_name ||
-    user?.email?.split("@")[0] ||
-    "Kullanıcı";
-
-  const isGenericAdminName =
-    displayName.trim().toLowerCase() ===
-    "admin";
-
   return (
     <aside className="atlas-sidebar atlas-sidebar-compact">
       <div className="atlas-logo">
@@ -71,13 +59,11 @@ export function Sidebar() {
 
       <div className="atlas-sidebar-welcome">
         <p className="atlas-sidebar-welcome-eyebrow">
-          Work Assistant
+          Çalışma Asistanı
         </p>
 
         <p className="atlas-sidebar-welcome-name">
-          {isGenericAdminName
-            ? "Hoş geldiniz"
-            : `Hoş geldiniz, ${displayName}`}
+          Hoş geldiniz
         </p>
       </div>
 
@@ -126,7 +112,7 @@ export function Sidebar() {
               setMode("manual")
             }
           >
-            Manual
+            Manuel
           </button>
 
           <button
@@ -140,7 +126,7 @@ export function Sidebar() {
               setMode("automatic")
             }
           >
-            Auto
+            Otomatik
           </button>
         </div>
       )}

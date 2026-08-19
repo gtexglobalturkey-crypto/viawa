@@ -96,7 +96,7 @@ select {
 .atlas-logo {
   display: flex;
   justify-content: center;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .atlas-logo img {
@@ -121,7 +121,7 @@ select {
 }
 
 .atlas-sidebar-welcome-name {
-  margin: 6px 0 0;
+  margin: 14px 0 0;
   overflow: hidden;
   color: var(--sidebar-text);
   font-size: 11px;
