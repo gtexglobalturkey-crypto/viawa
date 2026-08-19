@@ -315,3 +315,24 @@ export interface CallNote {
   created_at: string;
   updated_at: string;
 }
+
+// RC-AUTH — the app-level authorization record for a signed-in Supabase
+// Auth user. A Supabase session alone never grants VIAWA access: this
+// row (created/edited only via the Supabase Dashboard, never by the
+// app) is what decides it. id is the same uuid as auth.users.id.
+export type ApplicationUserRole = "admin" | "representative";
+
+export interface ApplicationUser {
+  id: string;
+
+  email: string;
+
+  full_name: string | null;
+
+  role: ApplicationUserRole;
+
+  is_active: boolean;
+
+  created_at: string;
+  updated_at: string;
+}

@@ -9,6 +9,7 @@ import {
 
 import { useToast } from "../../components/feedback/toastContext";
 import { supabase } from "../crm/api/supabase";
+import { describeSignInError } from "./describeSignInError";
 
 export function LoginPage() {
   const { showToast } = useToast();
@@ -35,17 +36,39 @@ export function LoginPage() {
 
     setIsSubmitting(true);
 
-    const { error } =
-      await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
+    let result: Awaited<
+      ReturnType<
+        typeof supabase.auth.signInWithPassword
+      >
+    >;
+
+    try {
+      result =
+        await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+    } catch (networkError) {
+      console.error(
+        "ATLAS sign in network error:",
+        networkError,
+      );
+
+      setIsSubmitting(false);
+
+      showToast(
+        "Bağlantı kurulamadı. Lütfen tekrar deneyin.",
+        "error",
+      );
+
+      return;
+    }
 
     setIsSubmitting(false);
 
-    if (error) {
+    if (result.error) {
       showToast(
-        error.message,
+        describeSignInError(result.error),
         "error",
       );
 
