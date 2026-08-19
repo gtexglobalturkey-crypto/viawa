@@ -241,7 +241,7 @@ export function ExhibitionSidebarSection({
       <div className="exhibitions-header-row">
         <button
           type="button"
-          className="atlas-nav-item exhibitions-toggle-button"
+          className="viawa-nav-item exhibitions-toggle-button"
           aria-expanded={isExpanded}
           onClick={() =>
             setIsExpanded((current) => !current)

@@ -31,14 +31,14 @@ function getConfidenceColor(
   confidence: number,
 ) {
   if (confidence >= 85) {
-    return "var(--atlas-success)";
+    return "var(--viawa-success)";
   }
 
   if (confidence >= 65) {
-    return "var(--atlas-warning)";
+    return "var(--viawa-warning)";
   }
 
-  return "var(--atlas-danger)";
+  return "var(--viawa-danger)";
 }
 
 function clampPercentage(

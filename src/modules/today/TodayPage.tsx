@@ -31,8 +31,8 @@ export function TodayPage() {
             task={
               workflow.currentTask
             }
-            atlasRecommendedTask={
-              workflow.atlasRecommendedTask
+            viawaRecommendedTask={
+              workflow.viawaRecommendedTask
             }
             queue={workflow.queue}
             completing={

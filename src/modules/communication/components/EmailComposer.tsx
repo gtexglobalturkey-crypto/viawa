@@ -358,8 +358,8 @@ function RecipientField({
                 gap: "4px",
                 padding: "2px 6px",
                 borderRadius: "999px",
-                background: "var(--atlas-soft)",
-                border: "1px solid var(--atlas-border)",
+                background: "var(--viawa-soft)",
+                border: "1px solid var(--viawa-border)",
                 fontSize: "10px",
               }}
             >

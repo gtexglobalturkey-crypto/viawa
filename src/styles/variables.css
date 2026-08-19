@@ -1,22 +1,22 @@
 :root {
-  --atlas-bg: #f4f6fa;
-  --atlas-surface: #ffffff;
-  --atlas-surface-soft: #f8fafc;
-  --atlas-border: #e1e6ef;
+  --viawa-bg: #f4f6fa;
+  --viawa-surface: #ffffff;
+  --viawa-surface-soft: #f8fafc;
+  --viawa-border: #e1e6ef;
 
-  --atlas-text: #061124;
-  --atlas-muted: #61708a;
-  --atlas-muted-soft: #94a3b8;
+  --viawa-text: #061124;
+  --viawa-muted: #61708a;
+  --viawa-muted-soft: #94a3b8;
 
-  --atlas-primary: #a91432;
-  --atlas-primary-dark: #8f1029;
-  --atlas-primary-soft: #fff1f4;
+  --viawa-primary: #a91432;
+  --viawa-primary-dark: #8f1029;
+  --viawa-primary-soft: #fff1f4;
 
-  --atlas-sidebar: #081224;
-  --atlas-sidebar-soft: #111c31;
+  --viawa-sidebar: #081224;
+  --viawa-sidebar-soft: #111c31;
 
-  --atlas-success: #16a34a;
-  --atlas-success-soft: #eafaf0;
+  --viawa-success: #16a34a;
+  --viawa-success-soft: #eafaf0;
 
   --radius-sm: 10px;
   --radius-md: 16px;

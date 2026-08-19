@@ -50,7 +50,7 @@ export function LoginPage() {
         });
     } catch (networkError) {
       console.error(
-        "ATLAS sign in network error:",
+        "VIAWA sign in network error:",
         networkError,
       );
 

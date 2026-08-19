@@ -61,7 +61,7 @@ export function ComposerCard({
         )}
 
         {sending ? (
-          <div style={{ padding: "10px 12px", borderRadius: "8px", background: "var(--atlas-soft)", border: "1px solid var(--atlas-border)" }}>
+          <div style={{ padding: "10px 12px", borderRadius: "8px", background: "var(--viawa-soft)", border: "1px solid var(--viawa-border)" }}>
             <p className="muted" style={{ margin: 0, fontSize: "10px", lineHeight: 1.3 }}>
               E-posta kaydediliyor ve takip
               oluşturuluyor...

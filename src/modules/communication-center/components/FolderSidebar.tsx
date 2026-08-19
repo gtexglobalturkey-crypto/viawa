@@ -75,7 +75,7 @@ export function FolderSidebar({
                   borderRadius: 999,
                   background: isSelected
                     ? "rgba(255,255,255,0.25)"
-                    : "var(--atlas-soft)",
+                    : "var(--viawa-soft)",
                 }}
               >
                 {unreadCount}

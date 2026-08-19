@@ -69,7 +69,7 @@ export function MailPreviewPane({
       <header
         style={{
           padding: "14px 16px",
-          borderBottom: "1px solid var(--atlas-border)",
+          borderBottom: "1px solid var(--viawa-border)",
           display: "flex",
           flexDirection: "column",
           gap: 8,
@@ -147,7 +147,7 @@ export function MailPreviewPane({
           <article
             key={message.id}
             style={{
-              border: "1px solid var(--atlas-border)",
+              border: "1px solid var(--viawa-border)",
               borderRadius: 8,
               padding: 10,
             }}

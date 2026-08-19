@@ -254,7 +254,7 @@ export function CommunicationCenterPage() {
           <div
             style={{
               borderRight:
-                "1px solid var(--atlas-border)",
+                "1px solid var(--viawa-border)",
               overflowY: "auto",
             }}
           >
@@ -275,7 +275,7 @@ export function CommunicationCenterPage() {
           <div
             style={{
               borderRight:
-                "1px solid var(--atlas-border)",
+                "1px solid var(--viawa-border)",
               overflowY: "auto",
             }}
           >

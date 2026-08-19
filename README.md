@@ -1,10 +1,8 @@
-# Atlas Rebuild v2
+# VIAWA
 
-Clean Atlas CRM rebuild based on:
+VIAFA'nın satış ekipleri için geliştirdiği VIAWA çalışma alanı.
 
-- Atlas v2 Sprint 01
-- Sales Workspace Module v1
-- Atlas v1.0 Master Repository principles
+Bu depo VIAWA web uygulamasını ve belge servisini içerir.
 
 ## Run
 

@@ -20,7 +20,7 @@ import {
 } from "../services/conversationEngine";
 
 import { getWorkspaceFollowUpActionLabel } from "../../../types/workspaceFollowUpAction";
-import { translateSystemGeneratedText } from "../../../features/execution/atlasTextTranslations";
+import { translateSystemGeneratedText } from "../../../features/execution/viawaTextTranslations";
 
 import {
   findBusinessStatus,

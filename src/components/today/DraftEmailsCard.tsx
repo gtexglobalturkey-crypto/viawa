@@ -153,7 +153,7 @@ export function DraftEmailsCard({
                 alignItems: "center",
                 justifyContent: "center",
                 borderRadius: "999px",
-                background: "var(--atlas-soft)",
+                background: "var(--viawa-soft)",
               }}
             >
               <CheckCircle2 size={16} />
@@ -192,7 +192,7 @@ export function DraftEmailsCard({
                     alignItems: "center",
                     justifyContent: "center",
                     borderRadius: "999px",
-                    background: "var(--atlas-soft)",
+                    background: "var(--viawa-soft)",
                   }}
                 >
                   <Reply size={16} />
@@ -214,7 +214,7 @@ export function DraftEmailsCard({
                         letterSpacing: "0.08em",
                         padding: "2px 6px",
                         borderRadius: "999px",
-                        background: "var(--atlas-soft)",
+                        background: "var(--viawa-soft)",
                       }}
                     >
                       Taslak
@@ -245,7 +245,7 @@ export function DraftEmailsCard({
                     alignItems: "center",
                     justifyContent: "center",
                     borderRadius: "999px",
-                    background: "var(--atlas-soft)",
+                    background: "var(--viawa-soft)",
                   }}
                 >
                   <Mail size={14} />

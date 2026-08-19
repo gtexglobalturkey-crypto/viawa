@@ -7,7 +7,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import { translateSystemGeneratedText } from "../../features/execution/atlasTextTranslations";
+import { translateSystemGeneratedText } from "../../features/execution/viawaTextTranslations";
 import type { AiMemory } from "../../services/supabase/aiService";
 
 import { Panel } from "../ui/Panel";

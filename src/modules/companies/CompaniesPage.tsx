@@ -904,7 +904,7 @@ export function CompaniesPage() {
 
     anchor.href = url;
     anchor.download =
-      "atlas-companies.csv";
+      "viawa-companies.csv";
 
     document.body.appendChild(
       anchor,

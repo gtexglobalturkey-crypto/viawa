@@ -279,7 +279,7 @@ function buildActionDescription(
   return (
     `${title} was completed successfully. ` +
     "The result was recorded in the customer timeline " +
-    "and Atlas memory."
+    "and VIAWA memory."
   );
 }
 

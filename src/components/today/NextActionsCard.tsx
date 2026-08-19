@@ -670,7 +670,7 @@ export function NextActionsCard({
                           letterSpacing: "0.08em",
                           padding: "2px 6px",
                           borderRadius: "999px",
-                          background: "var(--atlas-soft)",
+                          background: "var(--viawa-soft)",
                         }}
                       >
                         {item.typeLabel}
@@ -700,7 +700,7 @@ export function NextActionsCard({
 
       {awaitingSignatureItems.length > 0 ||
       signedItems.length > 0 ? (
-        <div style={{ marginTop: "12px", borderTop: "1px solid var(--atlas-border, #e2e8f0)", paddingTop: "10px" }}>
+        <div style={{ marginTop: "12px", borderTop: "1px solid var(--viawa-border, #e2e8f0)", paddingTop: "10px" }}>
           <p className="eyebrow" style={{ margin: "0 0 6px" }}>
             İmza Durumu
           </p>

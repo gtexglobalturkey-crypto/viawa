@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 
 import { Panel } from "../../../components/ui/Panel";
-import { translateSystemGeneratedText } from "../../../features/execution/atlasTextTranslations";
+import { translateSystemGeneratedText } from "../../../features/execution/viawaTextTranslations";
 import { TEMPLATE_DISPLAY_NAMES } from "../../communication/services/templateService";
 
 import type { CallWorkspaceViewModel } from "../models/workspaceViewModel";

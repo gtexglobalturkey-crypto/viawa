@@ -1,4 +1,4 @@
-import { translateSystemGeneratedText } from "../../features/execution/atlasTextTranslations";
+import { translateSystemGeneratedText } from "../../features/execution/viawaTextTranslations";
 
 import { Panel } from "../ui/Panel";
 

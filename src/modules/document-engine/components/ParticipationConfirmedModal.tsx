@@ -98,7 +98,7 @@ export function ParticipationConfirmedModal({
         style={{
           width: "min(420px, calc(100vw - 32px))",
           background:
-            "var(--atlas-surface, #fff)",
+            "var(--viawa-surface, #fff)",
           borderRadius: 12,
           boxShadow:
             "0 20px 48px rgba(15, 23, 42, 0.24)",

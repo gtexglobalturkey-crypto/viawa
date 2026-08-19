@@ -4,7 +4,7 @@
 // timeline_events.description — the English is intentional at the
 // storage layer (rule: never touch persisted enum/text values), but it
 // must never reach the screen untranslated. Every consumer that renders
-// this text (Today's Atlas Odağı, Company Workspace's Atlas AI card,
+// this text (Today's VIAWA Odağı, Company Workspace's VIAWA AI card,
 // Görüşme Geçmişi / Aktivite timelines) shares this single dictionary
 // instead of keeping its own copy.
 const SYSTEM_SENTENCE_TRANSLATIONS: Record<
@@ -61,6 +61,8 @@ const SYSTEM_SENTENCE_TRANSLATIONS: Record<
     "İletişim, ileride takip ve fırsat bağlamı için kaydedildi.",
   "The result was recorded in the customer timeline and Atlas memory.":
     "Sonuç, müşteri zaman çizelgesine ve VIAWA hafızasına kaydedildi.",
+  "The result was recorded in the customer timeline and VIAWA memory.":
+    "Sonuç, müşteri zaman çizelgesine ve VIAWA hafızasına kaydedildi.",
   "A customer follow-up reminder was created.":
     "Müşteri takip hatırlatıcısı oluşturuldu.",
   "Follow up after the customer reviews the documents.":
@@ -107,7 +109,11 @@ const SYSTEM_SENTENCE_TRANSLATIONS: Record<
     "Hatırlatıcı kaçırılırsa müşteri aksiyonu gecikebilir.",
   "The user completed Atlas's recommended task.":
     "Kullanıcı, VIAWA'nın önerdiği görevi tamamladı.",
+  "The user completed VIAWA's recommended task.":
+    "Kullanıcı, VIAWA'nın önerdiği görevi tamamladı.",
   "The user selected and completed a different task instead of Atlas's first recommendation.":
+    "Kullanıcı, VIAWA'nın ilk önerisi yerine farklı bir görevi seçip tamamladı.",
+  "The user selected and completed a different task instead of VIAWA's first recommendation.":
     "Kullanıcı, VIAWA'nın ilk önerisi yerine farklı bir görevi seçip tamamladı.",
   "The workflow task was completed without a recorded recommendation preference.":
     "İş akışı görevi, kayıtlı bir öneri tercihi olmadan tamamlandı.",
@@ -117,9 +123,13 @@ const SYSTEM_SENTENCE_TRANSLATIONS: Record<
     "Görev puanı mevcut değildi.",
   "Atlas identified an AI risk signal before task completion.":
     "VIAWA, görev tamamlanmadan önce bir AI risk sinyali tespit etti.",
+  "VIAWA identified an AI risk signal before task completion.":
+    "VIAWA, görev tamamlanmadan önce bir AI risk sinyali tespit etti.",
   "The next customer action was scheduled successfully.":
     "Sonraki müşteri aksiyonu başarıyla planlandı.",
   "Atlas's recommendation was accepted and completed.":
+    "VIAWA'nın önerisi kabul edildi ve tamamlandı.",
+  "VIAWA's recommendation was accepted and completed.":
     "VIAWA'nın önerisi kabul edildi ve tamamlandı.",
   "Use this outcome as a positive signal for similar tasks.":
     "Bu sonucu benzer görevler için olumlu bir sinyal olarak kullanın.",

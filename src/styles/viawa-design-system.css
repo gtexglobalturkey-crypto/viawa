@@ -1,22 +1,22 @@
 :root {
-  --atlas-sidebar-width: 188px;
-  --atlas-topbar-height: 64px;
+  --viawa-sidebar-width: 188px;
+  --viawa-topbar-height: 64px;
 
-  --atlas-page-padding-x: 18px;
-  --atlas-page-padding-y: 16px;
+  --viawa-page-padding-x: 18px;
+  --viawa-page-padding-y: 16px;
 
-  --atlas-grid-gap: 12px;
-  --atlas-panel-padding: 14px;
-  --atlas-panel-radius: 16px;
+  --viawa-grid-gap: 12px;
+  --viawa-panel-padding: 14px;
+  --viawa-panel-radius: 16px;
 
-  --atlas-font-xs: 11px;
-  --atlas-font-sm: 12px;
-  --atlas-font-md: 14px;
-  --atlas-font-lg: 16px;
-  --atlas-font-xl: 20px;
-  --atlas-font-2xl: 28px;
+  --viawa-font-xs: 11px;
+  --viawa-font-sm: 12px;
+  --viawa-font-md: 14px;
+  --viawa-font-lg: 16px;
+  --viawa-font-xl: 20px;
+  --viawa-font-2xl: 28px;
 
-  --atlas-control-height: 38px;
+  --viawa-control-height: 38px;
 }
 
 html {
@@ -25,53 +25,53 @@ html {
 
 body {
   min-width: 1180px;
-  color: var(--atlas-text);
+  color: var(--viawa-text);
 }
 
-.atlas-shell {
+.viawa-shell {
   grid-template-columns:
-    var(--atlas-sidebar-width)
+    var(--viawa-sidebar-width)
     minmax(0, 1fr);
 }
 
-.atlas-sidebar {
+.viawa-sidebar {
   padding: 18px 12px;
 }
 
-.atlas-logo {
+.viawa-logo {
   margin-bottom: 26px;
   font-size: 24px;
   letter-spacing: 0.18em;
 }
 
-.atlas-nav section {
+.viawa-nav section {
   margin-bottom: 20px;
 }
 
-.atlas-nav p {
+.viawa-nav p {
   margin-bottom: 8px;
-  font-size: var(--atlas-font-xs);
+  font-size: var(--viawa-font-xs);
 }
 
-.atlas-nav a {
+.viawa-nav a {
   gap: 9px;
   margin-bottom: 2px;
   padding: 8px 9px;
   border-radius: 9px;
-  font-size: var(--atlas-font-sm);
+  font-size: var(--viawa-font-sm);
 }
 
-.atlas-topbar {
+.viawa-topbar {
   width: 100%;
-  height: var(--atlas-topbar-height);
+  height: var(--viawa-topbar-height);
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 10px var(--atlas-page-padding-x);
+  padding: 10px var(--viawa-page-padding-x);
 }
 
-.atlas-topbar h2 {
-  font-size: var(--atlas-font-lg);
+.viawa-topbar h2 {
+  font-size: var(--viawa-font-lg);
 }
 
 .topbar-welcome {
@@ -98,20 +98,20 @@ body {
 
 .search-box {
   min-width: 320px;
-  height: var(--atlas-control-height);
+  height: var(--viawa-control-height);
   padding: 0 12px;
 }
 
 .ai-button,
 .topbar-signout-button {
-  min-height: var(--atlas-control-height);
+  min-height: var(--viawa-control-height);
   padding: 0 13px;
 }
 
 .page {
   padding:
-    var(--atlas-page-padding-y)
-    var(--atlas-page-padding-x)
+    var(--viawa-page-padding-y)
+    var(--viawa-page-padding-x)
     28px;
 }
 
@@ -123,36 +123,36 @@ body {
 .page-header h1,
 .sw-header h1 {
   margin: 2px 0;
-  font-size: var(--atlas-font-2xl);
+  font-size: var(--viawa-font-2xl);
   line-height: 1.08;
 }
 
 .eyebrow {
   margin-bottom: 4px;
-  font-size: var(--atlas-font-xs);
+  font-size: var(--viawa-font-xs);
 }
 
 .muted {
-  font-size: var(--atlas-font-sm);
+  font-size: var(--viawa-font-sm);
   line-height: 1.4;
 }
 
 .panel {
-  padding: var(--atlas-panel-padding);
-  border-radius: var(--atlas-panel-radius);
+  padding: var(--viawa-panel-padding);
+  border-radius: var(--viawa-panel-radius);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.045);
 }
 
 .panel h2 {
   margin-bottom: 6px;
-  font-size: var(--atlas-font-lg);
+  font-size: var(--viawa-font-lg);
 }
 
 .btn {
-  min-height: var(--atlas-control-height);
+  min-height: var(--viawa-control-height);
   padding: 0 13px;
   border-radius: 11px;
-  font-size: var(--atlas-font-sm);
+  font-size: var(--viawa-font-sm);
 }
 
 .command-bar,
@@ -162,8 +162,8 @@ body {
     minmax(150px, 1fr)
     minmax(150px, 1fr)
     190px;
-  gap: var(--atlas-grid-gap);
-  margin-bottom: var(--atlas-grid-gap);
+  gap: var(--viawa-grid-gap);
+  margin-bottom: var(--viawa-grid-gap);
 }
 
 .command-card {
@@ -174,22 +174,22 @@ body {
 }
 
 .command-card span {
-  font-size: var(--atlas-font-xs);
+  font-size: var(--viawa-font-xs);
 }
 
 .command-card strong {
   margin-top: 2px;
-  font-size: var(--atlas-font-sm);
+  font-size: var(--viawa-font-sm);
 }
 
 .mode-switch {
-  min-height: var(--atlas-control-height);
+  min-height: var(--viawa-control-height);
   padding: 3px;
 }
 
 .mode-switch button {
   padding: 0 11px;
-  font-size: var(--atlas-font-xs);
+  font-size: var(--viawa-font-xs);
 }
 
 .call-grid,
@@ -198,11 +198,11 @@ body {
     250px
     minmax(0, 1fr)
     300px;
-  gap: var(--atlas-grid-gap);
+  gap: var(--viawa-grid-gap);
 }
 
 .stack {
-  gap: var(--atlas-grid-gap);
+  gap: var(--viawa-grid-gap);
 }
 
 .data-list {
@@ -212,12 +212,12 @@ body {
 
 .data-list span {
   margin-bottom: 2px;
-  font-size: var(--atlas-font-xs);
+  font-size: var(--viawa-font-xs);
 }
 
 .data-list strong,
 .data-list p {
-  font-size: var(--atlas-font-sm);
+  font-size: var(--viawa-font-sm);
 }
 
 .mini-grid,
@@ -233,7 +233,7 @@ body {
   min-height: 36px;
   padding: 8px 10px;
   border-radius: 10px;
-  font-size: var(--atlas-font-sm);
+  font-size: var(--viawa-font-sm);
 }
 
 .live-panel {
@@ -247,14 +247,14 @@ body {
 
 .status {
   padding: 5px 9px;
-  font-size: var(--atlas-font-xs);
+  font-size: var(--viawa-font-xs);
 }
 
 .notes {
   min-height: 150px;
   padding: 12px;
   border-radius: 12px;
-  font-size: var(--atlas-font-md);
+  font-size: var(--viawa-font-md);
   line-height: 1.45;
 }
 
@@ -268,7 +268,7 @@ body {
   min-height: 42px;
   padding: 6px;
   border-radius: 10px;
-  font-size: var(--atlas-font-xs);
+  font-size: var(--viawa-font-xs);
 }
 
 .next-action {
@@ -279,11 +279,11 @@ body {
 
 .next-action h3 {
   margin-bottom: 7px;
-  font-size: var(--atlas-font-md);
+  font-size: var(--viawa-font-md);
 }
 
 .next-action select {
-  min-height: var(--atlas-control-height);
+  min-height: var(--viawa-control-height);
   padding: 8px 10px;
   border-radius: 10px;
 }
@@ -291,7 +291,7 @@ body {
 .ai-panel {
   max-height: calc(
     100vh -
-    var(--atlas-topbar-height) -
+    var(--viawa-topbar-height) -
     32px
   );
   overflow-y: auto;
@@ -317,12 +317,12 @@ body {
 }
 
 .ai-card strong {
-  font-size: var(--atlas-font-sm);
+  font-size: var(--viawa-font-sm);
 }
 
 .ai-card p {
   margin: 4px 0 0;
-  font-size: var(--atlas-font-xs);
+  font-size: var(--viawa-font-xs);
   line-height: 1.4;
 }
 
@@ -350,7 +350,7 @@ body {
 }
 
 .timeline-item strong {
-  font-size: var(--atlas-font-sm);
+  font-size: var(--viawa-font-sm);
 }
 
 .timeline-item span {
@@ -359,7 +359,7 @@ body {
 
 .timeline-item p {
   margin-top: 3px;
-  font-size: var(--atlas-font-xs);
+  font-size: var(--viawa-font-xs);
   line-height: 1.4;
 }
 
@@ -367,10 +367,10 @@ body {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: var(--atlas-grid-gap);
+  gap: var(--viawa-grid-gap);
   height: calc(
     100vh -
-    var(--atlas-topbar-height) -
+    var(--viawa-topbar-height) -
     174px
   );
   min-height: 0;
@@ -443,14 +443,14 @@ body {
 .company-row a {
   padding: 9px 11px;
   border-radius: 10px;
-  font-size: var(--atlas-font-sm);
+  font-size: var(--viawa-font-sm);
 }
 
 @media (max-width: 1500px) {
   :root {
-    --atlas-sidebar-width: 176px;
-    --atlas-page-padding-x: 14px;
-    --atlas-grid-gap: 10px;
+    --viawa-sidebar-width: 176px;
+    --viawa-page-padding-x: 14px;
+    --viawa-grid-gap: 10px;
   }
 
   .call-grid,

@@ -22,7 +22,7 @@ type ReloadTodayData = () => Promise<void>;
 
 type UseTodayWorkflowResult = {
   currentTask: WorkflowTask | null;
-  atlasRecommendedTask: WorkflowTask | null;
+  viawaRecommendedTask: WorkflowTask | null;
   queue: WorkflowTask[];
   completing: boolean;
   isUsingCustomTask: boolean;
@@ -301,7 +301,7 @@ function readMetadataBoolean(
 
 function createCompletionFeedback(
   task: WorkflowTask,
-  atlasRecommendedTask:
+  viawaRecommendedTask:
     | WorkflowTask
     | null,
   selectedTaskId: string | null,
@@ -331,14 +331,14 @@ function createCompletionFeedback(
           ),
         );
 
-  const wasAtlasRecommended =
-    atlasRecommendedTask?.id ===
+  const wasViawaRecommended =
+    viawaRecommendedTask?.id ===
     task.id;
 
   const wasManuallySelected =
     selectedTaskId !== null &&
     selectedTaskId === task.id &&
-    !wasAtlasRecommended;
+    !wasViawaRecommended;
 
   return {
     feedbackType:
@@ -349,9 +349,10 @@ function createCompletionFeedback(
     taskPhase: task.phase,
     taskPriority: task.priority,
     atlasRecommendedTaskId:
-      atlasRecommendedTask?.id ??
+      viawaRecommendedTask?.id ??
       null,
-    wasAtlasRecommended,
+    wasAtlasRecommended:
+      wasViawaRecommended,
     wasManuallySelected,
     startedAt,
     completedAt,
@@ -428,7 +429,7 @@ export function useTodayWorkflow(
       ],
     );
 
-  const atlasRecommendedTask =
+  const viawaRecommendedTask =
     workflowState.currentTask;
 
   const selectedTask =
@@ -441,14 +442,14 @@ export function useTodayWorkflow(
 
   const currentTask =
     selectedTask ??
-    atlasRecommendedTask;
+    viawaRecommendedTask;
 
   const isUsingCustomTask =
     Boolean(
       selectedTask &&
-        atlasRecommendedTask &&
+        viawaRecommendedTask &&
         selectedTask.id !==
-          atlasRecommendedTask.id,
+          viawaRecommendedTask.id,
     );
 
   async function completeTask() {
@@ -494,7 +495,7 @@ export function useTodayWorkflow(
     const workflowFeedback =
       createCompletionFeedback(
         taskToComplete,
-        atlasRecommendedTask,
+        viawaRecommendedTask,
         selectedTaskId,
         startedAt,
       );
@@ -596,7 +597,7 @@ export function useTodayWorkflow(
 
   return {
     currentTask,
-    atlasRecommendedTask,
+    viawaRecommendedTask,
     queue: workflowState.queue,
     completing,
     isUsingCustomTask,

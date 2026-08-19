@@ -49,25 +49,25 @@ export function Sidebar() {
     aiConfidence !== null;
 
   return (
-    <aside className="atlas-sidebar atlas-sidebar-compact">
-      <div className="atlas-logo">
+    <aside className="viawa-sidebar viawa-sidebar-compact">
+      <div className="viawa-logo">
         <img
           src={viawaLogo}
           alt="VIAWA"
         />
       </div>
 
-      <div className="atlas-sidebar-welcome">
-        <p className="atlas-sidebar-welcome-eyebrow">
+      <div className="viawa-sidebar-welcome">
+        <p className="viawa-sidebar-welcome-eyebrow">
           Çalışma Asistanı
         </p>
 
-        <p className="atlas-sidebar-welcome-name">
+        <p className="viawa-sidebar-welcome-name">
           Hoş geldiniz
         </p>
       </div>
 
-      <nav className="atlas-nav">
+      <nav className="viawa-nav">
         {items.map((item) => {
           const Icon = item.icon;
 
@@ -75,7 +75,7 @@ export function Sidebar() {
             <NavLink
               key={item.label}
               to={item.to}
-              className="atlas-nav-item"
+              className="viawa-nav-item"
             >
               <Icon size={16} />
               <span>{item.label}</span>

@@ -456,7 +456,7 @@ export function ContinueWorkingCard({
                           )}
                           style={{ display: "flex", alignItems: "flex-start", gap: "8px", minWidth: 0, padding: "0" }}
                         >
-                          <div style={{ flex: "0 0 auto", width: "22px", height: "22px", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "999px", background: "var(--atlas-soft)" }}>
+                          <div style={{ flex: "0 0 auto", width: "22px", height: "22px", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "999px", background: "var(--viawa-soft)" }}>
                             <ActionIcon
                               size={14}
                             />

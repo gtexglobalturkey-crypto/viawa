@@ -42,7 +42,7 @@ export function AttachmentPanel({ attachments }: Props) {
               minWidth: 0,
               padding: "6px 8px",
               borderRadius: "8px",
-              background: "var(--atlas-soft)",
+              background: "var(--viawa-soft)",
             }}
           >
             <span style={{ flex: "0 0 auto", fontSize: "12px" }}>📎</span>

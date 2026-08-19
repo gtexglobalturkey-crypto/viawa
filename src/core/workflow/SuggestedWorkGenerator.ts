@@ -414,7 +414,7 @@ export class SuggestedWorkGenerator {
           title: `Complete ${companyName} record`,
           description: `Missing: ${missingFields.join(", ")}`,
           reason:
-            "Completing this record will allow ATLAS to prepare more accurate future actions.",
+            "Completing this record will allow VIAWA to prepare more accurate future actions.",
           companyName,
           opportunityTitle,
           createdAt,

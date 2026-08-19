@@ -12,7 +12,7 @@ import type { WorkflowTask } from "../../core/workflow/workflowTypes";
 
 type Props = {
   task: WorkflowTask | null;
-  atlasRecommendedTask: WorkflowTask | null;
+  viawaRecommendedTask: WorkflowTask | null;
   queue: WorkflowTask[];
   completing: boolean;
   isUsingCustomTask: boolean;
@@ -47,6 +47,8 @@ const EXACT_TASK_TEXT_TRANSLATIONS: Record<
   "This email draft has been waiting and should be completed before it becomes outdated.":
     "Bu taslak e-posta bekliyor ve güncelliğini kaybetmeden tamamlanmalı.",
   "Completing this record will allow ATLAS to prepare more accurate future actions.":
+    "Bu kaydı tamamlamak VIAWA'nın daha doğru gelecek aksiyonları hazırlamasını sağlayacak.",
+  "Completing this record will allow VIAWA to prepare more accurate future actions.":
     "Bu kaydı tamamlamak VIAWA'nın daha doğru gelecek aksiyonları hazırlamasını sağlayacak.",
   "Schedule follow-up call":
     "Takip araması planlayın",
@@ -424,7 +426,7 @@ function formatPriority(
 
 export function CurrentTaskCard({
   task,
-  atlasRecommendedTask,
+  viawaRecommendedTask,
   queue,
   completing,
   isUsingCustomTask,
@@ -621,7 +623,7 @@ export function CurrentTaskCard({
             </button>
 
             {isUsingCustomTask &&
-            atlasRecommendedTask ? (
+            viawaRecommendedTask ? (
               <button
                 type="button"
                 className="current-task-reset-button"

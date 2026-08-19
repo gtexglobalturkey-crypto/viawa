@@ -87,7 +87,7 @@ export function AuthProvider({
       })
       .catch((profileError) => {
         console.error(
-          "ATLAS application user lookup error:",
+          "VIAWA application user lookup error:",
           profileError,
         );
 
@@ -137,7 +137,7 @@ export function AuthProvider({
 
       if (error) {
         console.error(
-          "ATLAS auth session error:",
+          "VIAWA auth session error:",
           error,
         );
       }

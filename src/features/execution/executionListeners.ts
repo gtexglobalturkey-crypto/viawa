@@ -181,11 +181,11 @@ function buildFeedbackSummary(
 
   const selectionSummary =
     feedback.wasAtlasRecommended
-      ? "The user completed Atlas's recommended task."
+      ? "The user completed VIAWA's recommended task."
       : feedback.wasManuallySelected
         ? (
             "The user selected and completed a different " +
-            "task instead of Atlas's first recommendation."
+            "task instead of VIAWA's first recommendation."
           )
         : (
             "The workflow task was completed without a " +
@@ -234,7 +234,7 @@ function buildFeedbackRisk(
 
   if (feedback?.aiRisk) {
     riskParts.push(
-      "Atlas identified an AI risk signal before task completion.",
+      "VIAWA identified an AI risk signal before task completion.",
     );
   }
 
@@ -269,7 +269,7 @@ function buildFeedbackRecommendation(
 
   if (feedback.wasAtlasRecommended) {
     recommendationParts.push(
-      "Atlas's recommendation was accepted and completed.",
+      "VIAWA's recommendation was accepted and completed.",
       "Use this outcome as a positive signal for similar tasks.",
     );
 

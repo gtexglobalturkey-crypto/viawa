@@ -355,8 +355,8 @@ export function LiveInteraction({
               margin: "0 0 8px",
               padding: "6px 10px",
               borderRadius: 8,
-              background: "var(--atlas-soft)",
-              border: "1px solid var(--atlas-border)",
+              background: "var(--viawa-soft)",
+              border: "1px solid var(--viawa-border)",
               fontSize: 12,
             }}
           >
@@ -436,9 +436,9 @@ export function LiveInteraction({
                     justifyContent: "space-between",
                     gap: 8,
                     padding: "6px 8px",
-                    border: "1px solid var(--atlas-border)",
+                    border: "1px solid var(--viawa-border)",
                     borderRadius: 8,
-                    color: "var(--atlas-text)",
+                    color: "var(--viawa-text)",
                     background: "white",
                     textAlign: "left",
                   }}
@@ -466,7 +466,7 @@ export function LiveInteraction({
                       display: "grid",
                       gap: 4,
                       padding: 6,
-                      border: "1px solid var(--atlas-border)",
+                      border: "1px solid var(--viawa-border)",
                       borderRadius: 9,
                       background: "white",
                       boxShadow: "0 10px 24px rgba(15, 23, 42, 0.16)",

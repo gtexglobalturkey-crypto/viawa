@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import type { SearchResult } from "../models/searchResult";
-import { searchAtlas } from "../services/searchService";
+import { searchViawa } from "../services/searchService";
 
 export function useGlobalSearch(query: string) {
   const [results, setResults] =
@@ -29,7 +29,7 @@ export function useGlobalSearch(query: string) {
           setError(null);
 
           const searchResults =
-            await searchAtlas(normalizedQuery);
+            await searchViawa(normalizedQuery);
 
           if (isActive) {
             setResults(searchResults);

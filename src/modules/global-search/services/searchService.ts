@@ -3,7 +3,7 @@ import type { SearchResult } from "../models/searchResult";
 import { getCompanies } from "../../../services/supabase/companyService";
 import { getExhibitions } from "../../../services/supabase/exhibitionService";
 
-export async function searchAtlas(
+export async function searchViawa(
   query: string,
 ): Promise<SearchResult[]> {
   const text = query.trim().toLowerCase();

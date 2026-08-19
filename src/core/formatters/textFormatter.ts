@@ -170,7 +170,7 @@ function formatCompanyWord(word: string): string {
 }
 
 /**
- * Normalizes a company/organization name into ATLAS's corporate
+ * Normalizes a company/organization name into VIAWA's corporate
  * standard: collapsed whitespace, Turkish-aware title case per word,
  * with known corporate abbreviations (San., Tic., Ltd., Şti., A.Ş. …)
  * standardized regardless of how the user typed them.

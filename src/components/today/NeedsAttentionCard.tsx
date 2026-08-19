@@ -165,7 +165,7 @@ export function NeedsAttentionCard({
                 alignItems: "center",
                 justifyContent: "center",
                 borderRadius: "999px",
-                background: "var(--atlas-soft)",
+                background: "var(--viawa-soft)",
               }}
             >
               <CheckCircle2 size={16} />
@@ -204,7 +204,7 @@ export function NeedsAttentionCard({
                     alignItems: "center",
                     justifyContent: "center",
                     borderRadius: "999px",
-                    background: item.overdue ? "#fff3e7" : "var(--atlas-soft)",
+                    background: item.overdue ? "#fff3e7" : "var(--viawa-soft)",
                     color: item.overdue ? "#b46b00" : "inherit",
                   }}
                 >
@@ -231,7 +231,7 @@ export function NeedsAttentionCard({
                         letterSpacing: "0.08em",
                         padding: "2px 6px",
                         borderRadius: "999px",
-                        background: item.overdue ? "#fff3e7" : "var(--atlas-soft)",
+                        background: item.overdue ? "#fff3e7" : "var(--viawa-soft)",
                         color: item.overdue ? "#b46b00" : "inherit",
                       }}
                     >

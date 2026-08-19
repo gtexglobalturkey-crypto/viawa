@@ -35,7 +35,7 @@ export class AppErrorBoundary extends Component<
     errorInfo: ErrorInfo,
   ) {
     console.error(
-      "ATLAS application error:",
+      "VIAWA application error:",
       error,
       errorInfo,
     );

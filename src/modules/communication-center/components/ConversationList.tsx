@@ -51,9 +51,9 @@ export function ConversationList({
                 padding: "10px 12px",
                 border: 0,
                 borderBottom:
-                  "1px solid var(--atlas-border)",
+                  "1px solid var(--viawa-border)",
                 background: isSelected
-                  ? "var(--atlas-soft)"
+                  ? "var(--viawa-soft)"
                   : "transparent",
                 cursor: "pointer",
               }}
@@ -84,7 +84,7 @@ export function ConversationList({
                       fontWeight: 600,
                       padding: "1px 6px",
                       borderRadius: 999,
-                      background: "var(--atlas-primary)",
+                      background: "var(--viawa-primary)",
                       color: "#fff",
                       flexShrink: 0,
                     }}

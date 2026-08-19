@@ -263,8 +263,8 @@ export function WorkspaceEmailPanel({
         right: 0,
         bottom: 0,
         width: "min(420px, 100vw)",
-        background: "var(--atlas-surface, #fff)",
-        borderLeft: "1px solid var(--atlas-border)",
+        background: "var(--viawa-surface, #fff)",
+        borderLeft: "1px solid var(--viawa-border)",
         boxShadow: "-12px 0 32px rgba(15, 23, 42, 0.18)",
         zIndex: 60,
         display: "flex",
@@ -279,7 +279,7 @@ export function WorkspaceEmailPanel({
           justifyContent: "space-between",
           gap: 8,
           padding: "10px 14px",
-          borderBottom: "1px solid var(--atlas-border)",
+          borderBottom: "1px solid var(--viawa-border)",
         }}
       >
         <p className="eyebrow" style={{ margin: 0 }}>
@@ -313,7 +313,7 @@ export function WorkspaceEmailPanel({
           gap: 4,
           padding: "8px 10px",
           overflowX: "auto",
-          borderBottom: "1px solid var(--atlas-border)",
+          borderBottom: "1px solid var(--viawa-border)",
           flexShrink: 0,
         }}
       >
@@ -356,8 +356,8 @@ export function WorkspaceEmailPanel({
             role="status"
             style={{
               ...bannerStyle,
-              background: "var(--atlas-soft)",
-              border: "1px solid var(--atlas-border)",
+              background: "var(--viawa-soft)",
+              border: "1px solid var(--viawa-border)",
             }}
           >
             {`E-posta taslağı ${panelSessionExhibitionName} için hazırlanıyor.`}
@@ -449,7 +449,7 @@ export function WorkspaceEmailPanel({
             style={{
               padding: "6px 8px",
               fontSize: 12,
-              border: "1px solid var(--atlas-border)",
+              border: "1px solid var(--viawa-border)",
               borderRadius: 6,
             }}
           />
@@ -473,7 +473,7 @@ export function WorkspaceEmailPanel({
             padding: 8,
             fontSize: 12,
             lineHeight: 1.5,
-            border: "1px solid var(--atlas-border)",
+            border: "1px solid var(--viawa-border)",
             borderRadius: 6,
             fontFamily: "inherit",
           }}
@@ -488,7 +488,7 @@ export function WorkspaceEmailPanel({
             changes this list from the left panel, not from here. */}
         <div
           style={{
-            borderTop: "1px solid var(--atlas-border)",
+            borderTop: "1px solid var(--viawa-border)",
             paddingTop: 6,
             flexShrink: 0,
           }}
@@ -685,7 +685,7 @@ export function WorkspaceEmailPanel({
       <div
         style={{
           padding: "10px 14px",
-          borderTop: "1px solid var(--atlas-border)",
+          borderTop: "1px solid var(--viawa-border)",
           flexShrink: 0,
         }}
       >
@@ -800,7 +800,7 @@ function CompactRecipientField({
         style={{
           fontSize: 10,
           fontWeight: 600,
-          color: "var(--atlas-muted, #666)",
+          color: "var(--viawa-muted, #666)",
           minWidth: 52,
         }}
       >
@@ -816,8 +816,8 @@ function CompactRecipientField({
             gap: 4,
             padding: "1px 6px",
             borderRadius: 999,
-            background: "var(--atlas-soft)",
-            border: "1px solid var(--atlas-border)",
+            background: "var(--viawa-soft)",
+            border: "1px solid var(--viawa-border)",
             fontSize: 10,
           }}
         >
@@ -858,7 +858,7 @@ function CompactRecipientField({
         style={{
           fontSize: 10,
           padding: "1px 2px",
-          border: "1px solid var(--atlas-border)",
+          border: "1px solid var(--viawa-border)",
           borderRadius: 4,
           maxWidth: 110,
         }}
@@ -887,7 +887,7 @@ function CompactRecipientField({
         style={{
           fontSize: 10,
           padding: "1px 4px",
-          border: "1px solid var(--atlas-border)",
+          border: "1px solid var(--viawa-border)",
           borderRadius: 4,
           flex: "1 1 90px",
           minWidth: 90,

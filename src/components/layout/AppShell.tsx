@@ -16,10 +16,10 @@ export function AppShell({
   return (
     <WorkspaceHeaderProvider>
       <ExhibitionSelectionProvider>
-        <div className="atlas-shell">
+        <div className="viawa-shell">
           <Sidebar />
 
-          <div className="atlas-main">
+          <div className="viawa-main">
             <Topbar />
 
             {children}

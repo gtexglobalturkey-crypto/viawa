@@ -2,28 +2,28 @@
 
 
 :root {
-  --atlas-bg: #f5f5f4;
-  --atlas-panel: #ffffff;
-  --atlas-text: #1a1b1f;
-  --atlas-muted: #6b6d74;
-  --atlas-label: #8b8d93;
-  --atlas-icon: #53555c;
-  --atlas-soft: #f6f6f5;
-  --atlas-border: #e3e2df;
-  --atlas-border-strong: #d3d2ce;
-  --atlas-primary: #9b1c31;
-  --atlas-primary-dark: #7c1728;
-  --atlas-primary-soft: #faf1f2;
-  --atlas-primary-line: rgba(155, 28, 49, 0.16);
-  --atlas-primary-mid: #c98b95;
-  --atlas-success-bg: #ecfdf3;
-  --atlas-success: #027a48;
-  --atlas-warning-bg: #fffaeb;
-  --atlas-warning: #b54708;
-  --atlas-danger-bg: #fef3f2;
-  --atlas-danger: #b42318;
-  --atlas-info-bg: #eff8ff;
-  --atlas-info: #175cd3;
+  --viawa-bg: #f5f5f4;
+  --viawa-panel: #ffffff;
+  --viawa-text: #1a1b1f;
+  --viawa-muted: #6b6d74;
+  --viawa-label: #8b8d93;
+  --viawa-icon: #53555c;
+  --viawa-soft: #f6f6f5;
+  --viawa-border: #e3e2df;
+  --viawa-border-strong: #d3d2ce;
+  --viawa-primary: #9b1c31;
+  --viawa-primary-dark: #7c1728;
+  --viawa-primary-soft: #faf1f2;
+  --viawa-primary-line: rgba(155, 28, 49, 0.16);
+  --viawa-primary-mid: #c98b95;
+  --viawa-success-bg: #ecfdf3;
+  --viawa-success: #027a48;
+  --viawa-warning-bg: #fffaeb;
+  --viawa-warning: #b54708;
+  --viawa-danger-bg: #fef3f2;
+  --viawa-danger: #b42318;
+  --viawa-info-bg: #eff8ff;
+  --viawa-info: #175cd3;
 
   --sidebar-bg-1: #17181d;
   --sidebar-bg-2: #1d1b24;
@@ -44,8 +44,8 @@
     "Segoe UI",
     sans-serif;
 
-  color: var(--atlas-text);
-  background: var(--atlas-bg);
+  color: var(--viawa-text);
+  background: var(--viawa-bg);
 }
 
 * {
@@ -59,7 +59,7 @@ html {
 body {
   margin: 0;
   min-width: 1180px;
-  background: var(--atlas-bg);
+  background: var(--viawa-bg);
 }
 
 button,
@@ -69,17 +69,17 @@ select {
   font: inherit;
 }
 
-.atlas-shell {
+.viawa-shell {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 160px minmax(0, 1fr);
 }
 
-.atlas-main {
+.viawa-main {
   min-width: 0;
 }
 
-.atlas-sidebar {
+.viawa-sidebar {
   position: sticky;
   top: 0;
   height: 100vh;
@@ -93,25 +93,25 @@ select {
   );
 }
 
-.atlas-logo {
+.viawa-logo {
   display: flex;
   justify-content: center;
   margin-bottom: 6px;
 }
 
-.atlas-logo img {
+.viawa-logo img {
   width: auto;
   height: auto;
   max-width: 118px;
   max-height: 48px;
 }
 
-.atlas-sidebar-welcome {
+.viawa-sidebar-welcome {
   margin: 0 0 18px;
   text-align: center;
 }
 
-.atlas-sidebar-welcome-eyebrow {
+.viawa-sidebar-welcome-eyebrow {
   margin: 0 0 2px;
   color: var(--sidebar-text-secondary);
   font-size: 9px;
@@ -120,7 +120,7 @@ select {
   letter-spacing: 0.08em;
 }
 
-.atlas-sidebar-welcome-name {
+.viawa-sidebar-welcome-name {
   margin: 14px 0 0;
   overflow: hidden;
   color: var(--sidebar-text);
@@ -131,12 +131,12 @@ select {
   text-overflow: ellipsis;
 }
 
-.atlas-nav section {
+.viawa-nav section {
   margin-bottom: 16px;
 }
 
-.atlas-nav-group,
-.atlas-nav p {
+.viawa-nav-group,
+.viawa-nav p {
   margin: 0 0 5px;
   padding-left: 2px;
   color: var(--sidebar-text-secondary);
@@ -146,8 +146,8 @@ select {
   text-transform: uppercase;
 }
 
-.atlas-nav-item,
-.atlas-nav a {
+.viawa-nav-item,
+.viawa-nav a {
   min-height: 28px;
   display: flex;
   align-items: center;
@@ -166,20 +166,20 @@ select {
     color 0.15s ease;
 }
 
-.atlas-nav-item svg,
-.atlas-nav a svg {
+.viawa-nav-item svg,
+.viawa-nav a svg {
   flex: 0 0 auto;
   color: var(--sidebar-icon);
 }
 
-.atlas-nav-item:hover,
-.atlas-nav a:hover {
+.viawa-nav-item:hover,
+.viawa-nav a:hover {
   color: var(--sidebar-text);
   background: var(--sidebar-hover);
 }
 
-.atlas-nav-item.active,
-.atlas-nav a.active {
+.viawa-nav-item.active,
+.viawa-nav a.active {
   color: white;
   border-left-color: var(--sidebar-accent);
   background: linear-gradient(
@@ -189,12 +189,12 @@ select {
   );
 }
 
-.atlas-nav-item.active svg,
-.atlas-nav a.active svg {
+.viawa-nav-item.active svg,
+.viawa-nav a.active svg {
   color: white;
 }
 
-.atlas-topbar {
+.viawa-topbar {
   position: sticky;
   top: 0;
   z-index: 10;
@@ -204,7 +204,7 @@ select {
   align-items: center;
   gap: 12px;
   padding: 7px 14px;
-  border-bottom: 1px solid var(--atlas-border);
+  border-bottom: 1px solid var(--viawa-border);
   background: rgba(245, 245, 244, 0.92);
   backdrop-filter: blur(16px);
 }
@@ -242,7 +242,7 @@ select {
 .topbar-company-name strong {
   display: block;
   overflow: hidden;
-  color: var(--atlas-text);
+  color: var(--viawa-text);
   font-size: 14px;
   font-weight: 900;
   letter-spacing: -0.01em;
@@ -254,7 +254,7 @@ select {
   display: block;
   overflow: hidden;
   margin-top: 1px;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 10px;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -266,10 +266,10 @@ select {
   display: inline-flex;
   align-items: center;
   padding: 0 8px;
-  border: 1px solid var(--atlas-border-strong);
+  border: 1px solid var(--viawa-border-strong);
   border-radius: 999px;
-  color: var(--atlas-muted);
-  background: var(--atlas-soft);
+  color: var(--viawa-muted);
+  background: var(--viawa-soft);
   font-size: 9px;
   font-weight: 700;
   white-space: nowrap;
@@ -282,7 +282,7 @@ select {
   align-items: center;
   padding: 0 8px;
   border-radius: 999px;
-  color: var(--atlas-primary);
+  color: var(--viawa-primary);
   background: rgba(155, 28, 49, 0.1);
   font-size: 9px;
   font-weight: 850;
@@ -295,35 +295,35 @@ select {
   flex-direction: column;
   gap: 1px;
   padding: 4px 8px;
-  border: 1px solid var(--atlas-border);
+  border: 1px solid var(--viawa-border);
   border-radius: 8px;
   background: white;
 }
 
 .topbar-ai-confidence span {
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 8px;
   font-weight: 800;
   white-space: nowrap;
 }
 
 .topbar-ai-confidence small {
-  color: var(--atlas-text);
+  color: var(--viawa-text);
   font-size: 9px;
   font-weight: 700;
   white-space: nowrap;
 }
 
 .topbar-ai-confidence small.is-success {
-  color: var(--atlas-success);
+  color: var(--viawa-success);
 }
 
 .topbar-ai-confidence small.is-warning {
-  color: var(--atlas-warning);
+  color: var(--viawa-warning);
 }
 
 .topbar-ai-confidence small.is-danger {
-  color: var(--atlas-danger);
+  color: var(--viawa-danger);
 }
 
 .topbar-actions {
@@ -348,9 +348,9 @@ select {
   align-items: center;
   gap: 8px;
   padding: 0 12px;
-  border: 1px solid var(--atlas-border);
+  border: 1px solid var(--viawa-border);
   border-radius: 999px;
-  color: var(--atlas-label);
+  color: var(--viawa-label);
   background: white;
 }
 
@@ -359,7 +359,7 @@ select {
   min-width: 0;
   border: 0;
   outline: 0;
-  color: var(--atlas-text);
+  color: var(--viawa-text);
   background: transparent;
 }
 
@@ -370,7 +370,7 @@ select {
   z-index: 20;
   width: min(420px, 70vw);
   padding: 8px;
-  border: 1px solid var(--atlas-border);
+  border: 1px solid var(--viawa-border);
   border-radius: 12px;
   background: white;
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
@@ -385,13 +385,13 @@ select {
   border: 0;
   border-radius: 9px;
   text-align: left;
-  color: var(--atlas-text);
+  color: var(--viawa-text);
   background: transparent;
   cursor: pointer;
 }
 
 .search-result-item:hover {
-  background: var(--atlas-soft);
+  background: var(--viawa-soft);
 }
 
 .search-result-item span {
@@ -400,7 +400,7 @@ select {
 }
 
 .search-result-item small {
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
 }
 
 .master-list-picker {
@@ -414,13 +414,13 @@ select {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--atlas-label);
+  color: var(--viawa-label);
   font-size: 11px;
   font-weight: 700;
 }
 
 .master-list-picker-label em {
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 10px;
   font-style: normal;
 }
@@ -437,10 +437,10 @@ select {
   gap: 5px;
   height: 26px;
   padding: 0 6px 0 10px;
-  border: 1px solid var(--atlas-primary-line);
+  border: 1px solid var(--viawa-primary-line);
   border-radius: 999px;
-  color: var(--atlas-primary);
-  background: var(--atlas-primary-soft);
+  color: var(--viawa-primary);
+  background: var(--viawa-primary-soft);
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
@@ -450,7 +450,7 @@ select {
   padding: 0 6px;
   border-radius: 999px;
   color: white;
-  background: var(--atlas-primary);
+  background: var(--viawa-primary);
   font-size: 8.5px;
   font-weight: 850;
   font-style: normal;
@@ -465,7 +465,7 @@ select {
   height: 16px;
   border: 0;
   border-radius: 999px;
-  color: var(--atlas-primary);
+  color: var(--viawa-primary);
   background: transparent;
   cursor: pointer;
 }
@@ -482,16 +482,16 @@ select {
   width: 100%;
   height: 34px;
   padding: 0 12px;
-  border: 1px solid var(--atlas-border-strong);
+  border: 1px solid var(--viawa-border-strong);
   border-radius: 10px;
-  color: var(--atlas-text);
+  color: var(--viawa-text);
   background: white;
   font-size: 12px;
   outline: none;
 }
 
 .master-list-picker-input-row input:focus {
-  border-color: var(--atlas-primary);
+  border-color: var(--viawa-primary);
 }
 
 .master-list-picker-results {
@@ -503,7 +503,7 @@ select {
   max-height: 220px;
   overflow-y: auto;
   padding: 6px;
-  border: 1px solid var(--atlas-border);
+  border: 1px solid var(--viawa-border);
   border-radius: 10px;
   background: white;
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
@@ -521,7 +521,7 @@ select {
   border: 0;
   border-radius: 8px;
   text-align: left;
-  color: var(--atlas-text);
+  color: var(--viawa-text);
   background: transparent;
   font-size: 12px;
   cursor: pointer;
@@ -529,16 +529,16 @@ select {
 
 .master-list-picker-result-item:hover:not(:disabled),
 .master-list-picker-create-item:hover:not(:disabled) {
-  background: var(--atlas-soft);
+  background: var(--viawa-soft);
 }
 
 .master-list-picker-result-item:disabled {
-  color: var(--atlas-label);
+  color: var(--viawa-label);
   cursor: not-allowed;
 }
 
 .master-list-picker-create-item {
-  color: var(--atlas-primary);
+  color: var(--viawa-primary);
   font-weight: 700;
 }
 
@@ -555,9 +555,9 @@ select {
   flex: 0 0 auto;
   gap: 7px;
   padding: 0 11px;
-  border: 1px solid var(--atlas-border);
+  border: 1px solid var(--viawa-border);
   border-radius: 999px;
-  color: var(--atlas-text);
+  color: var(--viawa-text);
   background: white;
   font-size: 11px;
   font-weight: 800;
@@ -574,7 +574,7 @@ select {
 
 .page-header h1 {
   margin: 2px 0;
-  color: var(--atlas-text);
+  color: var(--viawa-text);
   font-size: 28px;
   font-weight: 800;
   letter-spacing: -0.04em;
@@ -582,7 +582,7 @@ select {
 
 .page-header p:last-child {
   margin: 0;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
 }
 
 main.exhibition-repository-page {
@@ -666,7 +666,7 @@ main.exhibition-repository-page {
 
 .eyebrow {
   margin: 0 0 3px;
-  color: var(--atlas-label);
+  color: var(--viawa-label);
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -675,22 +675,22 @@ main.exhibition-repository-page {
 
 .muted {
   margin: 0;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 11px;
   line-height: 1.4;
 }
 
 .panel {
   padding: 12px;
-  border: 1px solid var(--atlas-border);
+  border: 1px solid var(--viawa-border);
   border-radius: 14px;
-  background: var(--atlas-panel);
+  background: var(--viawa-panel);
   box-shadow: 0 1px 2px rgba(20, 20, 22, 0.03), 0 8px 20px rgba(20, 20, 22, 0.035);
 }
 
 .panel h2 {
   margin: 0 0 6px;
-  color: var(--atlas-text);
+  color: var(--viawa-text);
   font-size: 15px;
   font-weight: 800;
   letter-spacing: -0.02em;
@@ -703,9 +703,9 @@ main.exhibition-repository-page {
   justify-content: center;
   gap: 7px;
   padding: 0 13px;
-  border: 1px solid var(--atlas-border-strong);
+  border: 1px solid var(--viawa-border-strong);
   border-radius: 10px;
-  color: var(--atlas-text);
+  color: var(--viawa-text);
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
@@ -720,23 +720,23 @@ main.exhibition-repository-page {
 
 .btn-primary {
   color: white;
-  border-color: var(--atlas-primary);
-  background: var(--atlas-primary);
+  border-color: var(--viawa-primary);
+  background: var(--viawa-primary);
   box-shadow: none;
 }
 
 .btn-primary:hover:not(:disabled) {
-  border-color: var(--atlas-primary-dark);
-  background: var(--atlas-primary-dark);
+  border-color: var(--viawa-primary-dark);
+  background: var(--viawa-primary-dark);
 }
 
 .btn-secondary {
-  color: var(--atlas-text);
+  color: var(--viawa-text);
   background: white;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  border-color: var(--atlas-primary);
+  border-color: var(--viawa-primary);
 }
 
 .stack {
@@ -755,18 +755,18 @@ main.exhibition-repository-page {
 .data-list span {
   display: block;
   margin-bottom: 2px;
-  color: var(--atlas-label);
+  color: var(--viawa-label);
   font-size: 10px;
 }
 
 .data-list strong {
-  color: var(--atlas-text);
+  color: var(--viawa-text);
   font-weight: 700;
 }
 
 .import-result-table {
   margin-top: 10px;
-  border: 1px solid var(--atlas-border);
+  border: 1px solid var(--viawa-border);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -779,7 +779,7 @@ main.exhibition-repository-page {
   gap: 10px;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--atlas-border);
+  border-bottom: 1px solid var(--viawa-border);
   font-size: 12px;
 }
 
@@ -789,8 +789,8 @@ main.exhibition-repository-page {
 }
 
 .import-result-row--head {
-  color: var(--atlas-label);
-  background: var(--atlas-soft);
+  color: var(--viawa-label);
+  background: var(--viawa-soft);
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
@@ -807,23 +807,23 @@ main.exhibition-repository-page {
 }
 
 .import-status-success {
-  color: var(--atlas-success);
-  background: var(--atlas-success-bg);
+  color: var(--viawa-success);
+  background: var(--viawa-success-bg);
 }
 
 .import-status-duplicate {
-  color: var(--atlas-muted);
-  background: var(--atlas-soft);
+  color: var(--viawa-muted);
+  background: var(--viawa-soft);
 }
 
 .import-status-partial {
-  color: var(--atlas-warning);
-  background: var(--atlas-warning-bg);
+  color: var(--viawa-warning);
+  background: var(--viawa-warning-bg);
 }
 
 .import-status-failed {
-  color: var(--atlas-danger);
-  background: var(--atlas-danger-bg);
+  color: var(--viawa-danger);
+  background: var(--viawa-danger-bg);
 }
 
 .company-info-card {
@@ -923,7 +923,7 @@ main.company-detail-page {
 .company-record-section {
   flex: 0 0 auto;
   padding: 16px 2px;
-  border-bottom: 1px solid var(--atlas-border);
+  border-bottom: 1px solid var(--viawa-border);
 }
 
 .company-record-section:first-child {
@@ -970,7 +970,7 @@ main.company-detail-page {
 }
 
 .company-record-metadata span {
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 9px;
 }
 
@@ -1009,7 +1009,7 @@ main.company-detail-page {
   width: min(680px, 100%);
   max-height: calc(100vh - 48px);
   overflow: hidden;
-  border: 1px solid var(--atlas-border);
+  border: 1px solid var(--viawa-border);
   border-radius: 18px;
   background: #fff;
   box-shadow: 0 24px 64px rgba(15, 23, 42, 0.24);
@@ -1025,16 +1025,16 @@ main.company-detail-page {
 
 .company-detail-modal-header {
   justify-content: space-between;
-  border-bottom: 1px solid var(--atlas-border);
+  border-bottom: 1px solid var(--viawa-border);
 }
 
 .company-detail-modal-header h2 { margin: 0; font-size: 18px; }
-.company-detail-modal-footer { justify-content: flex-end; border-top: 1px solid var(--atlas-border); }
+.company-detail-modal-footer { justify-content: flex-end; border-top: 1px solid var(--viawa-border); }
 .company-detail-modal-close { display: grid; place-items: center; padding: 6px; border: 0; background: transparent; cursor: pointer; }
 .company-detail-modal-body { min-height: 0; overflow-y: auto; padding: 20px; }
 .company-note-editor { width: 100%; min-height: 280px; resize: vertical; }
 .company-note-full-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.company-files-placeholder { padding: 16px; border: 1px dashed var(--atlas-border); border-radius: 12px; background: var(--atlas-soft); }
+.company-files-placeholder { padding: 16px; border: 1px dashed var(--viawa-border); border-radius: 12px; background: var(--viawa-soft); }
 .company-files-placeholder h3 { margin: 5px 0 8px; }
 
 .company-opportunity-scroll .opportunity-card.company-history-card {
@@ -1066,9 +1066,9 @@ main.company-detail-page {
 
 .company-archive-category {
   padding: 4px 10px;
-  border: 1px dashed var(--atlas-border);
+  border: 1px dashed var(--viawa-border);
   border-radius: 999px;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 10px;
   font-weight: 700;
 }
@@ -1130,7 +1130,7 @@ main.company-detail-page {
 
 .exhibition-file-caret {
   flex-shrink: 0;
-  color: var(--atlas-primary);
+  color: var(--viawa-primary);
   font-size: 10px;
 }
 
@@ -1149,22 +1149,22 @@ main.company-detail-page {
   margin-left: auto;
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--atlas-soft);
-  color: var(--atlas-muted);
+  background: var(--viawa-soft);
+  color: var(--viawa-muted);
   font-size: 10px;
   font-weight: 800;
 }
 
 .exhibition-file-body {
   padding: 0 14px 14px;
-  border-top: 1px solid var(--atlas-border);
+  border-top: 1px solid var(--viawa-border);
 }
 
 .exhibition-file-docs {
   margin: 12px 0 0;
   padding: 0;
   list-style: none;
-  color: var(--atlas-text);
+  color: var(--viawa-text);
   font-size: 12px;
 }
 
@@ -1177,13 +1177,13 @@ main.company-detail-page {
 }
 
 .exhibition-file-doc-row + .exhibition-file-doc-row {
-  border-top: 1px solid var(--atlas-border);
+  border-top: 1px solid var(--viawa-border);
 }
 
 .exhibition-file-doc-row a {
   flex-shrink: 0;
   font-weight: 800;
-  color: var(--atlas-primary);
+  color: var(--viawa-primary);
   text-decoration: none;
 }
 
@@ -1236,7 +1236,7 @@ main.company-detail-page {
 
 .company-ai-card-side {
   padding-top: 8px;
-  border-top: 1px solid var(--atlas-border);
+  border-top: 1px solid var(--viawa-border);
 }
 
 .company-ai-card-side > div {
@@ -1246,7 +1246,7 @@ main.company-detail-page {
 }
 
 .company-ai-card-side span {
-  color: var(--atlas-label);
+  color: var(--viawa-label);
   font-size: 10px;
 }
 
@@ -1298,7 +1298,7 @@ main.company-detail-page {
   flex-direction: column;
   gap: 6px;
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--atlas-border);
+  border-bottom: 1px solid var(--viawa-border);
 }
 
 .company-header-name {
@@ -1321,7 +1321,7 @@ main.company-detail-page {
 }
 
 .company-header-summary-item span {
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 9px;
   font-weight: 800;
   text-transform: uppercase;
@@ -1346,8 +1346,8 @@ main.company-detail-page {
   height: 18px;
   padding: 0 7px;
   border-radius: 999px;
-  color: var(--atlas-text);
-  background: var(--atlas-soft);
+  color: var(--viawa-text);
+  background: var(--viawa-soft);
   font-size: 10px;
   font-weight: 700;
   white-space: nowrap;
@@ -1357,7 +1357,7 @@ main.company-detail-page {
   padding: 0 5px;
   border-radius: 999px;
   color: white;
-  background: var(--atlas-primary);
+  background: var(--viawa-primary);
   font-size: 7.5px;
   font-weight: 850;
   font-style: normal;
@@ -1379,11 +1379,11 @@ main.company-detail-page {
 }
 
 .company-status-dot--active {
-  background: var(--atlas-primary);
+  background: var(--viawa-primary);
 }
 
 .company-status-dot--inactive {
-  background: var(--atlas-border-strong);
+  background: var(--viawa-border-strong);
 }
 
 .company-identity-row {
@@ -1404,9 +1404,9 @@ main.company-detail-page {
   flex-direction: column;
   gap: 2px;
   padding: 6px 10px;
-  border: 1px solid var(--atlas-border);
+  border: 1px solid var(--viawa-border);
   border-radius: 8px;
-  background: var(--atlas-soft);
+  background: var(--viawa-soft);
 }
 
 .company-identity-row > div.identity-fill {
@@ -1415,7 +1415,7 @@ main.company-detail-page {
 }
 
 .company-identity-row span {
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 9px;
   font-weight: 800;
   text-transform: uppercase;
@@ -1439,7 +1439,7 @@ main.company-detail-page {
 }
 
 .company-identity-row a {
-  color: var(--atlas-primary);
+  color: var(--viawa-primary);
   text-decoration: none;
 }
 
@@ -1460,7 +1460,7 @@ main.company-detail-page {
 }
 
 .company-detail-summary-grid span {
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 11px;
 }
 
@@ -1525,7 +1525,7 @@ main.company-detail-page {
   flex: 0 0 auto;
   margin-top: 14px;
   padding-top: 12px;
-  border-top: 1px solid var(--atlas-border);
+  border-top: 1px solid var(--viawa-border);
 }
 
 .company-detail-page > .opportunity-card {
@@ -1606,7 +1606,7 @@ main.company-detail-page {
   height: 16px;
   padding: 0;
   place-items: center;
-  border: 1px solid var(--atlas-border-strong);
+  border: 1px solid var(--viawa-border-strong);
   border-radius: 999px;
   background: #fff;
   cursor: pointer;
@@ -1620,20 +1620,20 @@ main.company-detail-page {
 }
 
 .contact-card-selector[aria-pressed="true"] span {
-  background: var(--atlas-primary);
+  background: var(--viawa-primary);
 }
 
 .company-people-content .opportunity-card--selected {
-  border-color: var(--atlas-primary);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--atlas-primary) 28%, transparent);
+  border-color: var(--viawa-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--viawa-primary) 28%, transparent);
 }
 
 .company-people-content .opportunity-card:hover {
-  border-color: var(--atlas-primary);
+  border-color: var(--viawa-primary);
 }
 
 .company-people-content .opportunity-card:focus-visible {
-  outline: 2px solid var(--atlas-primary);
+  outline: 2px solid var(--viawa-primary);
   outline-offset: 2px;
 }
 
@@ -1669,7 +1669,7 @@ main.company-detail-page {
 .contact-title-label {
   display: inline;
   margin-bottom: 0;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-weight: 600;
 }
 
@@ -1688,7 +1688,7 @@ main.company-detail-page {
   text-transform: uppercase;
   letter-spacing: 0.01em;
   line-height: 1;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   white-space: nowrap;
 }
 
@@ -1702,7 +1702,7 @@ main.company-detail-page {
 }
 
 .opportunity-card-person-link:hover {
-  color: var(--atlas-primary);
+  color: var(--viawa-primary);
   text-decoration: underline;
 }
 
@@ -1744,17 +1744,17 @@ main.company-detail-page {
 .expandable-card-extra {
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px dashed var(--atlas-border);
+  border-top: 1px dashed var(--viawa-border);
 }
 
 .company-people-content .opportunity-card--add {
   cursor: default;
   border-style: dashed;
-  background: var(--atlas-soft);
+  background: var(--viawa-soft);
 }
 
 .company-people-content .opportunity-card--add:hover {
-  border-color: var(--atlas-border-strong);
+  border-color: var(--viawa-border-strong);
 }
 
 .opportunity-card-add-btn {
@@ -1767,7 +1767,7 @@ main.company-detail-page {
   gap: 6px;
   border: 0;
   background: transparent;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 10px;
   font-weight: 800;
   text-decoration: none;
@@ -1775,11 +1775,11 @@ main.company-detail-page {
 }
 
 .opportunity-card-add-btn:hover {
-  color: var(--atlas-primary);
+  color: var(--viawa-primary);
 }
 
 .opportunity-card-add-btn svg {
-  color: var(--atlas-label);
+  color: var(--viawa-label);
 }
 
 .company-opportunity-scroll .opportunity-card .data-list {
@@ -1875,7 +1875,7 @@ main.company-detail-page {
   z-index: 1;
   border: none;
   background: transparent;
-  color: var(--atlas-danger, #b42318);
+  color: var(--viawa-danger, #b42318);
   font-size: 9px;
   font-weight: 800;
   line-height: 1;
@@ -1904,12 +1904,12 @@ main.company-detail-page {
 }
 
 .company-active-exhibition-card--link:hover {
-  border-color: var(--atlas-primary);
+  border-color: var(--viawa-primary);
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.09);
 }
 
 .company-active-exhibition-card--link:focus-visible {
-  outline: 2px solid var(--atlas-primary);
+  outline: 2px solid var(--viawa-primary);
   outline-offset: 2px;
 }
 
@@ -1931,11 +1931,11 @@ main.company-detail-page {
   display: grid;
   place-items: center;
   border-style: dashed;
-  background: var(--atlas-soft);
+  background: var(--viawa-soft);
 }
 
 .company-active-exhibition-add {
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 10px;
   font-weight: 800;
   text-decoration: none;
@@ -1944,7 +1944,7 @@ main.company-detail-page {
 .company-active-exhibition-limit {
   height: 10px;
   margin: 2px 0 0;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 9px;
   line-height: 1.1;
 }
@@ -1967,9 +1967,9 @@ main.company-detail-page {
   gap: 8px;
   min-width: 160px;
   padding: 12px 16px;
-  border: 1px solid var(--atlas-border);
+  border: 1px solid var(--viawa-border);
   border-radius: 14px;
-  background: var(--atlas-panel);
+  background: var(--viawa-panel);
   font-size: 13px;
   font-weight: 700;
   color: inherit;
@@ -1978,7 +1978,7 @@ main.company-detail-page {
 }
 
 .company-history-folder:hover {
-  border-color: var(--atlas-primary);
+  border-color: var(--viawa-primary);
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.09);
 }
 
@@ -1990,8 +1990,8 @@ main.company-detail-page {
   margin-left: auto;
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--atlas-soft);
-  color: var(--atlas-muted);
+  background: var(--viawa-soft);
+  color: var(--viawa-muted);
   font-size: 11px;
   font-weight: 800;
 }
@@ -2014,7 +2014,7 @@ main.company-detail-page {
 }
 
 .company-history-record-version {
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-weight: 700;
 }
 
@@ -2031,7 +2031,7 @@ main.company-detail-page {
   align-self: flex-start;
   font-size: 12px;
   font-weight: 800;
-  color: var(--atlas-primary);
+  color: var(--viawa-primary);
   text-decoration: none;
 }
 
@@ -2108,10 +2108,10 @@ main.company-detail-page {
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
-  border: 1px solid var(--atlas-border);
+  border: 1px solid var(--viawa-border);
   border-radius: 9px;
-  color: var(--atlas-text);
-  background: var(--atlas-soft);
+  color: var(--viawa-text);
+  background: var(--viawa-soft);
   font-size: 11px;
   font-weight: 700;
 }
@@ -2200,7 +2200,7 @@ main.company-detail-page {
 
 .today-current-task .task-label {
   margin: 0;
-  color: var(--atlas-primary);
+  color: var(--viawa-primary);
   font-size: 8px;
   font-weight: 950;
   letter-spacing: 0.12em;
@@ -2210,7 +2210,7 @@ main.company-detail-page {
 
 .today-current-task .current-task-source {
   overflow: hidden;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 9px;
   font-weight: 750;
   text-overflow: ellipsis;
@@ -2229,9 +2229,9 @@ main.company-detail-page {
   min-width: 27px;
   padding: 2px 6px;
   border-radius: 999px;
-  color: var(--atlas-primary);
+  color: var(--viawa-primary);
   text-align: center;
-  background: var(--atlas-primary-soft);
+  background: var(--viawa-primary-soft);
   font-size: 8px;
   font-weight: 900;
 }
@@ -2239,30 +2239,30 @@ main.company-detail-page {
 .today-current-task .current-task-priority {
   padding: 2px 6px;
   border-radius: 999px;
-  color: var(--atlas-text);
-  background: var(--atlas-soft);
+  color: var(--viawa-text);
+  background: var(--viawa-soft);
   font-size: 8px;
   font-weight: 850;
 }
 
 .today-current-task .current-task-priority--critical {
-  color: var(--atlas-danger);
-  background: var(--atlas-danger-bg);
+  color: var(--viawa-danger);
+  background: var(--viawa-danger-bg);
 }
 
 .today-current-task .current-task-priority--high {
-  color: var(--atlas-warning);
-  background: var(--atlas-warning-bg);
+  color: var(--viawa-warning);
+  background: var(--viawa-warning-bg);
 }
 
 .today-current-task .current-task-priority--normal {
-  color: var(--atlas-info);
-  background: var(--atlas-info-bg);
+  color: var(--viawa-info);
+  background: var(--viawa-info-bg);
 }
 
 .today-current-task .current-task-priority--low {
-  color: var(--atlas-success);
-  background: var(--atlas-success-bg);
+  color: var(--viawa-success);
+  background: var(--viawa-success-bg);
 }
 
 .today-current-task .current-task-content {
@@ -2272,7 +2272,7 @@ main.company-detail-page {
 .today-current-task .current-task-company {
   margin: 0 0 3px;
   overflow: hidden;
-  color: var(--atlas-primary);
+  color: var(--viawa-primary);
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.08em;
@@ -2303,7 +2303,7 @@ main.company-detail-page {
 .today-current-task .current-task-reasons-label {
   display: block;
   margin-bottom: 2px;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 8px;
   font-weight: 900;
   letter-spacing: 0.08em;
@@ -2326,7 +2326,7 @@ main.company-detail-page {
   max-width: 100%;
   padding-left: 8px;
   overflow: hidden;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 9px;
   line-height: 1.25;
   text-overflow: ellipsis;
@@ -2341,13 +2341,13 @@ main.company-detail-page {
   width: 3px;
   height: 3px;
   border-radius: 50%;
-  background: var(--atlas-primary);
+  background: var(--viawa-primary);
 }
 
 .today-current-task .current-task-reasons p {
   margin: 0;
   overflow: hidden;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 9px;
   line-height: 1.25;
   text-overflow: ellipsis;
@@ -2361,14 +2361,14 @@ main.company-detail-page {
   justify-content: center;
   gap: 8px;
   padding-left: 14px;
-  border-left: 1px solid var(--atlas-border);
+  border-left: 1px solid var(--viawa-border);
 }
 
 .today-current-task .current-task-ai-insight-header {
   display: flex;
   align-items: center;
   gap: 5px;
-  color: var(--atlas-primary);
+  color: var(--viawa-primary);
   font-size: 8px;
   font-weight: 900;
   letter-spacing: 0.08em;
@@ -2392,14 +2392,14 @@ main.company-detail-page {
 }
 
 .today-current-task .current-task-ai-confidence strong {
-  color: var(--atlas-text);
+  color: var(--viawa-text);
   font-size: 18px;
   line-height: 1;
   letter-spacing: -0.04em;
 }
 
 .today-current-task .current-task-ai-confidence span {
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 8px;
   font-weight: 800;
   text-transform: uppercase;
@@ -2409,7 +2409,7 @@ main.company-detail-page {
   display: flex;
   align-items: center;
   gap: 5px;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 8px;
   font-weight: 800;
   white-space: nowrap;
@@ -2423,11 +2423,11 @@ main.company-detail-page {
 
 .today-current-task .current-task-ai-status--recommended,
 .today-current-task .current-task-ai-status--safe {
-  color: var(--atlas-success);
+  color: var(--viawa-success);
 }
 
 .today-current-task .current-task-ai-status--risk {
-  color: var(--atlas-danger);
+  color: var(--viawa-danger);
 }
 
 .today-current-task .current-task-footer {
@@ -2473,7 +2473,7 @@ main.company-detail-page {
   gap: 4px;
   padding: 0;
   border: 0;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   background: transparent;
   font-size: 8px;
   font-weight: 800;
@@ -2483,7 +2483,7 @@ main.company-detail-page {
 
 .today-current-task .current-task-choice-button:hover,
 .today-current-task .current-task-reset-button:hover {
-  color: var(--atlas-primary);
+  color: var(--viawa-primary);
 }
 
 .today-current-task .current-task-choice-chevron {
@@ -2503,7 +2503,7 @@ main.company-detail-page {
   max-height: 300px;
   overflow-y: auto;
   padding: 9px;
-  border: 1px solid var(--atlas-border);
+  border: 1px solid var(--viawa-border);
   border-radius: 11px;
   background: white;
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
@@ -2518,7 +2518,7 @@ main.company-detail-page {
 }
 
 .today-current-task .current-task-queue-label {
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 8px;
   font-weight: 900;
   letter-spacing: 0.1em;
@@ -2528,9 +2528,9 @@ main.company-detail-page {
   min-width: 22px;
   padding: 2px 5px;
   border-radius: 999px;
-  color: var(--atlas-primary);
+  color: var(--viawa-primary);
   text-align: center;
-  background: var(--atlas-primary-soft);
+  background: var(--viawa-primary-soft);
   font-size: 8px;
   font-weight: 900;
 }
@@ -2549,16 +2549,16 @@ main.company-detail-page {
   justify-content: space-between;
   gap: 10px;
   padding: 7px 8px;
-  border: 1px solid var(--atlas-border);
+  border: 1px solid var(--viawa-border);
   border-radius: 8px;
-  color: var(--atlas-text);
+  color: var(--viawa-text);
   text-align: left;
-  background: var(--atlas-soft);
+  background: var(--viawa-soft);
   cursor: pointer;
 }
 
 .today-current-task .current-task-queue-item:hover {
-  border-color: var(--atlas-border-strong);
+  border-color: var(--viawa-border-strong);
   background: white;
 }
 
@@ -2580,7 +2580,7 @@ main.company-detail-page {
 }
 
 .today-current-task .current-task-queue-item small {
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 8px;
 }
 
@@ -2596,9 +2596,9 @@ main.company-detail-page {
   min-width: 25px;
   padding: 3px 5px;
   border-radius: 999px;
-  color: var(--atlas-primary);
+  color: var(--viawa-primary);
   text-align: center;
-  background: var(--atlas-primary-soft);
+  background: var(--viawa-primary-soft);
   font-size: 8px;
   font-weight: 900;
 }
@@ -2616,8 +2616,8 @@ main.company-detail-page {
   flex: 0 0 auto;
   place-items: center;
   border-radius: 10px;
-  color: var(--atlas-success);
-  background: var(--atlas-success-bg);
+  color: var(--viawa-success);
+  background: var(--viawa-success-bg);
 }
 
 .today-current-task .current-task-empty-content h2 {
@@ -2626,7 +2626,7 @@ main.company-detail-page {
 
 .today-current-task .current-task-empty-content p {
   margin: 3px 0 0;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 9px;
 }
 
@@ -2638,7 +2638,7 @@ main.company-detail-page {
 .today-call-preview {
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid var(--atlas-border);
+  border-top: 1px solid var(--viawa-border);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2651,7 +2651,7 @@ main.company-detail-page {
 }
 
 .today-call-preview-item span {
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 8px;
   font-weight: 900;
   letter-spacing: 0.08em;
@@ -2659,7 +2659,7 @@ main.company-detail-page {
 }
 
 .today-call-preview-item strong {
-  color: var(--atlas-text);
+  color: var(--viawa-text);
   font-size: 12px;
   font-weight: 800;
   line-height: 1.25;
@@ -2696,7 +2696,7 @@ main.company-detail-page {
     min-width: 0;
   }
 
-  .atlas-shell {
+  .viawa-shell {
     grid-template-columns: 154px minmax(0, 1fr);
   }
 
@@ -2727,11 +2727,11 @@ main.company-detail-page {
 }
 
 @media (max-width: 760px) {
-  .atlas-shell {
+  .viawa-shell {
     grid-template-columns: 1fr;
   }
 
-  .atlas-sidebar {
+  .viawa-sidebar {
     position: relative;
     width: 100%;
     height: auto;
@@ -2768,7 +2768,7 @@ main.company-detail-page {
     grid-row: auto;
   }
 
-  .atlas-topbar {
+  .viawa-topbar {
     height: auto;
     flex-wrap: wrap;
     align-items: stretch;
@@ -2800,7 +2800,7 @@ main.company-detail-page {
     margin-top: 8px;
     padding-top: 8px;
     padding-left: 0;
-    border-top: 1px solid var(--atlas-border);
+    border-top: 1px solid var(--viawa-border);
     border-left: 0;
   }
 
@@ -2808,7 +2808,7 @@ main.company-detail-page {
     margin-top: 8px;
     padding-top: 8px;
     padding-left: 0;
-    border-top: 1px solid var(--atlas-border);
+    border-top: 1px solid var(--viawa-border);
     border-left: 0;
   }
 
@@ -2833,25 +2833,25 @@ main.company-detail-page {
 
 /* Final compact sidebar */
 
-.atlas-shell {
+.viawa-shell {
   grid-template-columns:
     150px
     minmax(0, 1fr);
 }
 
-.atlas-sidebar {
+.viawa-sidebar {
   width: 150px;
   padding-left: 6px;
   padding-right: 6px;
 }
 
-.atlas-sidebar .atlas-nav a {
+.viawa-sidebar .viawa-nav a {
   width: 138px;
   min-height: 28px;
   padding: 4px 6px;
 }
 
-.atlas-sidebar .atlas-nav a span {
+.viawa-sidebar .viawa-nav a span {
   white-space: nowrap;
 }
 /* Today dashboard viewport fix */
@@ -2862,7 +2862,7 @@ main.company-detail-page {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
-  background: var(--atlas-bg);
+  background: var(--viawa-bg);
 }
 
 .today-heading-row {
@@ -3006,7 +3006,7 @@ main.companies-page .page-header p:last-child {
   align-items: center;
   gap: 10px;
   padding: 0 14px;
-  border: 1px solid var(--atlas-border);
+  border: 1px solid var(--viawa-border);
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
   transition:
@@ -3027,8 +3027,8 @@ main.companies-page .page-header p:last-child {
   width: 34px;
   height: 34px;
   border-radius: 9px;
-  color: var(--atlas-primary);
-  background: var(--atlas-soft);
+  color: var(--viawa-primary);
+  background: var(--viawa-soft);
 }
 
 .companies-kpi-body {
@@ -3045,7 +3045,7 @@ main.companies-page .page-header p:last-child {
 }
 
 .companies-kpi-body span {
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
@@ -3079,7 +3079,7 @@ main.companies-page .page-header p:last-child {
 }
 
 .companies-filter-grid label span {
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 9px;
   font-weight: 800;
   text-transform: uppercase;
@@ -3100,9 +3100,9 @@ main.companies-page .page-header p:last-child {
 .companies-filter-grid select {
   height: 36px;
   padding: 0 10px;
-  border: 1px solid var(--atlas-border);
+  border: 1px solid var(--viawa-border);
   border-radius: 9px;
-  color: var(--atlas-text);
+  color: var(--viawa-text);
   background: white;
   font-size: 12px;
   outline: none;
@@ -3110,7 +3110,7 @@ main.companies-page .page-header p:last-child {
 
 .companies-filter-grid input:focus,
 .companies-filter-grid select:focus {
-  border-color: var(--atlas-primary);
+  border-color: var(--viawa-primary);
   box-shadow: 0 0 0 3px rgba(155, 28, 49, 0.08);
 }
 
@@ -3123,7 +3123,7 @@ main.companies-page .page-header p:last-child {
 }
 
 .companies-result-count span {
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
@@ -3173,12 +3173,12 @@ main.companies-page .page-header p:last-child {
 .companies-page .company-row-main p {
   margin: 2px 0 0;
   font-size: 11px;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
 }
 
 .companies-page .company-row-main span {
   font-size: 10px;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
 }
 
 .companies-page .company-row > div:not(.company-row-main) span {
@@ -3186,7 +3186,7 @@ main.companies-page .page-header p:last-child {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
 }
 
 .companies-page .company-row > div:not(.company-row-main) strong {
@@ -3210,7 +3210,7 @@ main.companies-page .page-header p:last-child {
   background:
     radial-gradient(circle at 14% 8%, rgba(155, 28, 49, 0.07), transparent 45%),
     radial-gradient(circle at 86% 92%, rgba(155, 28, 49, 0.05), transparent 42%),
-    var(--atlas-bg);
+    var(--viawa-bg);
 }
 
 .auth-card {
@@ -3220,9 +3220,9 @@ main.companies-page .page-header p:last-child {
   flex-direction: column;
   gap: 28px;
   padding: 36px 34px;
-  border: 1px solid var(--atlas-border);
+  border: 1px solid var(--viawa-border);
   border-radius: 20px;
-  background: var(--atlas-panel);
+  background: var(--viawa-panel);
   box-shadow:
     0 24px 48px rgba(15, 23, 42, 0.10),
     0 2px 6px rgba(15, 23, 42, 0.04);
@@ -3240,7 +3240,7 @@ main.companies-page .page-header p:last-child {
   font-size: 24px;
   font-weight: 950;
   letter-spacing: 0.14em;
-  color: var(--atlas-primary);
+  color: var(--viawa-primary);
 }
 
 .auth-brand p {
@@ -3249,7 +3249,7 @@ main.companies-page .page-header p:last-child {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
 }
 
 .auth-heading {
@@ -3261,7 +3261,7 @@ main.companies-page .page-header p:last-child {
 
 .auth-heading .eyebrow {
   margin: 0;
-  color: var(--atlas-primary);
+  color: var(--viawa-primary);
 }
 
 .auth-heading h1 {
@@ -3269,7 +3269,7 @@ main.companies-page .page-header p:last-child {
   font-size: 24px;
   font-weight: 850;
   letter-spacing: -0.02em;
-  color: var(--atlas-text);
+  color: var(--viawa-text);
 }
 
 .auth-heading .muted {
@@ -3294,7 +3294,7 @@ main.companies-page .page-header p:last-child {
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
 }
 
 .auth-input {
@@ -3303,9 +3303,9 @@ main.companies-page .page-header p:last-child {
   gap: 10px;
   min-height: 46px;
   padding: 0 14px;
-  border: 1px solid var(--atlas-border);
+  border: 1px solid var(--viawa-border);
   border-radius: 12px;
-  background: var(--atlas-soft);
+  background: var(--viawa-soft);
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
@@ -3314,7 +3314,7 @@ main.companies-page .page-header p:last-child {
 
 .auth-input svg {
   flex: 0 0 auto;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   transition: color 160ms ease;
 }
 
@@ -3327,27 +3327,27 @@ main.companies-page .page-header p:last-child {
   padding: 12px 0;
   font-size: 14px;
   font-weight: 600;
-  color: var(--atlas-text);
+  color: var(--viawa-text);
 }
 
 .auth-input input::placeholder {
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-weight: 500;
 }
 
 .auth-input:hover {
-  border-color: var(--atlas-border-strong);
+  border-color: var(--viawa-border-strong);
   background: #ffffff;
 }
 
 .auth-input:focus-within {
-  border-color: var(--atlas-primary);
+  border-color: var(--viawa-primary);
   background: #ffffff;
   box-shadow: 0 0 0 3px rgba(155, 28, 49, 0.12);
 }
 
 .auth-input:focus-within svg {
-  color: var(--atlas-primary);
+  color: var(--viawa-primary);
 }
 
 .auth-submit {
@@ -3366,8 +3366,8 @@ main.companies-page .page-header p:last-child {
 }
 
 .auth-submit:hover:not(:disabled) {
-  background: var(--atlas-primary-dark);
-  border-color: var(--atlas-primary-dark);
+  background: var(--viawa-primary-dark);
+  border-color: var(--viawa-primary-dark);
   box-shadow: 0 14px 28px rgba(155, 28, 49, 0.28);
   transform: translateY(-1px);
 }
@@ -3378,7 +3378,7 @@ main.companies-page .page-header p:last-child {
 }
 
 .auth-submit:focus-visible {
-  outline: 2px solid var(--atlas-primary);
+  outline: 2px solid var(--viawa-primary);
   outline-offset: 2px;
 }
 
@@ -3564,7 +3564,7 @@ main.companies-page .page-header p:last-child {
 }
 
 /* Exhibition Workspace — Company Workspace's left half, in place once a
-   fuar is selected from the sidebar. Light page theme (--atlas-*), not
+   fuar is selected from the sidebar. Light page theme (--viawa-*), not
    the dark sidebar theme these classes originally used. */
 
 .exhibition-workspace-panel {
@@ -3591,7 +3591,7 @@ main.companies-page .page-header p:last-child {
 .exhibition-workspace-titlebar h2 {
   margin: 0;
   overflow: hidden;
-  color: var(--atlas-label);
+  color: var(--viawa-label);
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -3618,12 +3618,12 @@ main.companies-page .page-header p:last-child {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  border: 1px solid var(--atlas-border);
+  border: 1px solid var(--viawa-border);
   border-radius: 8px;
   padding: 6px 5px 5px;
-  color: var(--atlas-text);
+  color: var(--viawa-text);
   text-align: center;
-  background: var(--atlas-soft);
+  background: var(--viawa-soft);
   cursor: pointer;
   transition:
     background-color 0.15s ease,
@@ -3631,13 +3631,13 @@ main.companies-page .page-header p:last-child {
 }
 
 .exhibition-doc-card:hover {
-  border-color: var(--atlas-primary);
-  background: var(--atlas-primary-soft);
+  border-color: var(--viawa-primary);
+  background: var(--viawa-primary-soft);
 }
 
 .exhibition-doc-card-active {
-  border-color: var(--atlas-primary);
-  background: var(--atlas-primary-soft);
+  border-color: var(--viawa-primary);
+  background: var(--viawa-primary-soft);
 }
 
 .exhibition-doc-card-checkbox {
@@ -3656,7 +3656,7 @@ main.companies-page .page-header p:last-child {
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  color: var(--atlas-icon);
+  color: var(--viawa-icon);
   background: white;
 }
 
@@ -3673,20 +3673,20 @@ main.companies-page .page-header p:last-child {
 }
 
 .exhibition-doc-card-disabled:hover {
-  border-color: var(--atlas-border);
-  background: var(--atlas-soft);
+  border-color: var(--viawa-border);
+  background: var(--viawa-soft);
 }
 
 .exhibition-doc-card-status {
   margin: 0;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 8px;
   font-weight: 600;
 }
 
 .exhibition-workspace-error {
   margin: 0 0 6px;
-  color: var(--atlas-danger, #b3261e);
+  color: var(--viawa-danger, #b3261e);
   font-size: 11px;
   font-weight: 600;
 }
@@ -3696,7 +3696,7 @@ main.companies-page .page-header p:last-child {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--atlas-border);
+  border-top: 1px solid var(--viawa-border);
   padding-top: 8px;
 }
 
@@ -3709,8 +3709,8 @@ main.companies-page .page-header p:last-child {
   justify-content: center;
   margin-bottom: 8px;
   border-radius: 10px;
-  color: var(--atlas-icon);
-  background: var(--atlas-soft);
+  color: var(--viawa-icon);
+  background: var(--viawa-soft);
 }
 
 .exhibition-doc-preview-frame {
@@ -3731,21 +3731,21 @@ main.companies-page .page-header p:last-child {
 
 .exhibition-doc-preview-error {
   padding: 0 16px;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 12px;
   text-align: center;
 }
 
 .exhibition-doc-preview-title {
   margin: 0 0 8px;
-  color: var(--atlas-text);
+  color: var(--viawa-text);
   font-size: 13px;
   font-weight: 700;
 }
 
 .exhibition-doc-preview-empty {
   margin: 0;
-  color: var(--atlas-muted);
+  color: var(--viawa-muted);
   font-size: 12px;
 }
 
@@ -3753,7 +3753,7 @@ main.companies-page .page-header p:last-child {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--atlas-text);
+  color: var(--viawa-text);
   font-size: 12px;
   cursor: pointer;
 }
@@ -3762,13 +3762,13 @@ main.companies-page .page-header p:last-child {
   flex: 0 0 auto;
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid var(--atlas-border);
+  border-top: 1px solid var(--viawa-border);
   font-size: 11px;
 }
 
 .exhibition-workspace-footer-title {
   margin: 0 0 4px;
-  color: var(--atlas-label);
+  color: var(--viawa-label);
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -3777,7 +3777,7 @@ main.companies-page .page-header p:last-child {
 .exhibition-workspace-footer-list {
   margin: 0;
   padding-left: 16px;
-  color: var(--atlas-text);
+  color: var(--viawa-text);
   font-weight: 600;
 }
 
@@ -3937,11 +3937,11 @@ main.page:has(.communication-workspace) .communication-workspace {
   align-items: flex-start;
   gap: 10px;
   padding: 12px 14px;
-  border: 1px solid var(--atlas-border);
+  border: 1px solid var(--viawa-border);
   border-radius: 12px;
-  background: var(--atlas-panel);
+  background: var(--viawa-panel);
   box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
-  color: var(--atlas-text);
+  color: var(--viawa-text);
   font-size: 13px;
   font-weight: 600;
   line-height: 1.4;
@@ -3978,20 +3978,20 @@ main.page:has(.communication-workspace) .communication-workspace {
 
 .toast-success {
   border-color: rgba(2, 122, 72, 0.28);
-  background: var(--atlas-success-bg);
-  color: var(--atlas-success);
+  background: var(--viawa-success-bg);
+  color: var(--viawa-success);
 }
 
 .toast-error {
   border-color: rgba(180, 35, 24, 0.28);
-  background: var(--atlas-danger-bg);
-  color: var(--atlas-danger);
+  background: var(--viawa-danger-bg);
+  color: var(--viawa-danger);
 }
 
 .toast-info {
   border-color: rgba(23, 92, 211, 0.28);
-  background: var(--atlas-info-bg);
-  color: var(--atlas-info);
+  background: var(--viawa-info-bg);
+  color: var(--viawa-info);
 }
 
 @media (max-width: 480px) {

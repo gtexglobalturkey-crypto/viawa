@@ -987,14 +987,14 @@ export function ExhibitionRepositoryPage() {
                     borderRadius:
                       "8px",
                     border: isActiveTab
-                      ? "1px solid var(--atlas-primary)"
+                      ? "1px solid var(--viawa-primary)"
                       : "1px solid #e2e8f0",
                     background:
                       isActiveTab
-                        ? "var(--atlas-primary-soft)"
+                        ? "var(--viawa-primary-soft)"
                         : "#ffffff",
                     color: isActiveTab
-                      ? "var(--atlas-primary)"
+                      ? "var(--viawa-primary)"
                       : isEnabled
                         ? "#334155"
                         : "#94a3b8",

@@ -7,7 +7,7 @@
 -- table). Anon is intentionally NOT granted write access here.
 --
 -- Run this in the Supabase Dashboard SQL Editor for project qpyqqkkkparobyucnqgb
--- (ATLAS / production), or via `supabase db push` if linked via the CLI.
+-- (VIAWA / production), or via `supabase db push` if linked via the CLI.
 
 alter table public.contacts enable row level security;
 

@@ -100,7 +100,7 @@ export function Topbar() {
       );
     } catch (signOutError) {
       console.error(
-        "ATLAS sign out error:",
+        "VIAWA sign out error:",
         signOutError,
       );
 
@@ -151,7 +151,7 @@ export function Topbar() {
     query.trim().length > 0;
 
   return (
-    <header className="atlas-topbar">
+    <header className="viawa-topbar">
       {companyName && (
         <div className="topbar-company-name">
           <div className="topbar-company-name-row">

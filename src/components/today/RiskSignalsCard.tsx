@@ -182,7 +182,7 @@ export function RiskSignalsCard({
                 alignItems: "center",
                 justifyContent: "center",
                 borderRadius: "999px",
-                background: "var(--atlas-soft)",
+                background: "var(--viawa-soft)",
               }}
             >
               <CheckCircle2 size={16} />
@@ -230,7 +230,7 @@ export function RiskSignalsCard({
                         alignItems: "center",
                         justifyContent: "center",
                         borderRadius: "999px",
-                        background: confidence >= 80 ? "#fff3e7" : "var(--atlas-soft)",
+                        background: confidence >= 80 ? "#fff3e7" : "var(--viawa-soft)",
                         color: confidence >= 80 ? "#b46b00" : "inherit",
                       }}
                     >
@@ -255,7 +255,7 @@ export function RiskSignalsCard({
                             letterSpacing: "0.08em",
                             padding: "2px 6px",
                             borderRadius: "999px",
-                            background: confidence >= 80 ? "#fff3e7" : "var(--atlas-soft)",
+                            background: confidence >= 80 ? "#fff3e7" : "var(--viawa-soft)",
                             color: confidence >= 80 ? "#b46b00" : "inherit",
                           }}
                         >
