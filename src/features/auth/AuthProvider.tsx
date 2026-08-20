@@ -13,7 +13,9 @@ import type {
 import { getOwnApplicationUser } from "../../services/supabase/applicationUserService";
 import type { ApplicationUser } from "../../types/database";
 import { supabase } from "../crm/api/supabase";
+import { initialAuthCallbackUrl } from "../../services/supabase/client";
 import { AuthContext } from "./AuthContext";
+import { getRecoveryUrlState } from "./recoveryUrl";
 
 type Props = {
   children: ReactNode;
@@ -59,6 +61,13 @@ export function AuthProvider({
     useState<Session | null>(null);
   const [user, setUser] =
     useState<User | null>(null);
+  const initialRecoveryUrlState = getRecoveryUrlState(initialAuthCallbackUrl);
+  const [recoveryStatus, setRecoveryStatus] = useState<
+    "idle" | "pending" | "active" | "invalid"
+  >(initialRecoveryUrlState === "callback" ? "pending" : initialRecoveryUrlState === "error" ? "invalid" : "idle");
+  const [recoveryError, setRecoveryError] = useState<string | null>(
+    initialRecoveryUrlState === "error" ? "Kurtarma bağlantısı geçersiz veya süresi dolmuş." : null,
+  );
 
   const [profile, setProfile] =
     useState<ApplicationUser | null>(null);
@@ -143,6 +152,11 @@ export function AuthProvider({
       }
 
       applySession(data.session);
+
+      if (initialRecoveryUrlState === "callback" && !data.session) {
+        setRecoveryStatus("invalid");
+        setRecoveryError("Kurtarma bağlantısı geçersiz, kullanılmış veya süresi dolmuş.");
+      }
     }
 
     void loadSession();
@@ -150,7 +164,11 @@ export function AuthProvider({
     const {
       data: authListener,
     } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
+      (event, nextSession) => {
+        if (event === "PASSWORD_RECOVERY") {
+          setRecoveryStatus("active");
+          setRecoveryError(null);
+        }
         applySession(nextSession);
       },
     );
@@ -178,6 +196,12 @@ export function AuthProvider({
     clearViawaLocalStorage();
   }
 
+  async function finishRecovery() {
+    setRecoveryStatus("idle");
+    setRecoveryError(null);
+    await signOut();
+  }
+
   const value = useMemo(
     () => ({
       loading,
@@ -185,7 +209,10 @@ export function AuthProvider({
       user,
       profile,
       profileLoading,
+      recoveryStatus,
+      recoveryError,
       signOut,
+      finishRecovery,
     }),
     [
       loading,
@@ -193,6 +220,8 @@ export function AuthProvider({
       user,
       profile,
       profileLoading,
+      recoveryStatus,
+      recoveryError,
     ],
   );
 

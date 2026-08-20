@@ -7,6 +7,7 @@ import type { AuthState } from "./types";
 
 type AuthContextValue = AuthState & {
   signOut: () => Promise<void>;
+  finishRecovery: () => Promise<void>;
 };
 
 export const AuthContext =

@@ -14,6 +14,7 @@ import {
 import { AppShell } from "../../components/layout/AppShell";
 import { Panel } from "../../components/ui/Panel";
 import { ProtectedApp } from "../../features/auth/ProtectedApp";
+import { ResetPasswordPage } from "../../features/auth/ResetPasswordPage";
 
 const TodayPage = lazy(async () => {
   const module = await import(
@@ -303,7 +304,10 @@ function RoutedApplication() {
 export function AppRouter() {
   return (
     <BrowserRouter>
-      <RoutedApplication />
+      <Routes>
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="*" element={<RoutedApplication />} />
+      </Routes>
     </BrowserRouter>
   );
 }

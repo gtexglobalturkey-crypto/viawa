@@ -3389,6 +3389,23 @@ main.companies-page .page-header p:last-child {
   box-shadow: none;
 }
 
+.auth-link {
+  align-self: flex-end;
+  border: 0;
+  padding: 0;
+  color: var(--viawa-primary);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-link:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 @media (max-width: 600px) {
   .auth-card {
     max-width: 100%;

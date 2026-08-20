@@ -19,6 +19,7 @@ export function LoginPage() {
     useState("");
   const [isSubmitting, setIsSubmitting] =
     useState(false);
+  const [isRecoveryRequest, setIsRecoveryRequest] = useState(false);
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
@@ -78,6 +79,28 @@ export function LoginPage() {
     showToast(
       "VIAWA'ya tekrar hoş geldiniz.",
       "success",
+    );
+  }
+
+  async function handleForgotPassword() {
+    if (!email.trim()) {
+      showToast("Önce e-posta adresinizi girin.", "error");
+      return;
+    }
+    setIsRecoveryRequest(true);
+    let error: Error | null = null;
+    try {
+      const result = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      error = result.error;
+    } catch {
+      error = new Error("network_error");
+    }
+    setIsRecoveryRequest(false);
+    showToast(
+      error ? "Kurtarma e-postası gönderilemedi. Lütfen daha sonra tekrar deneyin." : "Kurtarma bağlantısı e-posta adresinize gönderildi.",
+      error ? "error" : "success",
     );
   }
 
@@ -143,6 +166,10 @@ export function LoginPage() {
               />
             </div>
           </label>
+
+          <button type="button" className="auth-link" disabled={isRecoveryRequest} onClick={() => void handleForgotPassword()}>
+            {isRecoveryRequest ? "Gönderiliyor..." : "Şifremi unuttum"}
+          </button>
 
           <button
             type="submit"

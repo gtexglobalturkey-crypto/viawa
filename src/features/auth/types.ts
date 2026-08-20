@@ -17,4 +17,6 @@ export type AuthState = {
   // denied, just with different messages.
   profile: ApplicationUser | null;
   profileLoading: boolean;
+  recoveryStatus: "idle" | "pending" | "active" | "invalid";
+  recoveryError: string | null;
 };
