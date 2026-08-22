@@ -15,7 +15,6 @@ import { AppShell } from "../../components/layout/AppShell";
 import { Panel } from "../../components/ui/Panel";
 import { ProtectedApp } from "../../features/auth/ProtectedApp";
 import { ResetPasswordPage } from "../../features/auth/ResetPasswordPage";
-import { ViamatePrivacyPolicyPage } from "../../features/public/ViamatePrivacyPolicyPage";
 
 const TodayPage = lazy(async () => {
   const module = await import(
@@ -306,7 +305,6 @@ export function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/viamate/privacy" element={<ViamatePrivacyPolicyPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="*" element={<RoutedApplication />} />
       </Routes>
