@@ -54,9 +54,11 @@ test("uses only the latest approved snapshot revision and never cached opportuni
       price("offer", 36, "2026-08-02T00:00:00Z"),
     ],
   });
-  assert.equal(built.potentialSqm, 36);
+  assert.equal(built.openOffersSqm, 36);
+  assert.equal(built.companies.find((item) => item.companyName === "Alpha").offeredSqm, 36);
+  assert.equal(built.companies.find((item) => item.companyName === "Beta").offeredSqm, null);
   assert.equal(Object.values(built.pipelineCounts).reduce((a, b) => a + b, 0), built.companies.length);
-  assert.deepEqual(Object.keys(built.companies[0]).sort(), ["companyName", "stage"]);
+  assert.deepEqual(Object.keys(built.companies[0]).sort(), ["companyName", "offeredSqm", "stage"]);
   assert.equal(JSON.stringify(built).includes("price_stand_area_sqm"), false);
 });
 
@@ -68,6 +70,25 @@ test("latest snapshot tie breaks on created_at", () => {
   assert.equal(latest.price_input.standAreaSqm, 12);
 });
 
+test("open offers exclude contract and terminal stages", () => {
+  const built = report.buildOrganizerReportSnapshot({
+    exhibitionId: "fair-1",
+    exhibitionName: "Fair",
+    opportunities: [
+      opportunity("offer", "a", "quotation-ready"),
+      opportunity("contract", "b", "contract"),
+      opportunity("signed", "c", "signed"),
+      opportunity("won", "d", "won"),
+      opportunity("lost", "e", "lost"),
+    ],
+    companies: [company("a"), company("b"), company("c"), company("d"), company("e")],
+    approvedSnapshots: [price("offer", 15), price("contract", 50), price("signed", 60), price("won", 70), price("lost", 80)],
+  });
+  assert.equal(built.openOffersSqm, 15);
+  assert.equal(built.companies.find((item) => item.companyName === "b").offeredSqm, null);
+  assert.equal(built.companies.some((item) => ["c", "d", "e"].includes(item.companyName)), false);
+});
+
 test("rejects missing, zero, negative, nonnumeric, or invalid latest offer area", () => {
   for (const snapshots of [[], [price("offer", 0)], [price("offer", -2)], [price("offer", "20")], [price("offer", Number.NaN)]]) {
     assert.throws(() => report.buildOrganizerReportSnapshot({
@@ -76,6 +97,6 @@ test("rejects missing, zero, negative, nonnumeric, or invalid latest offer area"
       opportunities: [opportunity("offer", "a", "quotation-ready")],
       companies: [company("a")],
       approvedSnapshots: snapshots,
-    }), /geçerli onaylı alan/);
+    }), /valid approved area/);
   }
 });

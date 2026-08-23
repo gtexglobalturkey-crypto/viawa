@@ -5,35 +5,29 @@ import { useToast } from "../../components/feedback/toastContext";
 import { Button } from "../../components/ui/Button";
 import { Panel } from "../../components/ui/Panel";
 import { ORGANIZER_REPORT_STAGES } from "../../../supabase/functions/_shared/organizerReport";
-
-import type { OrganizerReportRecord } from "./models/OrganizerReport";
 import {
-  generateOrganizerReport,
-  listOrganizerReports,
-} from "./services/organizerReportService";
+  organizerReportEmailDraft,
+  organizerReportView,
+  REPORT_STAGE_LABELS,
+  type OrganizerReportRecord,
+} from "./models/OrganizerReport";
+import { generateOrganizerReport, listOrganizerReports } from "./services/organizerReportService";
 
 function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("tr-TR", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(value));
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(value));
 }
 function formatTimestamp(value: string): string {
-  return new Intl.DateTimeFormat("tr-TR", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
-
+function formatArea(value: number): string {
+  return new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 }).format(value);
+}
 function periodText(report: OrganizerReportRecord): string {
   if (report.period_label) return report.period_label;
-  if (report.period_start && report.period_end) {
-    return `${formatDate(report.period_start)} - ${formatDate(report.period_end)}`;
-  }
-  if (report.period_start) return `${formatDate(report.period_start)} itibarıyla`;
-  if (report.period_end) return `${formatDate(report.period_end)} tarihine kadar`;
-  return "Güncel durum";
+  if (report.period_start && report.period_end) return `${formatDate(report.period_start)} – ${formatDate(report.period_end)}`;
+  if (report.period_start) return `From ${formatDate(report.period_start)}`;
+  if (report.period_end) return `Through ${formatDate(report.period_end)}`;
+  return "Current Status";
 }
 
 export function OrganizerReportPage() {
@@ -48,136 +42,109 @@ export function OrganizerReportPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState("");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     listOrganizerReports(id)
-      .then((items) => {
-        if (!active) return;
-        setReports(items);
-        setSelectedId(items[0]?.id ?? "");
-      })
-      .catch((reason) => {
-        if (active) setError(reason instanceof Error ? reason.message : "Raporlar yüklenemedi.");
-      })
+      .then((items) => { if (active) { setReports(items); setSelectedId(items[0]?.id ?? ""); } })
+      .catch((reason) => { if (active) setError(reason instanceof Error ? reason.message : "Reports could not be loaded."); })
       .finally(() => active && setLoading(false));
     return () => { active = false; };
   }, [id]);
 
   const report = reports.find((item) => item.id === selectedId) ?? null;
+  const view = report ? organizerReportView(report) : null;
 
   async function handleGenerate() {
     if (!id || generating) return;
     if (periodStart && periodEnd && periodStart > periodEnd) {
-      showToast("Başlangıç tarihi bitiş tarihinden sonra olamaz.", "error");
+      showToast("Start Date cannot be after End Date.", "error");
       return;
     }
     setGenerating(true);
     try {
       const created = await generateOrganizerReport(id, {
-        periodStart: periodStart || null,
-        periodEnd: periodEnd || null,
-        periodLabel: periodLabel.trim() || null,
+        periodStart: periodStart || null, periodEnd: periodEnd || null, periodLabel: periodLabel.trim() || null,
       });
       setReports((current) => [created, ...current]);
       setSelectedId(created.id);
-      showToast("Organizer Report oluşturuldu.", "success");
+      showToast("Organizer Report created.", "success");
     } catch (reason) {
-      showToast(reason instanceof Error ? reason.message : "Rapor oluşturulamadı.", "error");
-    } finally {
-      setGenerating(false);
-    }
+      showToast(reason instanceof Error ? reason.message : "Report could not be created.", "error");
+    } finally { setGenerating(false); }
+  }
+
+  function openEmailReport() {
+    if (!report) return;
+    const draft = organizerReportEmailDraft(report);
+    setEmailTo("");
+    setEmailSubject(draft.subject);
+    setEmailBody(draft.body);
+    setEmailOpen(true);
   }
 
   return (
     <main className="page organizer-report-page">
       <div className="organizer-report-toolbar no-print">
-        <div>
-          <p className="eyebrow">Fuar Organizer Report</p>
-          <h1>Türkiye Market Report</h1>
-        </div>
+        <div><p className="eyebrow">FAIR ORGANIZER REPORT</p><h1>Türkiye Market Report</h1></div>
         <div className="organizer-report-toolbar-actions">
-          <Button variant="secondary" onClick={() => navigate(`/exhibitions/${id}/repository`)}>
-            Repository'ye Dön
-          </Button>
-          <Button variant="secondary" disabled={!report} onClick={() => window.print()}>
-            PDF İndir / Yazdır
-          </Button>
+          <Button variant="secondary" onClick={() => navigate(`/exhibitions/${id}/repository`)}>Repository</Button>
+          <Button variant="secondary" disabled={!report} onClick={openEmailReport}>Email Report</Button>
+          <Button variant="secondary" disabled={!report} onClick={() => window.print()}>PDF Download / Print</Button>
         </div>
       </div>
 
       <Panel className="organizer-report-controls no-print">
         <div className="organizer-report-period-fields">
-          <label>Başlangıç<input type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} /></label>
-          <label>Bitiş<input type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} /></label>
-          <label>Dönem etiketi<input value={periodLabel} maxLength={120} placeholder="Örn. Ağustos 2026" onChange={(event) => setPeriodLabel(event.target.value)} /></label>
-          <Button disabled={generating} onClick={() => void handleGenerate()}>
-            {generating ? "Oluşturuluyor..." : "Yeni Rapor Oluştur"}
-          </Button>
+          <label>Start Date<input type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} /></label>
+          <label>End Date<input type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} /></label>
+          <label>Period Label<input value={periodLabel} maxLength={120} placeholder="e.g. August 2026" onChange={(event) => setPeriodLabel(event.target.value)} /></label>
+          <Button disabled={generating} onClick={() => void handleGenerate()}>{generating ? "Creating…" : "Create New Report"}</Button>
         </div>
-        {reports.length > 0 && (
-          <label className="organizer-report-history">
-            Kayıtlı rapor
-            <select value={selectedId} onChange={(event) => setSelectedId(event.target.value)}>
-              {reports.map((item) => (
-                <option key={item.id} value={item.id}>{item.report_id} - {formatTimestamp(item.generated_at)}</option>
-              ))}
-            </select>
-          </label>
-        )}
+        {reports.length > 0 && <label className="organizer-report-history">Saved Report<select value={selectedId} onChange={(event) => setSelectedId(event.target.value)}>{reports.map((item) => <option key={item.id} value={item.id}>{item.report_id} — {formatTimestamp(item.generated_at)}</option>)}</select></label>}
       </Panel>
 
-      {loading && <Panel><p>Raporlar yükleniyor...</p></Panel>}
+      {loading && <Panel><p>Loading reports…</p></Panel>}
       {!loading && error && <Panel><p className="error-message">{error}</p></Panel>}
-      {!loading && !error && !report && (
-        <Panel><p className="muted">Bu fuar için henüz kaydedilmiş bir Organizer Report bulunmuyor.</p></Panel>
-      )}
+      {!loading && !error && !report && <Panel><p className="muted">No saved Organizer Report exists for this exhibition yet.</p></Panel>}
 
-      {report && (
+      {report && view && (
         <article className="organizer-report-sheet" data-report-id={report.report_id}>
           <header className="organizer-report-header">
-            <div>
-              <p className="organizer-report-brand">VIAFA</p>
-              <h2>{report.snapshot.exhibitionName} — Türkiye Market Report</h2>
-            </div>
-            <p><span>Rapor dönemi</span>{periodText(report)}</p>
+            <div><p className="organizer-report-brand">VIAFA</p><h2>{view.exhibitionName} — Türkiye Market Report</h2></div>
+            <p><span>REPORT PERIOD</span>{periodText(report)}</p>
           </header>
-
-          <section>
-            <h3>Commercial Pipeline</h3>
-            <div className="organizer-report-pipeline">
-              {ORGANIZER_REPORT_STAGES.map((stage) => (
-                <div key={stage}><span>{stage}</span><strong>{report.snapshot.pipelineCounts[stage]}</strong></div>
-              ))}
-            </div>
-          </section>
-
-          <section className="organizer-report-commercial">
-            <h3>Commercial Status</h3>
-            <p>Potansiyel Alan: <strong>{new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 2 }).format(report.snapshot.potentialSqm)} m²</strong></p>
-          </section>
-
+          <section><h3>CURRENT PIPELINE</h3><div className="organizer-report-pipeline">{ORGANIZER_REPORT_STAGES.map((stage) => <div key={stage}><span>{REPORT_STAGE_LABELS[stage]}</span><strong>{view.pipelineCounts[stage]}</strong></div>)}</div></section>
+          <section className="organizer-report-commercial"><h3>COMMERCIAL STATUS</h3><p>OPEN OFFERS <strong>{formatArea(view.openOffersSqm)} m²</strong></p></section>
           <section className="organizer-report-companies">
-            <h3>Companies</h3>
+            <h3>COMPANIES</h3>
             <table>
-              <thead><tr><th>Company</th><th>Stage</th></tr></thead>
-              <tbody>
-                {report.snapshot.companies.map((company, index) => (
-                  <tr key={`${company.companyName}-${index}`}><td>{company.companyName}</td><td>{company.stage}</td></tr>
-                ))}
-              </tbody>
+              <thead><tr><th>COMPANY</th><th>STAGE</th><th>OFFERED (m²)</th></tr></thead>
+              <tbody>{view.companies.map((company, index) => <tr key={`${company.companyName}-${index}`}><td>{company.companyName}</td><td className={company.stage === "Teklif" ? "organizer-report-offer-stage" : ""}>{REPORT_STAGE_LABELS[company.stage]}</td><td>{company.offeredSqm === null ? "—" : formatArea(company.offeredSqm)}</td></tr>)}</tbody>
+              <tfoot><tr><th colSpan={2}>TOTAL</th><td>{formatArea(view.openOffersSqm)} m²</td></tr></tfoot>
             </table>
           </section>
-
-          <p className="organizer-report-note">{report.snapshot.periodNote}</p>
-          <footer>
-            <strong>VIAWA tarafından otomatik oluşturuldu</strong>
-            <span>Data cutoff: {formatTimestamp(report.data_cutoff)}</span>
-            <span>Generated at: {formatTimestamp(report.generated_at)}</span>
-            <span>Report ID: {report.report_id}</span>
-          </footer>
+          <footer><strong>This report is automatically generated by VIAWA.</strong><span>Data cutoff: {formatTimestamp(report.data_cutoff)}</span><span>Generated at: {formatTimestamp(report.generated_at)}</span><span>Report ID: {report.report_id}</span></footer>
         </article>
+      )}
+
+      {emailOpen && report && (
+        <div className="organizer-report-email-backdrop no-print" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setEmailOpen(false); }}>
+          <section className="organizer-report-email-dialog" role="dialog" aria-modal="true" aria-labelledby="email-report-title">
+            <div className="organizer-report-email-heading"><div><p className="eyebrow">EMAIL REPORT</p><h2 id="email-report-title">Selected Saved Report</h2></div><button type="button" aria-label="Close" onClick={() => setEmailOpen(false)}>×</button></div>
+            <label>To<input type="email" value={emailTo} onChange={(event) => setEmailTo(event.target.value)} placeholder="recipient@example.com" /></label>
+            <label>Subject<input value={emailSubject} onChange={(event) => setEmailSubject(event.target.value)} /></label>
+            <label>Message<textarea rows={7} value={emailBody} onChange={(event) => setEmailBody(event.target.value)} /></label>
+            <div className="organizer-report-email-identity"><span>Report ID</span><strong>{report.report_id}</strong><span>PDF attachment</span><strong>{organizerReportEmailDraft(report).attachmentFileName}</strong></div>
+            <p className="organizer-report-email-pending">EMAIL PROVIDER PENDING — Send will be enabled only after a real email provider is connected.</p>
+            <div className="organizer-report-email-actions"><Button variant="secondary" onClick={() => setEmailOpen(false)}>Cancel</Button><Button disabled>Send</Button></div>
+          </section>
+        </div>
       )}
     </main>
   );

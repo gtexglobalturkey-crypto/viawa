@@ -4300,26 +4300,40 @@ main.page:has(.communication-workspace) .communication-workspace {
 .organizer-report-period-fields input, .organizer-report-history select { min-height: 36px; padding: 7px 9px; border: 1px solid #cbd5e1; border-radius: 7px; background: #fff; color: #0f172a; }
 .organizer-report-history { margin-top: 12px; max-width: 520px; }
 .organizer-report-sheet { box-sizing: border-box; width: 210mm; min-height: 297mm; margin: 0 auto; padding: 18mm 17mm 15mm; color: #172033; background: #fff; border: 1px solid #d9e0e9; box-shadow: 0 8px 28px rgb(15 23 42 / 8%); font-family: Arial, sans-serif; }
-.organizer-report-header { display: flex; justify-content: space-between; gap: 24px; padding-bottom: 14px; border-bottom: 2px solid #233f77; }
-.organizer-report-brand { margin: 0 0 6px; color: #bb252d; font-size: 13px; font-weight: 800; letter-spacing: .16em; }
+.organizer-report-header { display: flex; justify-content: space-between; gap: 24px; padding-bottom: 14px; border-bottom: 2px solid var(--viawa-primary); }
+.organizer-report-brand { margin: 0 0 6px; color: var(--viawa-primary); font-size: 13px; font-weight: 800; letter-spacing: .16em; }
 .organizer-report-header h2 { margin: 0; font-size: 22px; line-height: 1.25; }
 .organizer-report-header > p { margin: 2px 0 0; min-width: 140px; text-align: right; font-size: 12px; }
 .organizer-report-header > p span { display: block; margin-bottom: 4px; color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
 .organizer-report-sheet section { margin-top: 18px; }
-.organizer-report-sheet h3 { margin: 0 0 9px; color: #233f77; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+.organizer-report-sheet h3 { margin: 0 0 9px; color: var(--viawa-text); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
 .organizer-report-pipeline { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #d9e0e9; }
 .organizer-report-pipeline div { padding: 10px 12px; border-right: 1px solid #d9e0e9; }
 .organizer-report-pipeline div:last-child { border-right: 0; }
 .organizer-report-pipeline span { display: block; color: #64748b; font-size: 11px; }
-.organizer-report-pipeline strong { display: block; margin-top: 4px; font-size: 24px; }
+.organizer-report-pipeline strong { display: block; margin-top: 4px; color: var(--viawa-primary); font-size: 24px; }
 .organizer-report-commercial p { margin: 0; padding: 11px 12px; background: #f4f7fb; font-size: 14px; }
+.organizer-report-commercial strong { margin-left: 8px; color: var(--viawa-primary); font-size: 18px; }
 .organizer-report-companies table { width: 100%; border-collapse: collapse; font-size: 11px; }
 .organizer-report-companies th, .organizer-report-companies td { padding: 6px 8px; border-bottom: 1px solid #dfe5ec; text-align: left; }
-.organizer-report-companies th { color: #64748b; font-size: 9px; text-transform: uppercase; letter-spacing: .07em; }
+.organizer-report-companies th { color: var(--viawa-text); font-size: 9px; text-transform: uppercase; letter-spacing: .07em; }
 .organizer-report-companies th:last-child, .organizer-report-companies td:last-child { width: 30%; }
-.organizer-report-note { margin: 16px 0; color: #475569; font-size: 11px; }
+.organizer-report-companies td:last-child, .organizer-report-companies tfoot td { text-align: right; font-variant-numeric: tabular-nums; }
+.organizer-report-companies tfoot th, .organizer-report-companies tfoot td { border-top: 2px solid var(--viawa-text); border-bottom: 0; font-weight: 800; }
+.organizer-report-companies tfoot td, .organizer-report-offer-stage { color: var(--viawa-primary); font-weight: 800; }
 .organizer-report-sheet footer { display: grid; grid-template-columns: 1.5fr 1fr; gap: 4px 16px; padding-top: 9px; border-top: 1px solid #9eabbc; color: #64748b; font-size: 8.5px; }
 .organizer-report-sheet footer strong { color: #334155; }
+.organizer-report-email-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 20px; background: rgb(26 27 31 / 48%); }
+.organizer-report-email-dialog { width: min(560px, 100%); padding: 22px; border-radius: 12px; background: var(--viawa-panel); box-shadow: 0 18px 48px rgb(26 27 31 / 20%); }
+.organizer-report-email-heading, .organizer-report-email-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.organizer-report-email-heading h2 { margin: 2px 0 16px; color: var(--viawa-text); font-size: 20px; }
+.organizer-report-email-heading > button { align-self: flex-start; border: 0; color: var(--viawa-muted); background: transparent; font-size: 24px; cursor: pointer; }
+.organizer-report-email-dialog > label { display: flex; flex-direction: column; gap: 5px; margin-top: 12px; color: var(--viawa-text); font-size: 12px; font-weight: 800; }
+.organizer-report-email-dialog input, .organizer-report-email-dialog textarea { box-sizing: border-box; width: 100%; padding: 9px 10px; border: 1px solid var(--viawa-border-strong); border-radius: 7px; color: var(--viawa-text); background: #fff; font: inherit; }
+.organizer-report-email-identity { display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; margin-top: 14px; padding: 10px; color: var(--viawa-muted); background: var(--viawa-soft); font-size: 11px; }
+.organizer-report-email-identity strong { overflow-wrap: anywhere; color: var(--viawa-text); }
+.organizer-report-email-pending { margin: 12px 0; color: var(--viawa-primary); font-size: 11px; font-weight: 800; }
+.organizer-report-email-actions { justify-content: flex-end; }
 
 @media print {
   @page { size: A4; margin: 0; }

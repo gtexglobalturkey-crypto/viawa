@@ -30,7 +30,7 @@ Deno.serve(async (request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!authorization.startsWith("Bearer ") || !supabaseUrl || !serviceKey) {
-      return json({ error: "Yetkisiz istek." }, 401);
+      return json({ error: "Unauthorized request." }, 401);
     }
 
     const admin = createClient(supabaseUrl, serviceKey, {
@@ -38,14 +38,14 @@ Deno.serve(async (request) => {
     });
     const token = authorization.slice("Bearer ".length);
     const { data: authData, error: authError } = await admin.auth.getUser(token);
-    if (authError || !authData.user) return json({ error: "Oturum doğrulanamadı." }, 401);
+    if (authError || !authData.user) return json({ error: "The session could not be verified." }, 401);
 
     const { data: member } = await admin
       .from("application_users")
       .select("id,is_active")
       .eq("id", authData.user.id)
       .maybeSingle();
-    if (!member?.is_active) return json({ error: "VIAWA erişimi bulunamadı." }, 403);
+    if (!member?.is_active) return json({ error: "VIAWA access is unavailable." }, 403);
 
     const body = await request.json() as Record<string, unknown>;
     const exhibitionId = typeof body.exhibitionId === "string" ? body.exhibitionId : "";
@@ -55,10 +55,10 @@ Deno.serve(async (request) => {
       ? body.periodLabel.trim().slice(0, 120)
       : null;
     if (!exhibitionId || (periodStart !== null && !validDate(periodStart)) || (periodEnd !== null && !validDate(periodEnd))) {
-      return json({ error: "Rapor parametreleri geçersiz." }, 400);
+      return json({ error: "Report parameters are invalid." }, 400);
     }
     if (periodStart && periodEnd && periodStart > periodEnd) {
-      return json({ error: "Rapor başlangıç tarihi bitiş tarihinden sonra olamaz." }, 400);
+      return json({ error: "Start Date cannot be after End Date." }, 400);
     }
 
     const cutoff = new Date().toISOString();
@@ -70,7 +70,7 @@ Deno.serve(async (request) => {
           .eq("exhibition_id", exhibitionId)
           .lte("updated_at", cutoff),
       ]);
-    if (exhibitionError || !exhibition) return json({ error: "Fuar bulunamadı." }, 404);
+    if (exhibitionError || !exhibition) return json({ error: "Exhibition not found." }, 404);
     if (opportunityError) throw opportunityError;
 
     const companyIds = [...new Set((opportunities ?? []).map((item) => item.company_id))];
@@ -121,7 +121,7 @@ Deno.serve(async (request) => {
     return json({ report: saved }, 201);
   } catch (error) {
     console.error("Organizer Report generation failed", error);
-    const message = error instanceof Error ? error.message : "Rapor oluşturulamadı.";
+    const message = error instanceof Error ? error.message : "Report could not be created.";
     return json({ error: message }, 422);
   }
 });
