@@ -32,3 +32,29 @@ export async function generateOrganizerReport(
   if (!data?.report) throw new Error(data?.error ?? "Rapor oluşturulamadı.");
   return data.report;
 }
+
+export type OrganizerReportEmailResult = {
+  sent: true;
+  duplicate: boolean;
+  provider: "gmail";
+  providerMessageId: string;
+  acceptedAt: string;
+};
+
+export async function sendOrganizerReportEmail(input: {
+  reportId: string;
+  recipient: string;
+  subject: string;
+  messageBody: string;
+}): Promise<OrganizerReportEmailResult> {
+  const { data, error } = await supabase.functions.invoke<OrganizerReportEmailResult & { error?: string }>(
+    "organizer-report-email-send",
+    { body: input },
+  );
+
+  if (error) throw error;
+  if (!data?.sent || !data.providerMessageId) {
+    throw new Error(data?.error ?? "Report email could not be confirmed by Gmail.");
+  }
+  return data;
+}

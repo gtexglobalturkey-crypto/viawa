@@ -11,7 +11,7 @@ import {
   REPORT_STAGE_LABELS,
   type OrganizerReportRecord,
 } from "./models/OrganizerReport";
-import { generateOrganizerReport, listOrganizerReports } from "./services/organizerReportService";
+import { generateOrganizerReport, listOrganizerReports, sendOrganizerReportEmail } from "./services/organizerReportService";
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(value));
@@ -46,6 +46,8 @@ export function OrganizerReportPage() {
   const [emailTo, setEmailTo] = useState("");
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<{ kind: "success" | "error"; message: string } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -85,7 +87,25 @@ export function OrganizerReportPage() {
     setEmailTo("");
     setEmailSubject(draft.subject);
     setEmailBody(draft.body);
+    setEmailSending(false);
+    setEmailStatus(null);
     setEmailOpen(true);
+  }
+
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTo.trim()) && Boolean(emailSubject.trim()) && Boolean(emailBody.trim());
+
+  async function handleEmailSend() {
+    if (!report || !emailValid || emailSending) return;
+    setEmailSending(true);
+    setEmailStatus(null);
+    try {
+      await sendOrganizerReportEmail({ reportId: report.report_id, recipient: emailTo, subject: emailSubject, messageBody: emailBody });
+      setEmailStatus({ kind: "success", message: "Sent — Gmail accepted this report email." });
+    } catch (reason) {
+      setEmailStatus({ kind: "error", message: reason instanceof Error ? reason.message : "Report email could not be sent." });
+    } finally {
+      setEmailSending(false);
+    }
   }
 
   return (
@@ -141,8 +161,8 @@ export function OrganizerReportPage() {
             <label>Subject<input value={emailSubject} onChange={(event) => setEmailSubject(event.target.value)} /></label>
             <label>Message<textarea rows={7} value={emailBody} onChange={(event) => setEmailBody(event.target.value)} /></label>
             <div className="organizer-report-email-identity"><span>Report ID</span><strong>{report.report_id}</strong><span>PDF attachment</span><strong>{organizerReportEmailDraft(report).attachmentFileName}</strong></div>
-            <p className="organizer-report-email-pending">EMAIL PROVIDER PENDING — Send will be enabled only after a real email provider is connected.</p>
-            <div className="organizer-report-email-actions"><Button variant="secondary" onClick={() => setEmailOpen(false)}>Cancel</Button><Button disabled>Send</Button></div>
+            {emailStatus && <p className={`organizer-report-email-pending ${emailStatus.kind === "error" ? "error-message" : ""}`} role="status">{emailStatus.message}</p>}
+            <div className="organizer-report-email-actions"><Button variant="secondary" disabled={emailSending} onClick={() => setEmailOpen(false)}>Cancel</Button><Button disabled={!emailValid || emailSending || emailStatus?.kind === "success"} onClick={() => void handleEmailSend()}>{emailSending ? "Sending…" : emailStatus?.kind === "success" ? "Sent" : "Send"}</Button></div>
           </section>
         </div>
       )}

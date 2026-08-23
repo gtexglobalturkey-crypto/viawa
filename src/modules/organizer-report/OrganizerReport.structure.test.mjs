@@ -41,11 +41,14 @@ test("company rows show offered area only when persisted and total reuses open o
   assert.match(page, /OPEN OFFERS[\s\S]*formatArea\(view\.openOffersSqm\)/);
 });
 
-test("email draft is selected-report bound and cannot fake provider success", () => {
+test("email draft is selected-report bound and success requires a provider message ID", () => {
   assert.match(page, /organizerReportEmailDraft\(report\)/);
   assert.match(page, /Report ID[\s\S]*report\.report_id/);
-  assert.match(page, /EMAIL PROVIDER PENDING/);
-  assert.match(page, /<Button disabled>Send<\/Button>/);
+  assert.match(page, /sendOrganizerReportEmail/);
+  assert.match(page, /reportId: report\.report_id/);
+  assert.match(service, /organizer-report-email-send/);
+  assert.match(service, /!data\?\.sent \|\| !data\.providerMessageId/);
+  assert.match(page, /Gmail accepted this report email/);
   assert.doesNotMatch(page, /mailto:|status.{0,10}sent|showToast\([^)]*sent/i);
 });
 
