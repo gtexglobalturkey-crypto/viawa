@@ -944,6 +944,16 @@ export function ExhibitionRepositoryPage() {
         subtitle="Fuar yönetim modülü — bu sprintte yalnızca Fiyat Hesaplayıcı aktif, diğer sekmeler yakında."
       />
 
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "10px" }}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => navigate(`/exhibitions/${exhibition.id}/organizer-report`)}
+        >
+          Organizer Report
+        </Button>
+      </div>
+
       <Panel className="exhibition-repository-panel">
         <div
           className="exhibition-repository-tabs"

@@ -119,6 +119,13 @@ const ExhibitionRepositoryPage = lazy(
   },
 );
 
+const OrganizerReportPage = lazy(async () => {
+  const module = await import(
+    "../../modules/organizer-report/OrganizerReportPage"
+  );
+  return { default: module.OrganizerReportPage };
+});
+
 // Sprint 25.1 / Adım 4 — CommunicationPage is no longer rendered for any
 // user. This is the one remaining reason /communication still exists as
 // a route: a stale bookmark/link must still land the user in the right
@@ -283,6 +290,11 @@ function AppRoutes() {
           element={
             <ExhibitionRepositoryPage />
           }
+        />
+
+        <Route
+          path="/exhibitions/:id/organizer-report"
+          element={<OrganizerReportPage />}
         />
       </Routes>
     </Suspense>
