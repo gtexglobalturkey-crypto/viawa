@@ -4,6 +4,7 @@ import { ExhibitionSelectionProvider } from "../../modules/exhibitions/context/E
 
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
+import { TopbarSlotProvider } from "./topbarSlotContext";
 import { WorkspaceHeaderProvider } from "./workspaceHeaderContext";
 
 type Props = {
@@ -16,6 +17,7 @@ export function AppShell({
   return (
     <WorkspaceHeaderProvider>
       <ExhibitionSelectionProvider>
+        <TopbarSlotProvider>
         <div className="viawa-shell">
           <Sidebar />
 
@@ -25,6 +27,7 @@ export function AppShell({
             {children}
           </div>
         </div>
+        </TopbarSlotProvider>
       </ExhibitionSelectionProvider>
     </WorkspaceHeaderProvider>
   );

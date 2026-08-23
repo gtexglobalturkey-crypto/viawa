@@ -18,6 +18,7 @@ import { useAuth } from "../../features/auth/AuthContext";
 import { useGlobalSearch } from "../../modules/global-search/hooks/useGlobalSearch";
 
 import { useWorkspaceHeader } from "./workspaceHeaderContext";
+import { TopbarSlotOutlet } from "./topbarSlotContext";
 
 export function Topbar() {
   const navigate = useNavigate();
@@ -152,6 +153,8 @@ export function Topbar() {
 
   return (
     <header className="viawa-topbar">
+      <TopbarSlotOutlet />
+
       {companyName && (
         <div className="topbar-company-name">
           <div className="topbar-company-name-row">

@@ -3,6 +3,17 @@ import type { Contact } from "../../types/database";
 
 export type { Contact } from "../../types/database";
 
+export async function getContacts(): Promise<Contact[]> {
+  const { data, error } = await supabase
+    .from("contacts")
+    .select("*")
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+
+  return data ?? [];
+}
+
 export async function getContactsByCompany(
   companyId: string,
 ): Promise<Contact[]> {

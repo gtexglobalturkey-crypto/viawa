@@ -3194,6 +3194,276 @@ main.companies-page .page-header p:last-child {
   line-height: 1.3;
 }
 
+/* Companies compact operations + fair-scoped opportunity Kanban */
+.companies-operations {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 7px;
+}
+
+.topbar-route-slot {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.topbar-route-slot:empty {
+  display: none;
+}
+
+.topbar-route-slot::-webkit-scrollbar {
+  display: none;
+}
+
+.topbar-route-slot .companies-operations {
+  width: max-content;
+  min-width: 100%;
+  flex-wrap: nowrap;
+  margin: 0;
+}
+
+.topbar-route-slot .companies-operations .btn {
+  min-height: 32px;
+  white-space: nowrap;
+}
+
+.viawa-topbar:has(.topbar-route-slot:not(:empty)) {
+  gap: 8px;
+}
+
+.viawa-topbar:has(.topbar-route-slot:not(:empty)) .topbar-actions {
+  flex: 0 0 auto;
+  margin-left: 0;
+}
+
+.viawa-topbar:has(.topbar-route-slot:not(:empty)) .search-box {
+  width: clamp(220px, 24vw, 320px);
+  min-width: 220px;
+}
+
+.companies-operations .btn {
+  min-height: 34px;
+  padding: 0 11px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+.companies-total {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  padding-right: 5px;
+}
+
+.companies-total strong { font-size: 19px; }
+.companies-total span {
+  color: var(--viawa-muted);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.companies-view-switch {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--viawa-border);
+  border-radius: 9px;
+  background: var(--viawa-soft);
+}
+
+.companies-view-switch button {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--viawa-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.companies-view-switch button.active {
+  color: white;
+  background: var(--viawa-primary);
+}
+
+.companies-filter-row {
+  flex: 0 0 auto;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+  margin-bottom: 7px;
+  padding: 6px 8px;
+  border: 1px solid var(--viawa-border);
+  border-radius: 10px;
+  background: white;
+}
+
+.companies-filter-row > label {
+  flex: 1 1 125px;
+  min-width: 105px;
+  display: grid;
+  gap: 2px;
+}
+
+.companies-filter-row label > span {
+  color: var(--viawa-muted);
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.companies-filter-row select {
+  width: 100%;
+  height: 31px;
+  padding: 0 7px;
+  border: 1px solid var(--viawa-border);
+  border-radius: 7px;
+  background: white;
+  font-size: 10px;
+}
+
+.companies-more-filter { position: relative; flex: 0 0 auto; }
+.companies-more-filter > .btn { min-height: 31px; font-size: 10px; }
+.companies-more-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 5px);
+  right: 0;
+  width: 250px;
+  display: grid;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid var(--viawa-border);
+  border-radius: 9px;
+  background: white;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
+  font-size: 11px;
+}
+.companies-more-menu label { display: grid; gap: 3px; }
+.companies-more-menu label > span {
+  color: var(--viawa-muted);
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.companies-more-menu select {
+  width: 100%;
+  height: 30px;
+  padding: 0 7px;
+  border: 1px solid var(--viawa-border);
+  border-radius: 7px;
+  background: white;
+  font-size: 10px;
+}
+.companies-more-menu button { justify-self: start; border: 0; background: none; color: var(--viawa-primary); font-weight: 800; }
+
+.companies-results-area.is-kanban { overflow-x: auto; }
+.companies-kanban {
+  min-width: 920px;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(215px, 1fr));
+  gap: 9px;
+}
+.companies-kanban-column {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--viawa-border);
+  border-radius: 10px;
+  background: var(--viawa-soft);
+  overflow: hidden;
+}
+.companies-kanban-column > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--viawa-border);
+  background: white;
+}
+.companies-kanban-column > header h2 {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.companies-kanban-column > header span { color: var(--viawa-muted); font-size: 10px; font-weight: 800; }
+.companies-kanban-cards {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 7px;
+  overflow-y: auto;
+}
+.companies-kanban-card {
+  width: 100%;
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid var(--viawa-border);
+  border-radius: 9px;
+  background: white;
+  color: var(--viawa-text);
+  text-align: left;
+}
+.companies-kanban-card:hover { border-color: var(--viawa-primary); box-shadow: 0 5px 15px rgba(15, 23, 42, .08); }
+.companies-kanban-card-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 7px; }
+.companies-kanban-card-title strong { font-size: 12px; line-height: 1.3; }
+.companies-kanban-card-title span { flex: 0 0 auto; padding: 2px 5px; border-radius: 999px; background: var(--viawa-soft); font-size: 8px; font-weight: 800; }
+.companies-kanban-card p { margin: 0; color: var(--viawa-muted); font-size: 10px; }
+.companies-kanban-next { display: grid; gap: 2px; padding-top: 6px; border-top: 1px solid var(--viawa-border); }
+.companies-kanban-next span { font-size: 10px; font-weight: 700; }
+.companies-kanban-next time { color: var(--viawa-muted); font-size: 9px; }
+.companies-kanban-next time.overdue { color: #b42318; font-weight: 800; }
+.companies-kanban-empty { margin: 8px; color: var(--viawa-muted); font-size: 10px; text-align: center; }
+
+.companies-closed-results {
+  display: grid;
+  gap: 8px;
+}
+.companies-closed-results > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.companies-closed-results h2,
+.companies-closed-results p { margin: 0; }
+.companies-closed-results h2 { font-size: 14px; }
+.companies-closed-results p { color: var(--viawa-muted); font-size: 10px; }
+.companies-closed-list { display: grid; gap: 7px; }
+.companies-closed-list > button {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.4fr) repeat(5, minmax(110px, 1fr));
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--viawa-border);
+  border-radius: 9px;
+  background: white;
+  color: var(--viawa-text);
+  text-align: left;
+}
+.companies-closed-list > button:hover { border-color: var(--viawa-primary); }
+.companies-closed-list strong { font-size: 12px; }
+.companies-closed-list span { color: var(--viawa-muted); font-size: 10px; }
+
+@media (max-width: 900px) {
+  main.companies-page { height: auto; min-height: calc(100vh - 80px); overflow: visible; }
+  .companies-filter-row { align-items: stretch; flex-wrap: wrap; }
+  .companies-filter-row > label { flex: 1 1 145px; }
+  .companies-results-area { overflow: visible; }
+  .companies-results-area.is-kanban { overflow-x: auto; }
+}
+
 /* ==================================================
    Authentication — Sign In
    Scope: .auth-page, .auth-card, .auth-brand, .auth-heading,

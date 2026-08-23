@@ -2,6 +2,19 @@ import { supabase } from "./client";
 
 import type { CallNote } from "../../types/database";
 
+export async function getCallNotes(): Promise<CallNote[]> {
+  const { data, error } = await supabase
+    .from("call_notes")
+    .select("*")
+    .order("updated_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return data ?? [];
+}
+
 export async function getCallNotesByOpportunity(
   opportunityId: string,
 ): Promise<CallNote[]> {
