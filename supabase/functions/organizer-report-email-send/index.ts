@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { gmailIdentityIsReady, buildGmailMime, isValidEmailAddress, normalizeRecipient, providerFailureStatus, sendOperationKey } from "../_shared/organizerReportEmail.ts";
 import { generateOrganizerReportPdf } from "../_shared/organizerReportPdf.ts";
+import { refreshGmailAccessToken } from "../_shared/gmailRefresh.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -103,17 +104,12 @@ Deno.serve(async (request) => {
     const clientSecret = required("GMAIL_OAUTH_CLIENT_SECRET");
     const refreshToken = required("GMAIL_OAUTH_REFRESH_TOKEN");
     const owningMailbox = required("GMAIL_OWNING_MAILBOX");
-    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken, grant_type: "refresh_token" }),
-    });
-    const tokenData = await tokenResponse.json() as Record<string, unknown>;
-    if (!tokenResponse.ok || typeof tokenData.access_token !== "string") {
-      await finalize("failed", "OAUTH_REFRESH_FAILED");
+    const tokenResult = await refreshGmailAccessToken({ clientId, clientSecret, refreshToken });
+    if (!tokenResult.ok) {
+      await finalize("failed", tokenResult.code);
       return json({ error: "Gmail authorization is unavailable or revoked." }, 503);
     }
-    const gmailHeaders = { Authorization: `Bearer ${tokenData.access_token}` };
+    const gmailHeaders = { Authorization: `Bearer ${tokenResult.accessToken}` };
     const [identityResponse, aliasResponse] = await Promise.all([
       fetch("https://openidconnect.googleapis.com/v1/userinfo", { headers: gmailHeaders }),
       fetch(`https://gmail.googleapis.com/gmail/v1/users/me/settings/sendAs/${encodeURIComponent(senderAlias)}`, { headers: gmailHeaders }),
