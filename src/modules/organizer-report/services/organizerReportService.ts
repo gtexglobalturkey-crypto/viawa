@@ -58,3 +58,28 @@ export async function sendOrganizerReportEmail(input: {
   }
   return data;
 }
+
+export type GmailRefreshDiagnosticCode =
+  | "OAUTH_REFRESH_OK"
+  | "OAUTH_INVALID_GRANT"
+  | "OAUTH_INVALID_CLIENT"
+  | "OAUTH_REFRESH_OTHER";
+
+function isGmailRefreshDiagnosticCode(value: unknown): value is GmailRefreshDiagnosticCode {
+  return value === "OAUTH_REFRESH_OK" || value === "OAUTH_INVALID_GRANT" || value === "OAUTH_INVALID_CLIENT" || value === "OAUTH_REFRESH_OTHER";
+}
+
+export async function checkGmailConnection(): Promise<GmailRefreshDiagnosticCode> {
+  const { data, error } = await supabase.functions.invoke<{ result?: unknown }>("gmail-refresh-verify", { body: {} });
+  if (isGmailRefreshDiagnosticCode(data?.result)) return data.result;
+  const response = (error as { context?: Response } | null)?.context;
+  if (response) {
+    try {
+      const failure = await response.json() as { result?: unknown };
+      if (isGmailRefreshDiagnosticCode(failure.result)) return failure.result;
+    } catch {
+      // Only the allow-listed result is surfaced; malformed bodies are discarded.
+    }
+  }
+  throw new Error("Gmail authorization error");
+}

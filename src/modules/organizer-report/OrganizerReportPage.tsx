@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useToast } from "../../components/feedback/toastContext";
+import { useAuth } from "../../features/auth/AuthContext";
 import { Button } from "../../components/ui/Button";
 import { Panel } from "../../components/ui/Panel";
 import { ORGANIZER_REPORT_STAGES } from "../../../supabase/functions/_shared/organizerReport";
@@ -11,7 +12,14 @@ import {
   REPORT_STAGE_LABELS,
   type OrganizerReportRecord,
 } from "./models/OrganizerReport";
-import { generateOrganizerReport, listOrganizerReports, sendOrganizerReportEmail } from "./services/organizerReportService";
+import { checkGmailConnection, generateOrganizerReport, listOrganizerReports, sendOrganizerReportEmail, type GmailRefreshDiagnosticCode } from "./services/organizerReportService";
+
+const GMAIL_DIAGNOSTIC_MESSAGES: Record<GmailRefreshDiagnosticCode, string> = {
+  OAUTH_REFRESH_OK: "Gmail connection OK",
+  OAUTH_INVALID_GRANT: "Refresh authorization expired",
+  OAUTH_INVALID_CLIENT: "OAuth client credentials invalid",
+  OAUTH_REFRESH_OTHER: "Gmail authorization error",
+};
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "long", year: "numeric" }).format(new Date(value));
@@ -34,6 +42,7 @@ export function OrganizerReportPage() {
   const { id = "" } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { profile } = useAuth();
   const [reports, setReports] = useState<OrganizerReportRecord[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [periodStart, setPeriodStart] = useState("");
@@ -48,6 +57,8 @@ export function OrganizerReportPage() {
   const [emailBody, setEmailBody] = useState("");
   const [emailSending, setEmailSending] = useState(false);
   const [emailStatus, setEmailStatus] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  const [gmailChecking, setGmailChecking] = useState(false);
+  const [gmailDiagnostic, setGmailDiagnostic] = useState<GmailRefreshDiagnosticCode | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -89,6 +100,8 @@ export function OrganizerReportPage() {
     setEmailBody(draft.body);
     setEmailSending(false);
     setEmailStatus(null);
+    setGmailChecking(false);
+    setGmailDiagnostic(null);
     setEmailOpen(true);
   }
 
@@ -105,6 +118,19 @@ export function OrganizerReportPage() {
       setEmailStatus({ kind: "error", message: reason instanceof Error ? reason.message : "Report email could not be sent." });
     } finally {
       setEmailSending(false);
+    }
+  }
+
+  async function handleGmailCheck() {
+    if (gmailChecking) return;
+    setGmailChecking(true);
+    setGmailDiagnostic(null);
+    try {
+      setGmailDiagnostic(await checkGmailConnection());
+    } catch {
+      setGmailDiagnostic("OAUTH_REFRESH_OTHER");
+    } finally {
+      setGmailChecking(false);
     }
   }
 
@@ -161,6 +187,7 @@ export function OrganizerReportPage() {
             <label>Subject<input value={emailSubject} onChange={(event) => setEmailSubject(event.target.value)} /></label>
             <label>Message<textarea rows={7} value={emailBody} onChange={(event) => setEmailBody(event.target.value)} /></label>
             <div className="organizer-report-email-identity"><span>Report ID</span><strong>{report.report_id}</strong><span>PDF attachment</span><strong>{organizerReportEmailDraft(report).attachmentFileName}</strong></div>
+            {profile?.is_active && profile.role === "admin" && <div><Button variant="secondary" disabled={gmailChecking} onClick={() => void handleGmailCheck()}>{gmailChecking ? "Checking…" : "Check Gmail Connection"}</Button>{gmailDiagnostic && <p className="organizer-report-email-pending" role="status">{GMAIL_DIAGNOSTIC_MESSAGES[gmailDiagnostic]} <small>{gmailDiagnostic}</small></p>}</div>}
             {emailStatus && <p className={`organizer-report-email-pending ${emailStatus.kind === "error" ? "error-message" : ""}`} role="status">{emailStatus.message}</p>}
             <div className="organizer-report-email-actions"><Button variant="secondary" disabled={emailSending} onClick={() => setEmailOpen(false)}>Cancel</Button><Button disabled={!emailValid || emailSending || emailStatus?.kind === "success"} onClick={() => void handleEmailSend()}>{emailSending ? "Sending…" : emailStatus?.kind === "success" ? "Sent" : "Send"}</Button></div>
           </section>

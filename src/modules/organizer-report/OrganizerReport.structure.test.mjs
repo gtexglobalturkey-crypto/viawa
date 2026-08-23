@@ -52,6 +52,18 @@ test("email draft is selected-report bound and success requires a provider messa
   assert.doesNotMatch(page, /mailto:|status.{0,10}sent|showToast\([^)]*sent/i);
 });
 
+test("temporary Gmail diagnostic is admin-only, authenticated, and exposes safe results only", () => {
+  assert.match(page, /profile\?\.is_active && profile\.role === "admin"/);
+  assert.match(page, /Check Gmail Connection/);
+  assert.match(page, /checkGmailConnection\(\)/);
+  assert.match(service, /gmail-refresh-verify/);
+  for (const code of ["OAUTH_REFRESH_OK", "OAUTH_INVALID_GRANT", "OAUTH_INVALID_CLIENT", "OAUTH_REFRESH_OTHER"]) {
+    assert.equal(page.includes(code) || service.includes(code), true, code);
+  }
+  assert.doesNotMatch(page + service, /GMAIL_OAUTH_|access_token|refresh_token|client_secret|localStorage|messages\/send/);
+  assert.match(service, /body: \{\}/);
+});
+
 test("browser sends only scope and period while server computes authoritative values", () => {
   assert.match(service, /body: \{ exhibitionId, \.\.\.period \}/);
   assert.doesNotMatch(service, /pipelineCounts|openOffersSqm|companies:/);
