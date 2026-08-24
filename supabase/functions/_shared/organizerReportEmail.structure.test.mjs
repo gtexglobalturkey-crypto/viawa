@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const shared = await readFile(new URL("./organizerReportEmail.ts", import.meta.url), "utf8");
+const identity = await readFile(new URL("./gmailIdentity.ts", import.meta.url), "utf8");
 const pdf = await readFile(new URL("./organizerReportPdf.ts", import.meta.url), "utf8");
 const endpoint = await readFile(new URL("../organizer-report-email-send/index.ts", import.meta.url), "utf8");
 const migration = await readFile(new URL("../../migrations/20260823170000_create_organizer_report_email_sends.sql", import.meta.url), "utf8");
@@ -18,9 +19,10 @@ test("endpoint requires an authenticated active VIAWA user and accepts no sender
 test("provider identity is exact and never falls back from the configured alias", () => {
   assert.match(endpoint, /required\("GMAIL_OWNING_MAILBOX"\)/);
   assert.match(endpoint, /required\("GMAIL_SENDER_ALIAS"\)/);
-  assert.match(endpoint, /gmailIdentityIsReady/);
-  assert.match(shared, /isConfiguredMailbox/);
-  assert.match(shared, /isAcceptedSenderAlias/);
+  assert.match(endpoint, /verifyGmailIdentityAlias/);
+  assert.match(identity, /owningMailbox/);
+  assert.match(identity, /senderAlias/);
+  assert.match(identity, /verificationStatus !== "accepted"/);
   assert.match(shared, /From: VIAFA/);
   assert.doesNotMatch(endpoint, /fallback/i);
 });

@@ -62,6 +62,11 @@ test("temporary Gmail diagnostic is admin-only, authenticated, and exposes safe 
   }
   assert.doesNotMatch(page + service, /GMAIL_OAUTH_|access_token|refresh_token|client_secret|localStorage|messages\/send/);
   assert.match(service, /body: \{\}/);
+  assert.match(page, /Check Gmail Identity/);
+  assert.match(service, /gmail-identity-verify/);
+  for (const code of ["GMAIL_MAILBOX_LOOKUP_FAILED", "GMAIL_MAILBOX_MISMATCH", "GMAIL_ALIAS_LOOKUP_FAILED", "GMAIL_ALIAS_NOT_FOUND", "GMAIL_ALIAS_NOT_ACCEPTED", "GMAIL_IDENTITY_ALIAS_OK"]) {
+    assert.equal(page.includes(code) || service.includes(code), true, code);
+  }
 });
 
 test("browser sends only scope and period while server computes authoritative values", () => {

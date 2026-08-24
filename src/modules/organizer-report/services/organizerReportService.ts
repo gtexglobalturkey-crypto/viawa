@@ -83,3 +83,29 @@ export async function checkGmailConnection(): Promise<GmailRefreshDiagnosticCode
   }
   throw new Error("Gmail authorization error");
 }
+
+export type GmailIdentityDiagnosticCode =
+  | "GMAIL_MAILBOX_LOOKUP_FAILED"
+  | "GMAIL_MAILBOX_MISMATCH"
+  | "GMAIL_ALIAS_LOOKUP_FAILED"
+  | "GMAIL_ALIAS_NOT_FOUND"
+  | "GMAIL_ALIAS_NOT_ACCEPTED"
+  | "GMAIL_IDENTITY_ALIAS_OK";
+
+const GMAIL_IDENTITY_CODES = new Set<GmailIdentityDiagnosticCode>([
+  "GMAIL_MAILBOX_LOOKUP_FAILED", "GMAIL_MAILBOX_MISMATCH", "GMAIL_ALIAS_LOOKUP_FAILED",
+  "GMAIL_ALIAS_NOT_FOUND", "GMAIL_ALIAS_NOT_ACCEPTED", "GMAIL_IDENTITY_ALIAS_OK",
+]);
+
+export async function checkGmailIdentity(): Promise<GmailIdentityDiagnosticCode> {
+  const { data, error } = await supabase.functions.invoke<{ result?: unknown }>("gmail-identity-verify", { body: {} });
+  if (typeof data?.result === "string" && GMAIL_IDENTITY_CODES.has(data.result as GmailIdentityDiagnosticCode)) return data.result as GmailIdentityDiagnosticCode;
+  const response = (error as { context?: Response } | null)?.context;
+  if (response) {
+    try {
+      const failure = await response.json() as { result?: unknown };
+      if (typeof failure.result === "string" && GMAIL_IDENTITY_CODES.has(failure.result as GmailIdentityDiagnosticCode)) return failure.result as GmailIdentityDiagnosticCode;
+    } catch { /* raw responses are discarded */ }
+  }
+  return "GMAIL_MAILBOX_LOOKUP_FAILED";
+}

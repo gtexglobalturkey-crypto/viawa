@@ -1,7 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { gmailIdentityIsReady, buildGmailMime, isValidEmailAddress, normalizeRecipient, providerFailureStatus, sendOperationKey } from "../_shared/organizerReportEmail.ts";
+import { buildGmailMime, isValidEmailAddress, normalizeRecipient, providerFailureStatus, sendOperationKey } from "../_shared/organizerReportEmail.ts";
 import { generateOrganizerReportPdf } from "../_shared/organizerReportPdf.ts";
 import { refreshGmailAccessToken } from "../_shared/gmailRefresh.ts";
+import { verifyGmailIdentityAlias } from "../_shared/gmailIdentity.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -109,18 +110,13 @@ Deno.serve(async (request) => {
       await finalize("failed", tokenResult.code);
       return json({ error: "Gmail authorization is unavailable or revoked." }, 503);
     }
-    const gmailHeaders = { Authorization: `Bearer ${tokenResult.accessToken}` };
-    const [identityResponse, aliasResponse] = await Promise.all([
-      fetch("https://openidconnect.googleapis.com/v1/userinfo", { headers: gmailHeaders }),
-      fetch(`https://gmail.googleapis.com/gmail/v1/users/me/settings/sendAs/${encodeURIComponent(senderAlias)}`, { headers: gmailHeaders }),
-    ]);
-    const identity = await identityResponse.json() as Record<string, unknown>;
-    const alias = await aliasResponse.json() as unknown;
-    if (!identityResponse.ok || typeof identity.email !== "string" || !aliasResponse.ok || !gmailIdentityIsReady({ actualMailbox: identity.email, configuredMailbox: owningMailbox, aliasResponse: alias, configuredAlias: senderAlias })) {
-      await finalize("failed", "GMAIL_IDENTITY_OR_ALIAS_INVALID");
+    const identityResult = await verifyGmailIdentityAlias({ accessToken: tokenResult.accessToken, owningMailbox, senderAlias });
+    if (identityResult !== "GMAIL_IDENTITY_ALIAS_OK") {
+      await finalize("failed", identityResult);
       return json({ error: "The configured Gmail mailbox or VIAFA sender alias is unavailable." }, 409);
     }
 
+    const gmailHeaders = { Authorization: `Bearer ${tokenResult.accessToken}` };
     const raw = buildGmailMime({ recipient, subject, messageBody, senderAlias, reportId: report.report_id, pdfBytes });
     let gmailResponse: Response;
     try {
