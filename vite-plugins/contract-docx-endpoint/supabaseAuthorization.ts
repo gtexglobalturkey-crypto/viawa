@@ -29,6 +29,23 @@ export function createSupabaseContractAuthorizer(input: {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
+    const { data: applicationUser, error: applicationUserError } = await client
+      .from("application_users")
+      .select("id,is_active")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (applicationUserError) throw applicationUserError;
+
+    if (!applicationUser?.is_active) {
+      return {
+        allowed: false,
+        status: 403,
+        code: "APPLICATION_ACCESS_DENIED",
+        message: "Active VIAWA access is required.",
+      };
+    }
+
     const { data: company, error: companyError } = await client
       .from("companies")
       .select("id")

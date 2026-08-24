@@ -493,6 +493,88 @@ async function authenticateRequest(
       };
     }
 
+    const membershipResponse = await fetch(
+      `${supabaseUrl}/rest/v1/application_users?id=eq.${encodeURIComponent(userId)}&select=id,is_active&limit=1`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          apikey: anonKey,
+          Accept: "application/json",
+        },
+        signal: controller.signal,
+      },
+    );
+
+    if (!membershipResponse.ok) {
+      console.error(
+        "dropbox-sign-send: application membership verification received a non-OK status.",
+        membershipResponse.status,
+      );
+
+      return {
+        ok: false,
+        response: jsonResponse(
+          {
+            ok: false,
+            error:
+              "VIAWA access could not be verified.",
+          },
+          membershipResponse.status >= 500
+            ? 502
+            : 403,
+        ),
+      };
+    }
+
+    let membershipBody: unknown;
+
+    try {
+      membershipBody =
+        await membershipResponse.json();
+    } catch {
+      console.error(
+        "dropbox-sign-send: application membership response was not valid JSON.",
+      );
+
+      return {
+        ok: false,
+        response: jsonResponse(
+          {
+            ok: false,
+            error:
+              "VIAWA access could not be verified.",
+          },
+          502,
+        ),
+      };
+    }
+
+    const applicationUser =
+      Array.isArray(membershipBody) &&
+      membershipBody.length === 1 &&
+      typeof membershipBody[0] === "object" &&
+      membershipBody[0] !== null
+        ? membershipBody[0] as Record<string, unknown>
+        : null;
+
+    if (
+      applicationUser?.id !== userId ||
+      applicationUser.is_active !== true
+    ) {
+      return {
+        ok: false,
+        response: jsonResponse(
+          {
+            ok: false,
+            error:
+              "Active VIAWA access is required.",
+          },
+          403,
+        ),
+      };
+    }
+
     return { ok: true, userId };
   } catch (authError) {
     if (

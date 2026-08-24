@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .tmp/
+/supabase/.temp/
 **/viawa-gmail-oauth-capture.bin
 .env
 .env.local
