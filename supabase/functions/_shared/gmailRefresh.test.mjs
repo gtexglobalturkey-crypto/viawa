@@ -25,5 +25,16 @@ test("unknown and malformed provider failures map to OAUTH_REFRESH_OTHER", async
 });
 
 test("successful refresh returns the token only to the server caller", async () => {
-  assert.deepEqual(await refresh(200, { access_token: "server-only-access", token_type: "Bearer" }), { ok: true, code: "OAUTH_REFRESH_OK", httpStatus: 200, accessToken: "server-only-access" });
+  assert.deepEqual(await refresh(200, { access_token: "server-only-access", token_type: "Bearer", scope: "openid email https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.settings.basic" }), {
+    ok: true, code: "OAUTH_REFRESH_OK", httpStatus: 200, accessToken: "server-only-access",
+    grantedOpenId: true, grantedEmail: true, grantedGmailSend: true, grantedGmailSettingsBasic: true,
+  });
+});
+
+test("missing scope metadata becomes false booleans without inference", async () => {
+  const result = await refresh(200, { access_token: "server-only-access" });
+  assert.equal(result.grantedOpenId, false);
+  assert.equal(result.grantedEmail, false);
+  assert.equal(result.grantedGmailSend, false);
+  assert.equal(result.grantedGmailSettingsBasic, false);
 });

@@ -109,3 +109,19 @@ export async function checkGmailIdentity(): Promise<GmailIdentityDiagnosticCode>
   }
   return "GMAIL_MAILBOX_LOOKUP_FAILED";
 }
+
+export type GmailUserInfoDiagnostic = {
+  userinfoResult: "USERINFO_HTTP_401" | "USERINFO_HTTP_403" | "USERINFO_HTTP_OTHER" | "USERINFO_MALFORMED_RESPONSE" | "USERINFO_EMAIL_MISSING" | "USERINFO_EMAIL_OK";
+  grantedOpenId: boolean;
+  grantedEmail: boolean;
+};
+
+const USERINFO_CODES = new Set(["USERINFO_HTTP_401", "USERINFO_HTTP_403", "USERINFO_HTTP_OTHER", "USERINFO_MALFORMED_RESPONSE", "USERINFO_EMAIL_MISSING", "USERINFO_EMAIL_OK"]);
+
+export async function checkGmailUserInfo(): Promise<GmailUserInfoDiagnostic> {
+  const { data } = await supabase.functions.invoke<Partial<GmailUserInfoDiagnostic>>("gmail-userinfo-verify", { body: {} });
+  if (!data || !USERINFO_CODES.has(data.userinfoResult ?? "") || typeof data.grantedOpenId !== "boolean" || typeof data.grantedEmail !== "boolean") {
+    return { userinfoResult: "USERINFO_HTTP_OTHER", grantedOpenId: false, grantedEmail: false };
+  }
+  return data as GmailUserInfoDiagnostic;
+}

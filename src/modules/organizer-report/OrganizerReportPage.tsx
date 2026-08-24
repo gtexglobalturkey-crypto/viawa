@@ -12,7 +12,7 @@ import {
   REPORT_STAGE_LABELS,
   type OrganizerReportRecord,
 } from "./models/OrganizerReport";
-import { checkGmailConnection, checkGmailIdentity, generateOrganizerReport, listOrganizerReports, sendOrganizerReportEmail, type GmailIdentityDiagnosticCode, type GmailRefreshDiagnosticCode } from "./services/organizerReportService";
+import { checkGmailConnection, checkGmailIdentity, checkGmailUserInfo, generateOrganizerReport, listOrganizerReports, sendOrganizerReportEmail, type GmailIdentityDiagnosticCode, type GmailRefreshDiagnosticCode, type GmailUserInfoDiagnostic } from "./services/organizerReportService";
 
 const GMAIL_DIAGNOSTIC_MESSAGES: Record<GmailRefreshDiagnosticCode, string> = {
   OAUTH_REFRESH_OK: "Gmail connection OK",
@@ -69,6 +69,8 @@ export function OrganizerReportPage() {
   const [gmailDiagnostic, setGmailDiagnostic] = useState<GmailRefreshDiagnosticCode | null>(null);
   const [gmailIdentityChecking, setGmailIdentityChecking] = useState(false);
   const [gmailIdentityDiagnostic, setGmailIdentityDiagnostic] = useState<GmailIdentityDiagnosticCode | null>(null);
+  const [gmailUserInfoChecking, setGmailUserInfoChecking] = useState(false);
+  const [gmailUserInfoDiagnostic, setGmailUserInfoDiagnostic] = useState<GmailUserInfoDiagnostic | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -114,6 +116,8 @@ export function OrganizerReportPage() {
     setGmailDiagnostic(null);
     setGmailIdentityChecking(false);
     setGmailIdentityDiagnostic(null);
+    setGmailUserInfoChecking(false);
+    setGmailUserInfoDiagnostic(null);
     setEmailOpen(true);
   }
 
@@ -152,6 +156,14 @@ export function OrganizerReportPage() {
     setGmailIdentityDiagnostic(null);
     try { setGmailIdentityDiagnostic(await checkGmailIdentity()); }
     finally { setGmailIdentityChecking(false); }
+  }
+
+  async function handleGmailUserInfoCheck() {
+    if (gmailUserInfoChecking) return;
+    setGmailUserInfoChecking(true);
+    setGmailUserInfoDiagnostic(null);
+    try { setGmailUserInfoDiagnostic(await checkGmailUserInfo()); }
+    finally { setGmailUserInfoChecking(false); }
   }
 
   return (
@@ -207,7 +219,7 @@ export function OrganizerReportPage() {
             <label>Subject<input value={emailSubject} onChange={(event) => setEmailSubject(event.target.value)} /></label>
             <label>Message<textarea rows={7} value={emailBody} onChange={(event) => setEmailBody(event.target.value)} /></label>
             <div className="organizer-report-email-identity"><span>Report ID</span><strong>{report.report_id}</strong><span>PDF attachment</span><strong>{organizerReportEmailDraft(report).attachmentFileName}</strong></div>
-            {profile?.is_active && profile.role === "admin" && <div><Button variant="secondary" disabled={gmailChecking} onClick={() => void handleGmailCheck()}>{gmailChecking ? "Checking…" : "Check Gmail Connection"}</Button>{gmailDiagnostic && <p className="organizer-report-email-pending" role="status">{GMAIL_DIAGNOSTIC_MESSAGES[gmailDiagnostic]} <small>{gmailDiagnostic}</small></p>}<Button variant="secondary" disabled={gmailIdentityChecking} onClick={() => void handleGmailIdentityCheck()}>{gmailIdentityChecking ? "Checking…" : "Check Gmail Identity"}</Button>{gmailIdentityDiagnostic && <p className="organizer-report-email-pending" role="status">{GMAIL_IDENTITY_MESSAGES[gmailIdentityDiagnostic]} <small>{gmailIdentityDiagnostic}</small></p>}</div>}
+            {profile?.is_active && profile.role === "admin" && <div><Button variant="secondary" disabled={gmailChecking} onClick={() => void handleGmailCheck()}>{gmailChecking ? "Checking…" : "Check Gmail Connection"}</Button>{gmailDiagnostic && <p className="organizer-report-email-pending" role="status">{GMAIL_DIAGNOSTIC_MESSAGES[gmailDiagnostic]} <small>{gmailDiagnostic}</small></p>}<Button variant="secondary" disabled={gmailIdentityChecking} onClick={() => void handleGmailIdentityCheck()}>{gmailIdentityChecking ? "Checking…" : "Check Gmail Identity"}</Button>{gmailIdentityDiagnostic && <p className="organizer-report-email-pending" role="status">{GMAIL_IDENTITY_MESSAGES[gmailIdentityDiagnostic]} <small>{gmailIdentityDiagnostic}</small></p>}<Button variant="secondary" disabled={gmailUserInfoChecking} onClick={() => void handleGmailUserInfoCheck()}>{gmailUserInfoChecking ? "Checking…" : "Check Gmail UserInfo"}</Button>{gmailUserInfoDiagnostic && <p className="organizer-report-email-pending" role="status"><small>{gmailUserInfoDiagnostic.userinfoResult} · openid: {String(gmailUserInfoDiagnostic.grantedOpenId)} · email: {String(gmailUserInfoDiagnostic.grantedEmail)}</small></p>}</div>}
             {emailStatus && <p className={`organizer-report-email-pending ${emailStatus.kind === "error" ? "error-message" : ""}`} role="status">{emailStatus.message}</p>}
             <div className="organizer-report-email-actions"><Button variant="secondary" disabled={emailSending} onClick={() => setEmailOpen(false)}>Cancel</Button><Button disabled={!emailValid || emailSending || emailStatus?.kind === "success"} onClick={() => void handleEmailSend()}>{emailSending ? "Sending…" : emailStatus?.kind === "success" ? "Sent" : "Send"}</Button></div>
           </section>

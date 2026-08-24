@@ -5,7 +5,7 @@ export type GmailRefreshCode =
   | "OAUTH_REFRESH_OTHER";
 
 export type GmailRefreshResult =
-  | { ok: true; code: "OAUTH_REFRESH_OK"; httpStatus: number; accessToken: string }
+  | { ok: true; code: "OAUTH_REFRESH_OK"; httpStatus: number; accessToken: string; grantedOpenId: boolean; grantedEmail: boolean; grantedGmailSend: boolean; grantedGmailSettingsBasic: boolean }
   | { ok: false; code: Exclude<GmailRefreshCode, "OAUTH_REFRESH_OK">; httpStatus: number };
 
 export function classifyGmailRefreshError(payload: unknown): Exclude<GmailRefreshCode, "OAUTH_REFRESH_OK"> {
@@ -41,7 +41,14 @@ export async function refreshGmailAccessToken(input: {
   if (response.ok && payload && typeof payload === "object") {
     const accessToken = (payload as Record<string, unknown>).access_token;
     if (typeof accessToken === "string" && accessToken) {
-      return { ok: true, code: "OAUTH_REFRESH_OK", httpStatus: response.status, accessToken };
+      const scopes = new Set(typeof (payload as Record<string, unknown>).scope === "string" ? ((payload as Record<string, unknown>).scope as string).split(/\s+/u).filter(Boolean) : []);
+      return {
+        ok: true, code: "OAUTH_REFRESH_OK", httpStatus: response.status, accessToken,
+        grantedOpenId: scopes.has("openid"),
+        grantedEmail: scopes.has("email"),
+        grantedGmailSend: scopes.has("https://www.googleapis.com/auth/gmail.send"),
+        grantedGmailSettingsBasic: scopes.has("https://www.googleapis.com/auth/gmail.settings.basic"),
+      };
     }
   }
   return { ok: false, code: classifyGmailRefreshError(payload), httpStatus: response.status };
