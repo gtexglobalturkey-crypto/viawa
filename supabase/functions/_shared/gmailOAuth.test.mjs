@@ -20,7 +20,24 @@ test("authorization start requires an authenticated active VIAWA admin", () => {
   assert.match(authorize, /application_users/);
   assert.match(authorize, /member\?\.is_active/);
   assert.match(authorize, /member\.role !== "admin"/);
-  assert.match(authorize, /status: 403/);
+  assert.match(authorize, /response\("Active VIAWA admin access is required\.", 403\)/);
+});
+
+test("authorization start handles browser preflight without generating OAuth state", () => {
+  assert.match(authorize, /request\.method === "OPTIONS"/);
+  assert.match(authorize, /response\("ok", 200\)/);
+  assert.match(authorize, /"Access-Control-Allow-Origin": "\*"/);
+  for (const header of ["authorization", "apikey", "content-type", "x-client-info"]) assert.equal(authorize.includes(header), true, header);
+  const optionsBranch = authorize.split(/if \(request\.method === "OPTIONS"\)/)[1].split(";")[0];
+  assert.doesNotMatch(optionsBranch, /createOAuthState|buildGoogleAuthorizationUrl|auth\.getUser/);
+});
+
+test("every authorize response uses the shared CORS response wrapper", () => {
+  assert.doesNotMatch(authorize.replace(/return new Response\(body,[\s\S]*?\n\}/, ""), /new Response\(/);
+  assert.match(authorize, /response\("Unauthorized", 401\)/);
+  assert.match(authorize, /response\("Active VIAWA admin access is required\.", 403\)/);
+  assert.match(authorize, /response\("Method not allowed", 405\)/);
+  assert.match(authorize, /response\("Gmail authorization could not be started\.", 503\)/);
 });
 
 test("state is signed, expiring, and rejects mismatch or expiry", async () => {
