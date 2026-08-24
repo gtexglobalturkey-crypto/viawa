@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .tmp/
+**/viawa-gmail-oauth-capture.bin
 .env
 .env.local
 .env.*.local
