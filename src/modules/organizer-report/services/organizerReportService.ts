@@ -125,3 +125,11 @@ export async function checkGmailUserInfo(): Promise<GmailUserInfoDiagnostic> {
   }
   return data as GmailUserInfoDiagnostic;
 }
+
+export async function beginNativeGmailAuthorization(): Promise<string> {
+  const { data, error } = await supabase.functions.invoke<{ authorizationUrl?: unknown }>("gmail-oauth-authorize", { method: "POST" });
+  if (error || typeof data?.authorizationUrl !== "string" || !data.authorizationUrl.startsWith("https://accounts.google.com/")) {
+    throw new Error("Gmail authorization could not be started.");
+  }
+  return data.authorizationUrl;
+}

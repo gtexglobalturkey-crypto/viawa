@@ -14,11 +14,12 @@ const config = {
   owningMailbox: "ahmet@expoviafair.com",
 };
 
-test("authorization start requires an authenticated active VIAWA user", () => {
+test("authorization start requires an authenticated active VIAWA admin", () => {
   assert.match(authorize, /Authorization/);
   assert.match(authorize, /admin\.auth\.getUser/);
   assert.match(authorize, /application_users/);
   assert.match(authorize, /member\?\.is_active/);
+  assert.match(authorize, /member\.role !== "admin"/);
   assert.match(authorize, /status: 403/);
 });
 
@@ -47,6 +48,8 @@ test("callback rejects state mismatch and code exchange failure", () => {
   assert.match(callback, /invalid or expired/);
   assert.match(callback, /tokenResponse\.ok/);
   assert.match(callback, /Google did not accept the authorization code/);
+  assert.match(callback, /statePayload\.viawaUserId/);
+  assert.match(callback, /member\.role !== "admin"/);
 });
 
 test("wrong Google mailbox is rejected without fallback", () => {
@@ -70,4 +73,6 @@ test("tokens and secrets never reach logs, frontend, or database", () => {
   assert.doesNotMatch(combined, /localStorage|sessionStorage|\.from\([^)]*token/i);
   assert.doesNotMatch(combined, /refresh_token[^\n]*(?:Response|page\()/);
   assert.match(callback, /Cache-Control": "no-store/);
+  assert.match(callback, /application\/octet-stream/);
+  assert.doesNotMatch(callback, /tokens\.refresh_token[^\n]*(?:page\(|JSON\.stringify|authorizationUrl)/);
 });

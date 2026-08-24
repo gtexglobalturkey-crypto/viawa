@@ -72,6 +72,9 @@ test("temporary Gmail diagnostic is admin-only, authenticated, and exposes safe 
   for (const code of ["USERINFO_HTTP_401", "USERINFO_HTTP_403", "USERINFO_HTTP_OTHER", "USERINFO_MALFORMED_RESPONSE", "USERINFO_EMAIL_MISSING", "USERINFO_EMAIL_OK"]) {
     assert.equal(page.includes(code) || service.includes(code), true, code);
   }
+  assert.match(page, /Authorize Gmail/);
+  assert.match(service, /gmail-oauth-authorize/);
+  assert.match(page, /window\.location\.assign\(await beginNativeGmailAuthorization\(\)\)/);
 });
 
 test("browser sends only scope and period while server computes authoritative values", () => {

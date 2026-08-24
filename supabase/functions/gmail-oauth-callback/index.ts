@@ -4,6 +4,8 @@ import {
   validateOAuthState,
   type GmailOAuthConfig,
 } from "../_shared/gmailOAuth.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encryptRefreshTokenForAdmin } from "../_shared/gmailOAuthCapture.ts";
 
 function required(name: string): string {
   const value = Deno.env.get(name)?.trim();
@@ -32,9 +34,13 @@ Deno.serve(async (request) => {
     if (url.searchParams.get("error")) return page("Gmail authorization cancelled", "Google authorization was not completed.", 400);
     const code = url.searchParams.get("code") ?? "";
     const state = url.searchParams.get("state") ?? "";
-    if (!code || !await validateOAuthState({ state, clientSecret: config.clientSecret })) {
+    const statePayload = code ? await validateOAuthState({ state, clientSecret: config.clientSecret }) : null;
+    if (!code || !statePayload) {
       return page("Gmail authorization failed", "The authorization state is invalid or expired.", 400);
     }
+    const admin = createClient(required("SUPABASE_URL"), required("SUPABASE_SERVICE_ROLE_KEY"), { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data: member } = await admin.from("application_users").select("id,is_active,role").eq("id", statePayload.viawaUserId).maybeSingle();
+    if (!member?.is_active || member.role !== "admin") return page("Gmail authorization failed", "The bound VIAWA admin is no longer authorized.", 403);
 
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
@@ -60,11 +66,20 @@ Deno.serve(async (request) => {
     if (typeof tokens.refresh_token !== "string" || !tokens.refresh_token) {
       return page("Gmail alias verified", "Google did not issue a refresh token. Re-consent is required before server-side sending can be activated.", 409);
     }
-
-    return page(
-      "Gmail authorization verified",
-      `Sender: VIAFA ${config.senderAlias}. Secure admin storage of the refresh token is still required before sending can be activated.`,
-    );
+    const grantedScopes = new Set(typeof tokens.scope === "string" ? tokens.scope.split(/\s+/u).filter(Boolean) : []);
+    const requiredScopes = ["openid", "email", "https://www.googleapis.com/auth/gmail.send", "https://www.googleapis.com/auth/gmail.settings.basic"];
+    if (!requiredScopes.every((scope) => grantedScopes.has(scope))) return page("Gmail authorization failed", "Google did not grant every required VIAWA scope.", 409);
+    const encryptedCapture = await encryptRefreshTokenForAdmin(tokens.refresh_token, required("GMAIL_OAUTH_CAPTURE_PUBLIC_KEY"));
+    return new Response(encryptedCapture, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/octet-stream",
+        "Content-Disposition": 'attachment; filename="viawa-gmail-oauth-capture.bin"',
+        "Cache-Control": "no-store",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
   } catch {
     return page("Gmail authorization failed", "The authorization could not be completed safely.", 500);
   }
