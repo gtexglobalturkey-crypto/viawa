@@ -145,6 +145,7 @@ test("Phase 2 migration filenames preserve the approved order and timestamps", a
     "20260824090500_harden_reference_configuration_rls.sql",
     "20260824090600_harden_owned_tables_and_storage.sql",
     "20260824090700_harden_business_rpc_permissions.sql",
+    "20260824100000_fix_approved_price_admin_authorization.sql",
   ];
   assert.deepEqual(names.filter((name) => name.startsWith("20260824")), expectedQueue);
   assert.equal(names.some((name) => name.startsWith("2026082109")), false);
