@@ -20,6 +20,18 @@ function page(title: string, detail: string, status = 200): Response {
   });
 }
 
+function grantedScopeDiagnostic(scope: unknown) {
+  const scopeFieldReturned = typeof scope === "string";
+  const granted = new Set(scopeFieldReturned ? scope.split(/\s+/u).filter(Boolean) : []);
+  return {
+    scopeFieldReturned,
+    openid: granted.has("openid"),
+    email: granted.has("email") || granted.has("https://www.googleapis.com/auth/userinfo.email"),
+    gmailSend: granted.has("https://www.googleapis.com/auth/gmail.send"),
+    gmailSettingsBasic: granted.has("https://www.googleapis.com/auth/gmail.settings.basic"),
+  };
+}
+
 Deno.serve(async (request) => {
   if (request.method !== "GET") return page("Gmail authorization failed", "Method not allowed.", 405);
   try {
@@ -68,7 +80,14 @@ Deno.serve(async (request) => {
     }
     const grantedScopes = new Set(typeof tokens.scope === "string" ? tokens.scope.split(/\s+/u).filter(Boolean) : []);
     const requiredScopes = ["openid", "email", "https://www.googleapis.com/auth/gmail.send", "https://www.googleapis.com/auth/gmail.settings.basic"];
-    if (!requiredScopes.every((scope) => grantedScopes.has(scope))) return page("Gmail authorization failed", "Google did not grant every required VIAWA scope.", 409);
+    if (!requiredScopes.every((scope) => grantedScopes.has(scope))) {
+      const diagnostic = grantedScopeDiagnostic(tokens.scope);
+      return page(
+        "Gmail authorization failed",
+        `Google did not grant every required VIAWA scope. openid: ${diagnostic.openid}; email: ${diagnostic.email}; gmail.send: ${diagnostic.gmailSend}; gmail.settings.basic: ${diagnostic.gmailSettingsBasic}; scope field returned: ${diagnostic.scopeFieldReturned}.`,
+        409,
+      );
+    }
     const encryptedCapture = await encryptRefreshTokenForAdmin(tokens.refresh_token, required("GMAIL_OAUTH_CAPTURE_PUBLIC_KEY"));
     return new Response(encryptedCapture, {
       status: 200,

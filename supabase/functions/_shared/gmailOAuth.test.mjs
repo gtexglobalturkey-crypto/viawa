@@ -93,3 +93,13 @@ test("tokens and secrets never reach logs, frontend, or database", () => {
   assert.match(callback, /application\/octet-stream/);
   assert.doesNotMatch(callback, /tokens\.refresh_token[^\n]*(?:page\(|JSON\.stringify|authorizationUrl)/);
 });
+
+test("callback scope failure exposes only normalized safe grant booleans", () => {
+  assert.match(callback, /scopeFieldReturned/);
+  assert.match(callback, /https:\/\/www\.googleapis\.com\/auth\/userinfo\.email/);
+  assert.match(callback, /openid: \$\{diagnostic\.openid\}/);
+  assert.match(callback, /email: \$\{diagnostic\.email\}/);
+  assert.match(callback, /gmail\.send: \$\{diagnostic\.gmailSend\}/);
+  assert.match(callback, /gmail\.settings\.basic: \$\{diagnostic\.gmailSettingsBasic\}/);
+  assert.doesNotMatch(callback, /JSON\.stringify\(tokens\)|console\.|error_description/);
+});
