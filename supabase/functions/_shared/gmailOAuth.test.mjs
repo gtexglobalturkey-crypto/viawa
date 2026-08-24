@@ -94,12 +94,19 @@ test("tokens and secrets never reach logs, frontend, or database", () => {
   assert.doesNotMatch(callback, /tokens\.refresh_token[^\n]*(?:page\(|JSON\.stringify|authorizationUrl)/);
 });
 
-test("callback scope failure exposes only normalized safe grant booleans", () => {
-  assert.match(callback, /scopeFieldReturned/);
-  assert.match(callback, /https:\/\/www\.googleapis\.com\/auth\/userinfo\.email/);
-  assert.match(callback, /openid: \$\{diagnostic\.openid\}/);
-  assert.match(callback, /email: \$\{diagnostic\.email\}/);
-  assert.match(callback, /gmail\.send: \$\{diagnostic\.gmailSend\}/);
-  assert.match(callback, /gmail\.settings\.basic: \$\{diagnostic\.gmailSettingsBasic\}/);
-  assert.doesNotMatch(callback, /JSON\.stringify\(tokens\)|console\.|error_description/);
+test("scope validation accepts only all four required semantic grants", () => {
+  const send = "https://www.googleapis.com/auth/gmail.send";
+  const settings = "https://www.googleapis.com/auth/gmail.settings.basic";
+  const validLiteral = `openid email ${send} ${settings}`;
+  const validGoogleEmail = `openid https://www.googleapis.com/auth/userinfo.email ${send} ${settings}`;
+  assert.equal(oauth.hasRequiredGmailOAuthScopes(validLiteral), true);
+  assert.equal(oauth.hasRequiredGmailOAuthScopes(validGoogleEmail), true);
+  assert.equal(oauth.hasRequiredGmailOAuthScopes(`email ${send} ${settings}`), false);
+  assert.equal(oauth.hasRequiredGmailOAuthScopes("openid email " + settings), false);
+  assert.equal(oauth.hasRequiredGmailOAuthScopes("openid email " + send), false);
+  assert.equal(oauth.hasRequiredGmailOAuthScopes("openid profile userinfo " + send + " " + settings), false);
+  assert.equal(oauth.hasRequiredGmailOAuthScopes("openid email"), false);
+  assert.equal(oauth.hasRequiredGmailOAuthScopes(undefined), false);
+  assert.match(callback, /hasRequiredGmailOAuthScopes\(tokens\.scope\)/);
+  assert.doesNotMatch(callback, /scopeFieldReturned|diagnostic\.openid|diagnostic\.email/);
 });
