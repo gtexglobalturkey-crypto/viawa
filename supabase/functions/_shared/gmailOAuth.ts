@@ -5,13 +5,19 @@ export const GMAIL_OAUTH_SCOPES = [
   "https://www.googleapis.com/auth/gmail.settings.basic",
 ] as const;
 
+export function getGmailOAuthScopeGrants(scope: unknown) {
+  const granted = new Set(typeof scope === "string" ? scope.split(/\s+/u).filter(Boolean) : []);
+  return {
+    openid: granted.has("openid"),
+    email: granted.has("email") || granted.has("https://www.googleapis.com/auth/userinfo.email"),
+    gmailSend: granted.has("https://www.googleapis.com/auth/gmail.send"),
+    gmailSettingsBasic: granted.has("https://www.googleapis.com/auth/gmail.settings.basic"),
+  };
+}
+
 export function hasRequiredGmailOAuthScopes(scope: unknown): boolean {
-  if (typeof scope !== "string") return false;
-  const granted = new Set(scope.split(/\s+/u).filter(Boolean));
-  return granted.has("openid") &&
-    (granted.has("email") || granted.has("https://www.googleapis.com/auth/userinfo.email")) &&
-    granted.has("https://www.googleapis.com/auth/gmail.send") &&
-    granted.has("https://www.googleapis.com/auth/gmail.settings.basic");
+  const grants = getGmailOAuthScopeGrants(scope);
+  return grants.openid && grants.email && grants.gmailSend && grants.gmailSettingsBasic;
 }
 
 export type GmailOAuthConfig = {

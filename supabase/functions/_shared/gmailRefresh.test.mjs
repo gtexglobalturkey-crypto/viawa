@@ -31,6 +31,14 @@ test("successful refresh returns the token only to the server caller", async () 
   });
 });
 
+test("semantic email grant accepts literal and Google userinfo.email representations", async () => {
+  const suffix = "https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.settings.basic";
+  const literal = await refresh(200, { access_token: "server-only-access", scope: `openid email ${suffix}` });
+  const google = await refresh(200, { access_token: "server-only-access", scope: `openid https://www.googleapis.com/auth/userinfo.email ${suffix}` });
+  assert.equal(literal.ok && literal.grantedEmail, true);
+  assert.equal(google.ok && google.grantedEmail, true);
+});
+
 test("missing scope metadata becomes false booleans without inference", async () => {
   const result = await refresh(200, { access_token: "server-only-access" });
   assert.equal(result.grantedOpenId, false);

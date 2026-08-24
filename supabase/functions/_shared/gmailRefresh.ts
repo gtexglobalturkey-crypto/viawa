@@ -1,3 +1,5 @@
+import { getGmailOAuthScopeGrants } from "./gmailOAuth.ts";
+
 export type GmailRefreshCode =
   | "OAUTH_REFRESH_OK"
   | "OAUTH_INVALID_GRANT"
@@ -41,13 +43,13 @@ export async function refreshGmailAccessToken(input: {
   if (response.ok && payload && typeof payload === "object") {
     const accessToken = (payload as Record<string, unknown>).access_token;
     if (typeof accessToken === "string" && accessToken) {
-      const scopes = new Set(typeof (payload as Record<string, unknown>).scope === "string" ? ((payload as Record<string, unknown>).scope as string).split(/\s+/u).filter(Boolean) : []);
+      const grants = getGmailOAuthScopeGrants((payload as Record<string, unknown>).scope);
       return {
         ok: true, code: "OAUTH_REFRESH_OK", httpStatus: response.status, accessToken,
-        grantedOpenId: scopes.has("openid"),
-        grantedEmail: scopes.has("email"),
-        grantedGmailSend: scopes.has("https://www.googleapis.com/auth/gmail.send"),
-        grantedGmailSettingsBasic: scopes.has("https://www.googleapis.com/auth/gmail.settings.basic"),
+        grantedOpenId: grants.openid,
+        grantedEmail: grants.email,
+        grantedGmailSend: grants.gmailSend,
+        grantedGmailSettingsBasic: grants.gmailSettingsBasic,
       };
     }
   }
