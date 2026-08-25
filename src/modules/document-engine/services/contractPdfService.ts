@@ -17,6 +17,12 @@ export type ContractPdfSuccess = {
   ok: true;
   pdfBlob: Blob;
   fileName: string;
+  masterTemplateId?: string;
+  googleDocFileId?: string;
+  googleDocUrl?: string;
+  googlePdfFileId?: string;
+  googlePdfUrl?: string;
+  generationStatus?: "COMPLETED";
 };
 
 export type ContractPdfFailure = {
@@ -203,7 +209,16 @@ export async function requestContractPdf(
       ),
     );
 
-  return { ok: true, pdfBlob, fileName };
+  const optionalHeader = (name: string) => response.headers.get(name)?.trim() || undefined;
+  return {
+    ok: true, pdfBlob, fileName,
+    masterTemplateId: optionalHeader("X-VIAWA-Master-Template-Id"),
+    googleDocFileId: optionalHeader("X-VIAWA-Google-Doc-Id"),
+    googleDocUrl: optionalHeader("X-VIAWA-Google-Doc-Url"),
+    googlePdfFileId: optionalHeader("X-VIAWA-Google-Pdf-Id"),
+    googlePdfUrl: optionalHeader("X-VIAWA-Google-Pdf-Url"),
+    generationStatus: optionalHeader("X-VIAWA-Generation-Status") === "COMPLETED" ? "COMPLETED" : undefined,
+  };
 }
 
 const VALIDATION_ERROR_MESSAGES: Record<

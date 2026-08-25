@@ -48,6 +48,7 @@ export function createNodeRequestHandler(input: {
       response.statusCode = 204;
       response.setHeader("Access-Control-Allow-Methods", "POST");
       response.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+      response.setHeader("Access-Control-Expose-Headers", "Content-Disposition, X-VIAWA-Master-Template-Id, X-VIAWA-Google-Doc-Id, X-VIAWA-Google-Doc-Url, X-VIAWA-Google-Pdf-Id, X-VIAWA-Google-Pdf-Url, X-VIAWA-Generation-Status");
       response.setHeader("Access-Control-Max-Age", "600");
       return response.end();
     }

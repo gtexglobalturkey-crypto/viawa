@@ -26,7 +26,6 @@ const {
   normalizeWorkspaceEmail,
   resolveContractAttachmentForSession,
   resolveQuotationPriceSource,
-  shouldTriggerSignatureRequestForEmailEvent,
   unlinkedMailEvents,
   validateWorkspaceEmailRecipients,
   withMailEventAppended,
@@ -390,42 +389,6 @@ test("findLatestContractDocument: without a real opportunity, nothing matches", 
       null,
     ),
     null,
-  );
-});
-
-function emailEvent(overrides = {}) {
-  return {
-    templateId: "Contract",
-    contractIncluded: true,
-    ...overrides,
-  };
-}
-
-// SPRINT 26.2 — the exact gate for the one official signature trigger.
-test("shouldTriggerSignatureRequestForEmailEvent: Contract template with the real PDF attached -> true", () => {
-  assert.equal(
-    shouldTriggerSignatureRequestForEmailEvent(
-      emailEvent(),
-    ),
-    true,
-  );
-});
-
-test("shouldTriggerSignatureRequestForEmailEvent: a non-Contract template never triggers, even if contractIncluded were somehow true", () => {
-  assert.equal(
-    shouldTriggerSignatureRequestForEmailEvent(
-      emailEvent({ templateId: "Information Package" }),
-    ),
-    false,
-  );
-});
-
-test("shouldTriggerSignatureRequestForEmailEvent: Contract template without the real PDF attached -> false", () => {
-  assert.equal(
-    shouldTriggerSignatureRequestForEmailEvent(
-      emailEvent({ contractIncluded: false }),
-    ),
-    false,
   );
 });
 

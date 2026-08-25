@@ -25,6 +25,23 @@ export function createPersistentContractNumberProvider(
       throw new Error("Contract number could not be resolved.");
     }
 
-    return data;
+    const { data: row, error: rowError } = await client
+      .from("contract_numbers")
+      .select("id,contract_number")
+      .eq("opportunity_id", opportunityId)
+      .eq("exhibition_id", exhibition.id)
+      .maybeSingle();
+
+    if (
+      rowError ||
+      !row ||
+      typeof row.id !== "string" ||
+      typeof row.contract_number !== "string" ||
+      row.contract_number !== data
+    ) {
+      throw new Error("Contract identity could not be resolved.");
+    }
+
+    return { id: row.id, number: data };
   };
 }

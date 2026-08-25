@@ -34,8 +34,15 @@ test("requests the server-generated number without accepting a client number or 
       call = { name, parameters };
       return { data: "EXP-2027-000001", error: null };
     },
+    from() {
+      const builder = {
+        select() { return builder; }, eq() { return builder; },
+        async maybeSingle() { return { data: { id: "11111111-1111-4111-8111-111111111111", contract_number: "EXP-2027-000001" }, error: null }; },
+      };
+      return builder;
+    },
   });
-  assert.equal(await provider(request), "EXP-2027-000001");
+  assert.deepEqual(await provider(request), { id: "11111111-1111-4111-8111-111111111111", number: "EXP-2027-000001" });
   assert.deepEqual(call, {
     name: "get_or_create_contract_number",
     parameters: {
@@ -53,9 +60,16 @@ test("returns the same persisted number on retry", async () => {
       calls += 1;
       return { data: "EXP-2027-000042", error: null };
     },
+    from() {
+      const builder = {
+        select() { return builder; }, eq() { return builder; },
+        async maybeSingle() { return { data: { id: "22222222-2222-4222-8222-222222222222", contract_number: "EXP-2027-000042" }, error: null }; },
+      };
+      return builder;
+    },
   });
-  assert.equal(await provider(request), "EXP-2027-000042");
-  assert.equal(await provider(request), "EXP-2027-000042");
+  assert.equal((await provider(request)).number, "EXP-2027-000042");
+  assert.equal((await provider(request)).id, "22222222-2222-4222-8222-222222222222");
   assert.equal(calls, 2);
 });
 
@@ -66,6 +80,7 @@ test("rejects malformed or failed database responses without leaking details", a
   ]) {
     const provider = createPersistentContractNumberProvider({
       async rpc() { return response; },
+      from() { throw new Error("should not query identity after invalid RPC"); },
     });
     await assert.rejects(
       () => provider(request),

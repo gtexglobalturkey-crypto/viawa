@@ -1,5 +1,6 @@
 export type ContractDocumentStatus =
   | "draft"
+  | "completed"
   | "pdf-generated"
   | "sent-for-signature"
   | "signed";

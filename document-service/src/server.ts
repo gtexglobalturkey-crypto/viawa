@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 
 import {
   createPersistentEndpointDataSourceFactory,
+  createPersistentGeneratedDocumentRepositoryFactory,
   createRequestScopedContractGenerator,
   createSupabaseAccessTokenAuthenticator,
   createSupabaseContractAuthorizer,
@@ -17,12 +18,14 @@ import { createRequestScopedPdfGenerator } from "./pdf/requestScopedPdfGeneratio
 import { createStoredPdfEndpointDependencies } from "./pdf/contractPdfEndpoint.ts";
 import { createContractPdfStorage } from "./storage/contractPdfStorage.ts";
 import { serializeErrorForLog } from "./diagnostics/serializeError.ts";
+import { createRequestScopedGoogleContractGenerator } from "./google/requestScopedGoogleContractGeneration.ts";
 
 export async function createDocumentServiceServer(environment: DocumentServiceEnvironment) {
   await mkdir(environment.documentTempRoot, { recursive: true });
   await access(environment.documentTempRoot, constants.W_OK);
   const supabase = { supabaseUrl: environment.supabaseUrl, supabaseAnonKey: environment.supabaseAnonKey };
   const createDataSource = createPersistentEndpointDataSourceFactory(supabase);
+  const createPersistence = createPersistentGeneratedDocumentRepositoryFactory(supabase);
   const endpointDependencies = {
     authenticate: createSupabaseAccessTokenAuthenticator(supabase),
     authorize: createSupabaseContractAuthorizer(supabase),
@@ -45,16 +48,28 @@ export async function createDocumentServiceServer(environment: DocumentServiceEn
     tempRoot: environment.documentTempRoot,
     defaultTimeoutMs: environment.pdfConversionTimeoutMs,
   });
-  const generatePdf = createRequestScopedPdfGenerator({
-    templatePath: environment.documentTemplatePath,
-    temporaryRoot: environment.documentTempRoot,
-    converter,
-    createDataSource,
-  });
+  const generatePdf = environment.googleWorkspace
+    ? createRequestScopedGoogleContractGenerator({
+        temporaryRoot: environment.documentTempRoot,
+        masterTemplateId: environment.googleWorkspace.masterContractTemplateId,
+        clientId: environment.googleWorkspace.clientId,
+        clientSecret: environment.googleWorkspace.clientSecret,
+        refreshToken: environment.googleWorkspace.refreshToken,
+        generatedDocumentsFolderId: environment.googleWorkspace.generatedDocumentsFolderId,
+        createDataSource,
+        createPersistence,
+      })
+    : createRequestScopedPdfGenerator({
+        templatePath: environment.documentTemplatePath,
+        temporaryRoot: environment.documentTempRoot,
+        converter,
+        createDataSource,
+      });
   const pdfEndpointDependencies = createStoredPdfEndpointDependencies({
     base: endpointDependencies,
     generatePdf,
     storage: createContractPdfStorage(supabase),
+    reuseExisting: !environment.googleWorkspace,
   });
   const handle = createNodeRequestHandler({
     environment,

@@ -51,18 +51,6 @@ type WorkspaceEmailPanelProps = {
   generatedDocuments: readonly GeneratedDocumentRecord[];
   /** The opportunity this panel's fuar resolves to right now, or null. */
   opportunityId: string | null;
-  /**
-   * SPRINT 26.2.1 — the one, awaited Dropbox Sign trigger for "Sözleşme
-   * Gönder". Must resolve before the panel is allowed to record the
-   * mail event / close — see useWorkspaceEmailDraft's Contract-send
-   * branch.
-   */
-  onSendContractForSignature: (
-    record: GeneratedDocumentRecord,
-  ) => Promise<
-    | { success: true; testMode: boolean }
-    | { success: false; message: string }
-  >;
 };
 
 const RESOLVED_CONTACT_NO_EMAIL_MESSAGE =
@@ -146,7 +134,6 @@ export function WorkspaceEmailPanel({
   requestedTemplateId,
   generatedDocuments,
   opportunityId,
-  onSendContractForSignature,
 }: WorkspaceEmailPanelProps) {
   const { showToast } = useToast();
 
@@ -187,7 +174,6 @@ export function WorkspaceEmailPanel({
     requestedTemplateId,
     generatedDocuments,
     opportunityId,
-    onSendContractForSignature,
   });
 
   // Sprint 25.4C Section 6/7 — success closes the panel automatically and
@@ -689,14 +675,9 @@ export function WorkspaceEmailPanel({
           flexShrink: 0,
         }}
       >
-        {/* Sprint 25.2 / Adım 2 — Contract no longer sends through
-            Dropbox Sign. This is a plain mailto: link (built entirely
-            from the existing draft — see buildContractMailtoUrl), never
-            calls onSend/handleSend, so nothing about the Dropbox Sign
-            branch there (or the emails/timeline/reminder/stage writes
-            the normal send path makes) ever runs for Contract anymore —
-            that whole chain stays exactly as it was, just unreached
-            from here. Every other template's "Gönder" is unchanged. */}
+        {/* Google-first V1: contracts open in the user's mail client with
+            the generated Drive/PDF reference; signature initiation is a
+            separate manual Google Workspace action. */}
         {draft.templateId === "Contract" ? (
           <a
             href={buildContractMailtoUrl(

@@ -1,4 +1,5 @@
 import type { GenerateParticipationContractResult } from "../../src/modules/document-engine/orchestration/models";
+import type { GoogleContractArtifacts } from "../../document-service/src/google/googleWorkspaceClient.ts";
 
 export type AuthenticatedContractUser = {
   id: string;
@@ -39,6 +40,7 @@ export type ContractDocxEndpointDependencies = {
     result: GenerateParticipationContractResult;
     docxBuffer?: Buffer;
     cleanup?: () => Promise<void>;
+    artifacts?: GoogleContractArtifacts;
   }>;
   logError?: (message: string, error: unknown) => void;
   logCheckpoint?: (stage: string, context?: Record<string, unknown>) => void;

@@ -178,10 +178,7 @@ function GeneratedDocumentRecordCard({
           <strong>
             {document.status === "signed"
               ? "İmzalandı"
-              : document.status ===
-                  "sent-for-signature"
-                ? "İmzaya Gönderildi"
-                : "PDF Oluşturuldu"}
+              : "Tamamlandı"}
           </strong>
         </div>
       </div>

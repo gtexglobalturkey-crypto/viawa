@@ -29,13 +29,14 @@ export function createViawaContractDataSource(): ContractGenerationDataSource {
       opportunityId,
       exhibition,
       generatedAt,
-    }) =>
-      getOrCreateContractNumber(
+    }) => ({
+      number: getOrCreateContractNumber(
         loadGeneratedDocuments(companyId),
         opportunityId,
         exhibition.id,
         exhibition.start_date ?? undefined,
         generatedAt,
       ),
+    }),
   };
 }

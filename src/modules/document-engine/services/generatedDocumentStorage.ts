@@ -38,31 +38,18 @@ function isPlainObject(
 }
 
 const KNOWN_STATUS_VALUES = [
+  "completed",
   "pdf-generated",
   "sent-for-signature",
   "signed",
 ];
 
-const KNOWN_SIGNATURE_PROVIDERS = [
-  "dropbox-sign",
-];
-
 // Each of these fields is optional on GeneratedDocumentRecord, so a
 // missing value is valid — only a *present but malformed* value should
 // make the whole record get dropped.
-function hasValidOptionalSignatureFields(
+function hasValidOptionalSignedDocumentFields(
   value: Record<string, unknown>,
 ): boolean {
-  if (
-    value.signatureProvider !==
-      undefined &&
-    !KNOWN_SIGNATURE_PROVIDERS.includes(
-      value.signatureProvider as string,
-    )
-  ) {
-    return false;
-  }
-
   if (
     value.signedPdfDataUrl !==
       undefined &&
@@ -113,14 +100,12 @@ function isGeneratedDocumentRecord(
       value.status,
     ) &&
     isNonEmptyString(value.createdAt) &&
-    hasValidOptionalSignatureFields(value)
+    hasValidOptionalSignedDocumentFields(value)
   );
 }
 
-// Unlike signatureProvider/signedPdfDataUrl/signedPdfFileName above, a
-// malformed value in one of these four signature-lifecycle fields
-// shouldn't drop the whole record — it just falls back to undefined,
-// same as an old record that never had the field at all.
+// Malformed optional legacy/manual-signature values fall back to undefined
+// instead of dropping the whole localStorage record.
 function readOptionalTrimmedString(
   value: unknown,
 ): string | undefined {
@@ -135,38 +120,14 @@ function readOptionalTrimmedString(
     : undefined;
 }
 
-function readOptionalBoolean(
-  value: unknown,
-): boolean | undefined {
-  return typeof value === "boolean"
-    ? value
-    : undefined;
-}
-
 function withSanitizedSignatureLifecycleFields(
   record: GeneratedDocumentRecord,
 ): GeneratedDocumentRecord {
   return {
     ...record,
-    signatureRequestId:
-      readOptionalTrimmedString(
-        record.signatureRequestId,
-      ),
-    signatureRequestUrl:
-      readOptionalTrimmedString(
-        record.signatureRequestUrl,
-      ),
-    signatureSentAt:
-      readOptionalTrimmedString(
-        record.signatureSentAt,
-      ),
     signatureCompletedAt:
       readOptionalTrimmedString(
         record.signatureCompletedAt,
-      ),
-    signatureTestMode:
-      readOptionalBoolean(
-        record.signatureTestMode,
       ),
   };
 }

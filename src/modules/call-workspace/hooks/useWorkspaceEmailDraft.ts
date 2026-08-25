@@ -30,7 +30,6 @@ import {
   normalizeWorkspaceEmail,
   resolveContractAttachmentForSession,
   resolveQuotationPriceSource,
-  shouldTriggerSignatureRequestForEmailEvent,
   validateWorkspaceEmailRecipients,
   WORKSPACE_EMAIL_PATTERN,
 } from "../models/exhibitionSessionMail";
@@ -79,17 +78,6 @@ type UseWorkspaceEmailDraftParams = {
   generatedDocuments: readonly GeneratedDocumentRecord[];
   /** The opportunity this panel's fuar resolves to right now, or null. */
   opportunityId: string | null;
-  /**
-   * SPRINT 26.2.1 — awaited before a Contract-template send is allowed
-   * to write its mail record or report success — see handleSend's
-   * Contract branch.
-   */
-  onSendContractForSignature: (
-    record: GeneratedDocumentRecord,
-  ) => Promise<
-    | { success: true; testMode: boolean }
-    | { success: false; message: string }
-  >;
 };
 
 /**
@@ -116,7 +104,6 @@ export function useWorkspaceEmailDraft({
   requestedTemplateId,
   generatedDocuments,
   opportunityId,
-  onSendContractForSignature,
 }: UseWorkspaceEmailDraftParams) {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
@@ -510,135 +497,6 @@ export function useWorkspaceEmailDraft({
       if (!validation.ok) {
         setSendError(validation.reason);
         return false;
-      }
-
-      // SPRINT 26.2.1 — "Sözleşme Gönder" is a real Dropbox Sign
-      // signature invitation, not a plain VIAWA mail record. Recipient/
-      // form validation above is shared with every other template, but
-      // from here on this send takes an entirely separate path: nothing
-      // is recorded (no email row, no mail event, no success) until the
-      // real signature request has actually succeeded. Every other
-      // template (Information Package, Quotation, ...) falls through to
-      // the unchanged flow below, completely unaffected.
-      if (
-        shouldTriggerSignatureRequestForEmailEvent({
-          templateId: draft.templateId,
-          contractIncluded: Boolean(contractAttachment),
-        })
-      ) {
-        const contractDocument =
-          findLatestContractDocument(
-            generatedDocuments,
-            panelSessionExhibitionId,
-            opportunityId,
-          );
-
-        if (!contractDocument) {
-          setSendError(
-            "Gönderilecek gerçek bir sözleşme PDF'i bulunamadı.",
-          );
-
-          return false;
-        }
-
-        const signatureResult =
-          await onSendContractForSignature(
-            contractDocument,
-          );
-
-        if (!signatureResult.success) {
-          setSendError(signatureResult.message);
-
-          return false;
-        }
-
-        const recordedAt =
-          new Date().toISOString();
-
-        let emailResult;
-
-        try {
-          emailResult =
-            await createEmailForSendOperation({
-              company_id: company.id,
-              to_recipients: normalizedTo,
-              cc_recipients: normalizedCc,
-              bcc_recipients: normalizedBcc,
-              subject: normalizedSubject,
-              body: normalizedBody,
-              status: "sent",
-              sent_at: recordedAt,
-              send_operation_key:
-                draft.sendOperationKey,
-            });
-        } catch (mailRecordError) {
-          // The real, unrepeatable signature request already
-          // succeeded — only VIAWA's own mail-record logging failed.
-          // A retry is safe: handleSendForSignature's own
-          // signatureRequestId guard makes a second "Sözleşme Gönder"
-          // click idempotent (no second Dropbox Sign request), so it
-          // simply retries writing this record.
-          console.error(
-            "Contract signature mail record error:",
-            mailRecordError,
-          );
-
-          setSendError(
-            "İmza daveti gönderildi ancak e-posta kaydı oluşturulamadı. Lütfen tekrar deneyin.",
-          );
-
-          return false;
-        }
-
-        onEmailEvent({
-          id: draft.sendOperationKey,
-          sendOperationKey:
-            draft.sendOperationKey,
-          recordedAt,
-          to: normalizedTo,
-          cc: normalizedCc,
-          bcc: normalizedBcc,
-          subject: normalizedSubject,
-          templateId: draft.templateId,
-          attachments: draft.attachments,
-          quotationSummaryIncluded:
-            draft.quotationSummaryIncluded,
-          contractIncluded: true,
-          emailRecordId:
-            emailResult.email.id,
-          deliveryMode: "viawa-record",
-          status: emailResult.email.status,
-          timelineLinkedAt: null,
-        });
-
-        const regeneratedContract =
-          buildTemplateContent(
-            draft.templateId,
-          );
-
-        onDraftChange({
-          to: [],
-          cc: [],
-          bcc: [],
-          sendOperationKey:
-            createWorkspaceEmailSendOperationKey(),
-          updatedAt: recordedAt,
-          ...(regeneratedContract.ok
-            ? regeneratedContract.patch
-            : {}),
-        });
-
-        // SPRINT 26.2.2 — test-mode vs production wording, decided
-        // entirely by what the Edge Function actually reported (see
-        // handleSendContractForSignature/dropboxSignService.ts) — never
-        // guessed on the frontend.
-        setSendSuccess(
-          signatureResult.testMode
-            ? "Test imza daveti başarıyla gönderildi. Bu imza hukuken bağlayıcı değildir."
-            : "İmza daveti başarıyla gönderildi.",
-        );
-
-        return true;
       }
 
       const recordedAt = new Date().toISOString();

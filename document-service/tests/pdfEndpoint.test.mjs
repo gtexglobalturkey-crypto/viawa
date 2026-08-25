@@ -7,7 +7,7 @@ const { createStoredPdfEndpointDependencies } = await import("../src/pdf/contrac
 
 const validBody = JSON.stringify({ companyId: "company", opportunityId: "opportunity" });
 const headers = { "content-type": "application/json", authorization: "Bearer token" };
-const pdf = Buffer.from("%PDF-valid-document");
+const pdf = Buffer.concat([Buffer.from("%PDF-valid-document"), Buffer.from([0x00, 0x80, 0xff, 0xfe])]);
 const success = { success: true, outputFileName: "Contract_Demo.pdf", outputPath: "private", generatedAt: "2026-08-01T00:00:00Z", companyId: "company", opportunityId: "opportunity", exhibitionId: "exhibition", warnings: [], validationErrors: [] };
 
 function dependencies({ existing = null, storageError = false, generationError = null } = {}) {
@@ -45,8 +45,10 @@ test("PDF endpoint stores and downloads the same valid PDF", async () => {
   const res = await run(setup.value);
   assert.equal(res.statusCode, 200);
   assert.equal(res.getHeader("content-type"), "application/pdf");
+  assert.equal(res.getHeader("content-length"), String(pdf.length));
   assert.match(res.getHeader("content-disposition"), /Contract_Demo\.pdf/);
   assert.deepEqual(res.body, pdf);
+  assert.equal(res.body.includes(Buffer.from([0xef, 0xbf, 0xbd])), false);
   assert.deepEqual(setup.calls(), { generated: 1, stored: 1, cleaned: 1 });
 });
 

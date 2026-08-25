@@ -198,7 +198,7 @@ function dependencies(overrides = {}) {
       calls.push("settings");
       return data.settings;
     },
-    resolveContractNumber: async () => "EXP-2027-000001",
+    resolveContractNumber: async () => ({ id: "11111111-1111-4111-8111-111111111111", number: "EXP-2027-000001" }),
     ...overrides,
   };
   let generatorInput;

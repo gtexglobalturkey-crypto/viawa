@@ -4343,3 +4343,19 @@ main.page:has(.communication-workspace) .communication-workspace {
   .organizer-report-sheet { position: absolute; inset: 0; width: 210mm; min-height: 297mm; margin: 0; border: 0; box-shadow: none; }
   .organizer-report-companies tr { break-inside: avoid; }
 }
+ .viawa-staging-banner {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 10000;
+  padding: 4px 12px;
+  background: #b45309;
+  color: #fff;
+  font: 700 12px/1.4 system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-align: center;
+  pointer-events: none;
+}
+
+body:has(.viawa-staging-banner) {
+  padding-top: 25px;
+}

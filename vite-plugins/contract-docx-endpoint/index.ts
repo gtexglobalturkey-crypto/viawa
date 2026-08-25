@@ -7,6 +7,7 @@ export type {
 } from "./models";
 export { createRequestScopedContractGenerator } from "./requestScopedGeneration";
 export { createPersistentEndpointDataSourceFactory } from "./persistentContractDataSource";
+export { createPersistentGeneratedDocumentRepositoryFactory } from "./persistentContractDataSource";
 export { createSupabaseAccessTokenAuthenticator } from "./supabaseAuth";
 export { createSupabaseContractAuthorizer } from "./supabaseAuthorization";
 export {

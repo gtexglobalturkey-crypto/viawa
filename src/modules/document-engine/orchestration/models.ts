@@ -50,13 +50,18 @@ export type ContractGenerationDataSource = {
     opportunityId: string;
     exhibition: Exhibition;
     generatedAt: Date;
-  }) => Promise<string>;
+  }) => Promise<{ id?: string; number: string }>;
 };
 
 export type ContractDocxGenerationPort = {
   generate: (input: {
     mergeResult: TemplateMergeResult;
     preferredFileName: string;
+    contractIdentity: { id?: string; number: string };
+    companyId: string;
+    opportunityId: string;
+    exhibitionId: string;
+    generatedAt: string;
   }) => Promise<{
     outputFileName: string;
     outputPath: string;

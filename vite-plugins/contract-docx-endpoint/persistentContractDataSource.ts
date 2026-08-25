@@ -7,6 +7,7 @@ import {
   loadPersistentDocumentSettings,
 } from "../../src/modules/document-engine/repositories/persistentDocumentRepositories.ts";
 import { createPersistentContractNumberProvider } from "../../src/modules/document-engine/repositories/persistentContractNumberRepository.ts";
+import { createGeneratedDocumentRepository } from "../../src/modules/document-engine/repositories/generatedDocumentRepository.ts";
 
 export function createPersistentEndpointDataSourceFactory(input: {
   supabaseUrl: string;
@@ -53,4 +54,16 @@ export function createPersistentEndpointDataSourceFactory(input: {
       resolveContractNumber: createPersistentContractNumberProvider(client),
     } as ContractGenerationDataSource;
   };
+}
+
+export function createPersistentGeneratedDocumentRepositoryFactory(input: {
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+}) {
+  return ({ accessToken }: { accessToken: string }) => createGeneratedDocumentRepository(
+    createClient(input.supabaseUrl, input.supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${accessToken}` } },
+      auth: { autoRefreshToken: false, persistSession: false },
+    }),
+  );
 }

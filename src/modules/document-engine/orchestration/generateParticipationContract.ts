@@ -272,7 +272,7 @@ export async function generateParticipationContract(
     opportunityId: maskId(opportunity.id),
   });
 
-  const contractNumber = await dataSource.resolveContractNumber({
+  const contractIdentity = await dataSource.resolveContractNumber({
     companyId: company.id,
     opportunityId: opportunity.id,
     exhibition,
@@ -286,7 +286,7 @@ export async function generateParticipationContract(
     priceSnapshot,
     settings,
     document: {
-      contractNumber,
+      contractNumber: contractIdentity.number,
       // Sprint 25.3 — the raw ISO datetime (with time/ms/Z) was wrapping
       // onto a second line in the header's narrow "Düzenleme Tarihi"
       // cell. formatContractDate is the same dd.MM.yyyy formatter the
@@ -329,6 +329,11 @@ export async function generateParticipationContract(
 
   const generatedDocument = await dependencies.docxGenerator.generate({
     mergeResult,
+    contractIdentity,
+    companyId: company.id,
+    opportunityId: opportunity.id,
+    exhibitionId: exhibition.id,
+    generatedAt: generatedAt.toISOString(),
     preferredFileName: createContractDocxFileName({
       companyName: company.company_name,
       exhibitionName: exhibition.name,

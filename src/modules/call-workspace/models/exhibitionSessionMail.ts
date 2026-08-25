@@ -282,11 +282,8 @@ export function buildWorkspaceEmailAttachments(
 
 /**
  * SPRINT 26.2 — extracted out of resolveContractAttachmentForSession so
- * the "which contract" answer has exactly one implementation, shared by
- * both the Workspace Email attachment (below) and the "Sözleşme Gönder"
- * → Dropbox Sign trigger (CustomerWorkspace.handleWorkspaceEmailEvent) —
- * the two must never be able to disagree about which document a given
- * send refers to. Same rules as before: opportunityId required,
+ * the "which contract" answer has exactly one implementation for the
+ * Workspace Email attachment below. Same rules as before: opportunityId required,
  * exhibitionId exact match, highest version wins.
  */
 export function findLatestContractDocument(
@@ -362,27 +359,6 @@ export function resolveContractAttachmentForSession(
   };
 }
 
-/**
- * SPRINT 26.2 — VIAWA's one official signature-request trigger: a
- * "Sözleşme Gönder" send is the Contract template AND it actually
- * carried the real generated PDF (contractIncluded, set by
- * useWorkspaceEmailDraft.handleSend from resolveContractAttachmentForSession
- * above). Any other template, or a Contract-template send where no real
- * contract existed yet to attach, must never trigger Dropbox Sign.
- * Pure so the decision itself is unit-testable without a React harness —
- * see CustomerWorkspace.handleWorkspaceEmailEvent for the one caller.
- */
-export function shouldTriggerSignatureRequestForEmailEvent(
-  event: Pick<
-    WorkspaceEmailEvent,
-    "templateId" | "contractIncluded"
-  >,
-): boolean {
-  return (
-    event.templateId === "Contract" &&
-    event.contractIncluded
-  );
-}
 
 // Sprint 25.2 / Adım 2.1 — RFC 6068's addr-spec-list: individual
 // addresses may need escaping (rare for a well-formed email address, but

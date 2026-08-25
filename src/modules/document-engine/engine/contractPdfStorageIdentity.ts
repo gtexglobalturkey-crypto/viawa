@@ -5,8 +5,7 @@
 // that exact derivation — document-service/src/storage/contractPdfStorage.ts
 // `documentRecordId()` — so the frontend can record a real,
 // dereferenceable storageBucket/storagePath on GeneratedDocumentRecord
-// (needed by dropboxSignService.ts's "İmzaya Gönder", which reads the PDF
-// directly from Storage using that path). SHA-256 is a fixed, standard
+// (used by server-side document consumers). SHA-256 is a fixed, standard
 // digest, so Web Crypto here and Node's crypto over there produce
 // byte-identical output for the same input string — see the accompanying
 // test, which cross-checks this against a Node-computed value.
@@ -50,18 +49,14 @@ export function buildContractPdfStoragePath(
 // of an already-built storagePath. The ONLY safe way to recover it —
 // GeneratedDocumentRecord.id is a separate, random client-side
 // identifier (createDocumentId() in ContractPreviewModal.tsx) that was
-// NEVER the same value as documentRecordId, and must never be sent to
-// dropbox-sign-send as generatedDocumentId (see dropboxSignService.ts —
-// sending document.id there is what produced the 422 "Contract document
-// path is invalid." on every real request).
+// NEVER the same value as documentRecordId and must not be substituted
+// for that server-side storage identity.
 //
 // Deliberately dumb: no URL-decoding, no "."/".." resolution, no
 // normalization — this only recognizes the exact, already-known
 // 4-segment shape (userId/companyId/documentRecordId/fileName) and
 // rejects anything else, including any empty segment. It never asserts
-// ownership/trust — whether the path actually belongs to the requesting
-// user is still verified only by the Edge Function
-// (validateStoragePathOwnership); this helper is a pure parser.
+// ownership/trust; this helper is a pure parser.
 export function extractGeneratedDocumentStorageIdentity(
   storagePath: string | undefined,
 ): string | null {

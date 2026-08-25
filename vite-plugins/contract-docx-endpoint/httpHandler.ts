@@ -256,6 +256,14 @@ export async function handleContractDocxHttpRequest(
       throw new Error("Generated DOCX bytes are unavailable.");
     }
 
+    const artifactHeaders: Record<string, string> = generated.artifacts ? {
+      "X-VIAWA-Master-Template-Id": generated.artifacts.masterTemplateId,
+      "X-VIAWA-Google-Doc-Id": generated.artifacts.googleDocFileId,
+      "X-VIAWA-Google-Doc-Url": generated.artifacts.googleDocUrl,
+      "X-VIAWA-Google-Pdf-Id": generated.artifacts.googlePdfFileId,
+      "X-VIAWA-Google-Pdf-Url": generated.artifacts.googlePdfUrl,
+      "X-VIAWA-Generation-Status": "COMPLETED",
+    } : {};
     return {
       status: 200,
       headers: {
@@ -267,6 +275,7 @@ export async function handleContractDocxHttpRequest(
         "Cache-Control": "no-store, private, max-age=0",
         Pragma: "no-cache",
         "X-Content-Type-Options": "nosniff",
+        ...artifactHeaders,
       },
       body: generated.docxBuffer,
     };

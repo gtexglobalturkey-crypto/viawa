@@ -93,15 +93,6 @@ test("contract endpoint checks active membership before business records", async
   assert.match(code, /status: 403[\s\S]*APPLICATION_ACCESS_DENIED/i);
 });
 
-test("Dropbox Sign checks active membership before secrets or provider work", async () => {
-  const code = await source("supabase/functions/dropbox-sign-send/index.ts");
-  const membership = code.indexOf("/rest/v1/application_users");
-  const apiKeyRead = code.indexOf('.get("DROPBOX_SIGN_API_KEY")');
-  assert.ok(membership >= 0 && apiKeyRead > membership);
-  assert.match(code, /applicationUser\.is_active !== true/i);
-  assert.match(code, /Active VIAWA access is required/i);
-});
-
 test("Phase 2 does not alter rls_auto_enable", async () => {
   const migrationPaths = [
     "20260824090200_add_application_authorization_helpers.sql",

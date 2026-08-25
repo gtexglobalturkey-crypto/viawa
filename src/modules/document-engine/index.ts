@@ -8,7 +8,6 @@ export type {
 export type {
   GeneratedDocumentRecord,
   GeneratedDocumentStatus,
-  SignatureProvider,
 } from "./models/GeneratedDocumentRecord";
 
 export { buildContractDocumentData } from "./engine/buildContractDocumentData";

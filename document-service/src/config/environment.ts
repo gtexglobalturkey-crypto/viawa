@@ -14,6 +14,13 @@ export type DocumentServiceEnvironment = {
   pdfConversionTimeoutMs?: number;
   pdfConversionMaxConcurrency?: number;
   pdfConversionMaxFileSizeBytes?: number;
+  googleWorkspace?: {
+    clientId: string;
+    clientSecret: string;
+    refreshToken: string;
+    masterContractTemplateId: string;
+    generatedDocumentsFolderId: string;
+  };
 };
 
 type EnvironmentInput = Readonly<Record<string, string | undefined>>;
@@ -80,6 +87,21 @@ export function loadDocumentServiceEnvironment(
     throw new Error("CORS_ALLOWED_ORIGINS cannot contain a wildcard in production.");
   }
 
+  const googleValues = [
+    input.GOOGLE_WORKSPACE_CLIENT_ID,
+    input.GOOGLE_WORKSPACE_CLIENT_SECRET,
+    input.GOOGLE_WORKSPACE_REFRESH_TOKEN,
+    input.VIAWA_MASTER_CONTRACT_TEMPLATE_ID,
+    input.VIAWA_GENERATED_DOCUMENTS_FOLDER_ID,
+  ]
+    .map((value) => value?.trim() || "");
+  if ((nodeEnv === "production" || googleValues.some(Boolean)) && !googleValues.every(Boolean)) {
+    throw new Error("Google Workspace credentials, master template ID and generated-documents folder ID must be configured together.");
+  }
+  if (googleValues.every(Boolean) && googleValues[3] === googleValues[4]) {
+    throw new Error("The Google master template cannot be used as the generated-documents folder.");
+  }
+
   return {
     nodeEnv: nodeEnv as DocumentServiceEnvironment["nodeEnv"],
     host: required(input, "HOST"),
@@ -101,5 +123,9 @@ export function loadDocumentServiceEnvironment(
     pdfConversionTimeoutMs: optionalInteger(input, "PDF_CONVERSION_TIMEOUT_MS", 1, 600_000),
     pdfConversionMaxConcurrency: optionalInteger(input, "PDF_CONVERSION_MAX_CONCURRENCY", 1, 64),
     pdfConversionMaxFileSizeBytes: optionalInteger(input, "PDF_CONVERSION_MAX_FILE_SIZE_BYTES", 1, 1024 * 1024 * 1024),
+    googleWorkspace: googleValues.every(Boolean) ? {
+      clientId: googleValues[0], clientSecret: googleValues[1], refreshToken: googleValues[2],
+      masterContractTemplateId: googleValues[3], generatedDocumentsFolderId: googleValues[4],
+    } : undefined,
   };
 }

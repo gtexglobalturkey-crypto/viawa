@@ -20,12 +20,13 @@ export function createStoredPdfEndpointDependencies(input: {
   base: ContractDocxEndpointDependencies;
   generatePdf: ContractDocxEndpointDependencies["generate"];
   storage: ReturnType<typeof createContractPdfStorage>;
+  reuseExisting?: boolean;
 }): ContractDocxEndpointDependencies {
   return {
     ...input.base,
     generate: async (request) => {
       const identity = { accessToken: request.accessToken, userId: request.user.id, companyId: request.companyId, opportunityId: request.opportunityId };
-      const existing = await input.storage.find(identity);
+      const existing = input.reuseExisting === false ? null : await input.storage.find(identity);
       if (existing) {
         assertValidPdf(existing.pdfBuffer);
         return {

@@ -137,10 +137,6 @@ import {
   saveGeneratedDocuments,
 } from "../document-engine";
 import {
-  MissingAuthSessionError,
-  sendForSignature,
-} from "../document-engine/services/dropboxSignService";
-import {
   describeContractPdfFailure,
   readBlobAsDataUrl,
   requestContractPdf,
@@ -152,8 +148,7 @@ import {
 
 // BUG-S26.2.8 — TEMPORARY DIAGNOSTIC helper: a safe, secret/PDF-content-free
 // summary of one GeneratedDocumentRecord for console logging. Never
-// includes pdfDataUrl/signedPdfDataUrl content or storagePath/
-// signatureRequestId values themselves — only whether they're present.
+// includes pdfDataUrl/signedPdfDataUrl content or storagePath values.
 function summarizeGeneratedDocumentForDiagnostics(
   record: GeneratedDocumentRecord,
 ) {
@@ -177,9 +172,6 @@ function summarizeGeneratedDocumentForDiagnostics(
       record.pdfDataUrl,
     ),
     createdAt: record.createdAt,
-    hasSignatureRequestId: Boolean(
-      record.signatureRequestId,
-    ),
   };
 }
 
@@ -513,20 +505,6 @@ export function CustomerWorkspace({
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [generatedDocuments]);
-
-  // SPRINT 26.2 — no standalone "İmzaya Gönder" button exists anywhere
-  // in the workspace (the "Belge ve İmza Durumu" card was intentionally
-  // removed in Sprint 26.1 and must not come back); the one and only
-  // trigger is Workspace Email's "Sözleşme Gönder" (see
-  // handleWorkspaceEmailEvent). Guards against a double sendForSignature
-  // call firing two in-flight requests (and therefore two timeline
-  // entries) for the same document.
-  const [
-    sendingSignatureIds,
-    setSendingSignatureIds,
-  ] = useState<Set<string>>(
-    new Set(),
-  );
 
   // Incremented to force-open the Price Calculator from outside
   // LiveInteraction (e.g. when "Sözleşme Hazırla" is pressed with no
@@ -929,13 +907,8 @@ export function CustomerWorkspace({
     });
   }
 
-  // SPRINT 26.2.1 — back to a plain append. The Dropbox Sign trigger
-  // moved from here (fire-and-forget, after the mail record already
-  // existed) to useWorkspaceEmailDraft's Contract-send branch, which now
-  // awaits handleSendContractForSignature and only writes the mail
-  // record — meaning this handler only ever runs — after a real
-  // successful signature request. See handleSendContractForSignature/
-  // handleSendForSignature above.
+  // Workspace mail events are application records only. Contract signing
+  // is initiated manually in Google Workspace after generation.
   function handleWorkspaceEmailEvent(
     event: WorkspaceEmailEvent,
   ): void {
@@ -2504,7 +2477,7 @@ export function CustomerWorkspace({
     const record: GeneratedDocumentRecord = {
       ...base,
       fileName: generated.fileName,
-      status: "pdf-generated",
+      status: "completed",
       createdAt: new Date().toISOString(),
       storageBucket: "contract-documents",
       storagePath,
@@ -2514,6 +2487,12 @@ export function CustomerWorkspace({
         generated.pdfBlob.size,
       storageMimeType: "application/pdf",
       pdfDataUrl,
+      masterTemplateId: generated.masterTemplateId,
+      googleDocFileId: generated.googleDocFileId,
+      googleDocUrl: generated.googleDocUrl,
+      googlePdfFileId: generated.googlePdfFileId,
+      googlePdfUrl: generated.googlePdfUrl,
+      generationStatus: generated.generationStatus,
     };
 
     // BUG-S26.2.8 — TEMPORARY DIAGNOSTIC.
@@ -2639,221 +2618,7 @@ export function CustomerWorkspace({
     return { success: true };
   }
 
-  // SPRINT 26.2.1 — called from exactly one place: the Workspace Email
-  // "Sözleşme Gönder" flow (useWorkspaceEmailDraft's Contract-send branch,
-  // via handleSendContractForSignature below), which now AWAITS this
-  // result instead of firing it and forgetting it — the panel only
-  // closes and only records the mail event once this actually resolves
-  // success. Returns a structured result instead of showing its own
-  // toast (Sprint 26.2 and earlier had it toast directly; the caller now
-  // owns the exact contract-specific wording) — every message returned
-  // here is already a clean, non-technical Turkish sentence, never a raw
-  // error. Calls the real dropbox-sign-send Edge Function (Sprint
-  // 21.8/21.8.1) via dropboxSignService — its own state/timeline
-  // side effects are otherwise unchanged from Sprint 26.2.
-  async function handleSendForSignature(
-    record: GeneratedDocumentRecord,
-  ): Promise<
-    | {
-        success: true;
-        updatedRecord: GeneratedDocumentRecord;
-      }
-    | { success: false; message: string }
-  > {
-    if (
-      sendingSignatureIds.has(
-        record.id,
-      )
-    ) {
-      return {
-        success: false,
-        message:
-          "Bu sözleşme için bir imza isteği zaten işleniyor.",
-      };
-    }
-
-    // Defense in depth — whichever caller eventually invokes this
-    // should already only do so for "pdf-generated" documents, but
-    // don't rely on that alone: a second real Dropbox Sign send would
-    // create a duplicate, real signature request. Already having a
-    // signatureRequestId is treated as success (idempotent retry), not
-    // failure — nothing new needs to happen.
-    if (record.signatureRequestId) {
-      return { success: true, updatedRecord: record };
-    }
-
-    if (record.status !== "pdf-generated") {
-      return {
-        success: false,
-        message:
-          "Bu belge şu anda imzaya gönderilebilir durumda değil.",
-      };
-    }
-
-    if (
-      record.storageBucket !==
-        "contract-documents" ||
-      !record.storagePath?.trim() ||
-      record.storageMimeType !==
-        "application/pdf" ||
-      !record.storageSize ||
-      record.storageSize <= 0
-    ) {
-      return {
-        success: false,
-        message:
-          "Bu sözleşmenin güvenli PDF kaydı bulunamadı.",
-      };
-    }
-
-    // The Dropbox Sign signer — sourced from this company's own
-    // signatory contact (is_signatory), same concept the contract
-    // template itself already uses (see buildContractDraft.ts).
-    // GeneratedDocumentRecord has no signer fields of its own.
-    const signatoryContact =
-      contacts.find(
-        (contact) =>
-          contact.is_signatory,
-      );
-
-    const signerName = [
-      signatoryContact?.first_name,
-      signatoryContact?.last_name,
-    ]
-      .filter((part) =>
-        Boolean(part?.trim()),
-      )
-      .join(" ")
-      .trim();
-
-    const signerEmail =
-      signatoryContact?.email?.trim() ??
-      "";
-
-    if (!signerName || !signerEmail) {
-      return {
-        success: false,
-        message:
-          "Firma için imza yetkilisi (ad ve e-posta) tanımlı değil.",
-      };
-    }
-
-    setSendingSignatureIds(
-      (current) =>
-        new Set(current).add(
-          record.id,
-        ),
-    );
-
-    try {
-      const updatedRecord =
-        await sendForSignature(record, {
-          name: signerName,
-          email: signerEmail,
-        });
-
-      setGeneratedDocuments(
-        (current) =>
-          current.map(
-            (existing) =>
-              existing.id ===
-              record.id
-                ? updatedRecord
-                : existing,
-          ),
-      );
-
-      try {
-        await createTimelineEvent({
-          company_id: company.id,
-          opportunity_id:
-            record.opportunityId ?? null,
-          type: "contract-sent",
-          title:
-            "Sözleşme imzaya gönderildi",
-          description: `Sözleşme No: ${record.contractNumber} · Versiyon: v${record.version} · Sağlayıcı: Dropbox Sign`,
-        });
-      } catch (timelineError) {
-        // Non-fatal — the real, unrepeatable side effect (the actual
-        // Dropbox Sign request) already succeeded; a missing timeline
-        // entry doesn't need to (and can't safely) roll that back. Only
-        // logged, never shown as a failure to the user.
-        console.error(
-          "Contract sent timeline error:",
-          timelineError,
-        );
-      }
-
-      return { success: true, updatedRecord };
-    } catch (sendError) {
-      console.error(
-        "Send for signature error:",
-        sendError,
-      );
-
-      const message =
-        sendError instanceof
-        MissingAuthSessionError
-          ? "Oturum bulunamadı. Lütfen tekrar giriş yapın."
-          : sendError instanceof Error &&
-              sendError.message
-            ? sendError.message
-            : "İmza daveti gönderilemedi. Lütfen tekrar deneyin.";
-
-      return { success: false, message };
-    } finally {
-      setSendingSignatureIds(
-        (current) => {
-          const next = new Set(
-            current,
-          );
-
-          next.delete(record.id);
-
-          return next;
-        },
-      );
-    }
-  }
-
-  // SPRINT 26.2.1 — the one entry point Workspace Email's "Sözleşme
-  // Gönder" calls (via useWorkspaceEmailDraft's onSendContractForSignature
-  // prop). Shows the "gönderiliyor" toast (CustomerWorkspace already owns
-  // toasting for everything contract-related) right before the real
-  // network call, then hands back handleSendForSignature's result
-  // unchanged — the caller (the email send flow) decides what happens
-  // next (write the mail record and close, or keep the panel/draft).
-  async function handleSendContractForSignature(
-    record: GeneratedDocumentRecord,
-  ): Promise<
-    | { success: true; testMode: boolean }
-    | { success: false; message: string }
-  > {
-    showToast(
-      "Sözleşme imzaya gönderiliyor…",
-      "info",
-    );
-
-    const result =
-      await handleSendForSignature(record);
-
-    // SPRINT 26.2.2 — fail-safe default true if the field is somehow
-    // absent (matches dropboxSignService.ts's own parsing default):
-    // never claim a binding send happened when it's actually unknown.
-    return result.success
-      ? {
-          success: true,
-          testMode:
-            result.updatedRecord
-              .signatureTestMode ?? true,
-        }
-      : result;
-  }
-
-  // Sprint 22.9.6 — there is no real Dropbox Sign webhook/status-sync
-  // path in this codebase (dropboxSignService.ts's getSignatureStatus/
-  // downloadSignedPdf/cancelSignatureRequest are all unimplemented
-  // stubs; only sendForSignature is real). This manual upload —
+  // Google-first V1 has no automated eSignature callback. This manual upload —
   // confirmed, single external customer signer, no internal
   // countersignature expected — is therefore the one and only place
   // that ever observes "the customer has completed signing," so it is
@@ -3091,8 +2856,7 @@ export function CustomerWorkspace({
   }
 
   // RC-01 — the one function that ever transitions a document to status
-  // "signed". Manual this sprint (no Zoho/Adobe/Dropbox Sign, no
-  // webhook/API — see the sprint's own locked product decision): the
+  // "signed". Manual in Google-first V1 (no webhook/API): the
   // rep gets the signed PDF back over Outlook and uploads it here. Two
   // real UI triggers now share this exact same function, both through
   // the single participationConfirmationTarget modal above: "Sözleşme
@@ -3636,9 +3400,6 @@ export function CustomerWorkspace({
           generatedDocuments={generatedDocuments}
           opportunityId={
             panelSessionOpportunity?.id ?? null
-          }
-          onSendContractForSignature={
-            handleSendContractForSignature
           }
         />
       ) : null}

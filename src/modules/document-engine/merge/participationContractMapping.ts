@@ -328,6 +328,18 @@ const fields: TemplateFieldMapping<DocumentMergeContext>[] = [
     resolve: ({ company }) => clean(company.website),
   },
   {
+    tag: "Company.Phone",
+    title: "Company Phone",
+    source: "company",
+    resolve: ({ company }) => clean(company.phone),
+  },
+  {
+    tag: "Company.Email",
+    title: "Company Email",
+    source: "company",
+    resolve: ({ company }) => clean(company.email),
+  },
+  {
     tag: "Contact.ExhibitionContact",
     title: "Primary Contact",
     source: "contact.primary",
@@ -339,6 +351,20 @@ const fields: TemplateFieldMapping<DocumentMergeContext>[] = [
     source: "contact.signatory",
     resolve: (context) =>
       contactNameAndTitle(signatoryContact(context)),
+  },
+  {
+    tag: "Contact.SignatoryName",
+    title: "Authorized Signatory Name",
+    source: "contact.signatory",
+    required: true,
+    resolve: (context) => fullName(signatoryContact(context)),
+  },
+  {
+    tag: "Contact.SignatoryTitle",
+    title: "Authorized Signatory Title",
+    source: "contact.signatory",
+    required: true,
+    resolve: (context) => clean(signatoryContact(context)?.title),
   },
 ];
 

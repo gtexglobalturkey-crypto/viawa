@@ -1,4 +1,6 @@
 export type GeneratedDocumentStatus =
+  | "completed"
+  // Legacy value retained so existing localStorage records remain readable.
   | "pdf-generated"
   | "sent-for-signature"
   | "signed";
@@ -11,11 +13,6 @@ export type GeneratedDocumentStatus =
  * ApprovedPriceSnapshot itself is kept — the shape is already what a
  * future `generated_documents` table would look like.
  */
-// Only provider wired up this sprint. Adobe Sign, if added later, is
-// another literal in this same union — no provider abstraction needed
-// yet for a single provider.
-export type SignatureProvider = "dropbox-sign";
-
 export type GeneratedDocumentRecord = {
   id: string;
   documentType: "participation-contract";
@@ -30,8 +27,12 @@ export type GeneratedDocumentRecord = {
   status: GeneratedDocumentStatus;
   createdAt: string;
 
-  // Set once "İmzaya Gönder" is used (status becomes "sent-for-signature").
-  signatureProvider?: SignatureProvider;
+  masterTemplateId?: string;
+  googleDocFileId?: string;
+  googleDocUrl?: string;
+  googlePdfFileId?: string;
+  googlePdfUrl?: string;
+  generationStatus?: "COMPLETED" | "FAILED";
 
   // Set once the user manually uploads the signed PDF (status becomes
   // "signed"). No backend yet, so the file itself — not just a path —
@@ -40,30 +41,17 @@ export type GeneratedDocumentRecord = {
   signedPdfDataUrl?: string;
   signedPdfFileName?: string;
 
-  // Populated once the real Dropbox Sign API is wired up — not written
-  // this sprint (see dropboxSignService.ts, still a stub).
-  signatureRequestId?: string;
-  signatureRequestUrl?: string;
 
-  // ISO timestamps for the signature lifecycle, distinct from createdAt
-  // (which marks the PDF's own generation).
-  signatureSentAt?: string;
+  // Manual post-generation signature evidence remains independent from
+  // document generation. No signing provider is required by V1.
   signatureCompletedAt?: string;
-
-  // SPRINT 26.2.2 — whether the signature request behind
-  // signatureRequestId was sent in Dropbox Sign test mode (not legally
-  // binding), resolved server-side only (see dropbox-sign-send/
-  // testModeResolution.ts) — never settable by the client. Lets the UI
-  // show the correct test-vs-production message instead of assuming.
-  signatureTestMode?: boolean;
 
   // BUG-S26-001.3 — set once the Document Service has generated and
   // stored this PDF in the private contract-documents Storage bucket
   // (server-side upload; the browser never uploads this file itself —
   // see contractPdfService.ts/contractPdfStorageIdentity.ts). The
-  // "official" copy Dropbox Sign reads from. Independent of
-  // signedPdfDataUrl below, which is the separately-uploaded
-  // post-signature copy.
+  // generated PDF archive. Independent of signedPdfDataUrl below, which
+  // is the separately-uploaded post-signature copy.
   storageBucket?: "contract-documents";
   storagePath?: string;
   storageUploadedAt?: string;
