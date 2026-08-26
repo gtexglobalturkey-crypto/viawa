@@ -36,26 +36,24 @@ export function readExcelFile(
           type: "array",
         });
 
-        const worksheet =
-          workbook.Sheets[
-            EXCEL_TEMPLATE_SHEET_NAME
-          ];
+        const worksheet = workbook.Sheets[EXCEL_TEMPLATE_SHEET_NAME] ?? workbook.Sheets["VIAWA Import"];
 
         if (!worksheet) {
           reject(
             new Error(
-              `"${EXCEL_TEMPLATE_SHEET_NAME}" sheet not found. Use the official VIAWA import template.`,
+              `"${EXCEL_TEMPLATE_SHEET_NAME}" veya "VIAWA Import" sekmesi bulunamadı.`,
             ),
           );
 
           return;
         }
 
+        const isMasterExport = Boolean(workbook.Sheets["VIAWA Import"] === worksheet);
         const rows = XLSX.utils.sheet_to_json<
           Record<string, unknown>
         >(worksheet, {
           defval: "",
-          range: HEADER_ROW_INDEX,
+          range: isMasterExport ? 0 : HEADER_ROW_INDEX,
         });
 
         resolve({

@@ -30,6 +30,13 @@ export async function getContactsByCompany(
   return data ?? [];
 }
 
+export async function getContactsByIds(ids: string[]): Promise<Contact[]> {
+  if (!ids.length) return [];
+  const { data, error } = await supabase.from("contacts").select("*").in("id", ids);
+  if (error) throw error;
+  return data ?? [];
+}
+
 export type ContactDuplicateCheckRow = {
   id: string;
   company_id: string;
