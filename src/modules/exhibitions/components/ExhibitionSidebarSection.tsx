@@ -122,6 +122,9 @@ export function ExhibitionSidebarSection({
 
       onExhibitionsChange(next);
       saveExhibitions(next);
+      onSelectExhibition(
+        supabaseExhibition.id,
+      );
       setIsExpanded(true);
 
       showToast(

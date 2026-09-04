@@ -1,6 +1,6 @@
 import { Landmark } from "lucide-react";
-import { useEffect, useState } from "react";
-import type { CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { CSSProperties, FormEvent } from "react";
 
 import type { Exhibition } from "../models/Exhibition";
 
@@ -19,6 +19,7 @@ type ExhibitionCreateModalProps = {
 type FieldErrors = {
   name?: string;
   shortName?: string;
+  endDate?: string;
 };
 
 function createExhibitionId(): string {
@@ -82,6 +83,9 @@ export function ExhibitionCreateModal({
 
   const [isSaving, setIsSaving] =
     useState(false);
+  const isSubmittingRef = useRef(false);
+  const [submissionError, setSubmissionError] =
+    useState<string | null>(null);
 
   useEffect(() => {
     if (!open) {
@@ -96,6 +100,8 @@ export function ExhibitionCreateModal({
     setEndDate("");
     setErrors({});
     setIsSaving(false);
+    isSubmittingRef.current = false;
+    setSubmissionError(null);
   }, [open]);
 
   useEffect(() => {
@@ -106,7 +112,7 @@ export function ExhibitionCreateModal({
     function handleKeyDown(
       event: KeyboardEvent,
     ) {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !isSaving) {
         onClose();
       }
     }
@@ -122,14 +128,18 @@ export function ExhibitionCreateModal({
         handleKeyDown,
       );
     };
-  }, [open, onClose]);
+  }, [isSaving, open, onClose]);
 
   if (!open) {
     return null;
   }
 
-  async function handleSubmit() {
-    if (isSaving) {
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+
+    if (isSubmittingRef.current) {
       return;
     }
 
@@ -150,12 +160,21 @@ export function ExhibitionCreateModal({
     }
 
     if (
-      nextErrors.name ||
-      nextErrors.shortName
+      startDate &&
+      endDate &&
+      endDate < startDate
     ) {
+      nextErrors.endDate =
+        "Bitiş tarihi başlangıç tarihinden önce olamaz.";
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
       return;
     }
+
+    setErrors({});
+    setSubmissionError(null);
 
     const exhibition: Exhibition = {
       id: createExhibitionId(),
@@ -172,6 +191,7 @@ export function ExhibitionCreateModal({
         new Date().toISOString(),
     };
 
+    isSubmittingRef.current = true;
     setIsSaving(true);
 
     try {
@@ -181,8 +201,21 @@ export function ExhibitionCreateModal({
 
       if (created) {
         onClose();
+      } else {
+        setSubmissionError(
+          "Fuar oluşturulamadı. Bilgilerinizi kontrol edip tekrar deneyin.",
+        );
       }
+    } catch (error) {
+      console.error(
+        "Exhibition create callback failed:",
+        error,
+      );
+      setSubmissionError(
+        "Fuar oluşturulamadı. Lütfen tekrar deneyin.",
+      );
     } finally {
+      isSubmittingRef.current = false;
       setIsSaving(false);
     }
   }
@@ -196,7 +229,9 @@ export function ExhibitionCreateModal({
           event.target ===
           event.currentTarget
         ) {
-          onClose();
+          if (!isSaving) {
+            onClose();
+          }
         }
       }}
       style={{
@@ -229,6 +264,7 @@ export function ExhibitionCreateModal({
             "0 24px 64px rgba(15, 23, 42, 0.24)",
         }}
       >
+        <form onSubmit={handleSubmit} noValidate>
         <header
           style={{
             display: "flex",
@@ -275,6 +311,7 @@ export function ExhibitionCreateModal({
 
           <button
             type="button"
+            disabled={isSaving}
             aria-label="Yeni fuar penceresini kapat"
             onClick={onClose}
             style={{
@@ -474,10 +511,52 @@ export function ExhibitionCreateModal({
                     event.target.value,
                   )
                 }
-                style={inputStyle(false)}
+                style={inputStyle(
+                  Boolean(errors.endDate),
+                )}
+                aria-invalid={Boolean(
+                  errors.endDate,
+                )}
+                aria-describedby={
+                  errors.endDate
+                    ? "exhibition-end-date-error"
+                    : undefined
+                }
               />
+
+              {errors.endDate && (
+                <p
+                  id="exhibition-end-date-error"
+                  role="alert"
+                  style={{
+                    margin: "4px 0 0",
+                    color: "#b91c1c",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                  }}
+                >
+                  {errors.endDate}
+                </p>
+              )}
             </div>
           </div>
+
+          {submissionError && (
+            <p
+              role="alert"
+              style={{
+                margin: 0,
+                padding: "10px 12px",
+                borderRadius: "8px",
+                color: "#991b1b",
+                background: "#fef2f2",
+                fontSize: "12px",
+                fontWeight: 600,
+              }}
+            >
+              {submissionError}
+            </p>
+          )}
         </div>
 
         <footer
@@ -514,11 +593,8 @@ export function ExhibitionCreateModal({
           </button>
 
           <button
-            type="button"
+            type="submit"
             disabled={isSaving}
-            onClick={() =>
-              void handleSubmit()
-            }
             style={{
               padding: "8px 14px",
               border: 0,
@@ -539,6 +615,7 @@ export function ExhibitionCreateModal({
               : "Fuarı Ekle"}
           </button>
         </footer>
+        </form>
       </section>
     </div>
   );
