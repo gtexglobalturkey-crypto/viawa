@@ -21,7 +21,7 @@ export type GeneratedDocumentPersistence = {
   }): Promise<PendingGeneratedDocument>;
   markDocCreated(record: PendingGeneratedDocument, input: { googleDocId: string; googleDocUrl: string }): Promise<void>;
   markPdfCreated(record: PendingGeneratedDocument, input: { googlePdfId: string; googlePdfUrl: string }): Promise<void>;
-  markCompleted(record: PendingGeneratedDocument): Promise<void>;
+  markCompleted(record: PendingGeneratedDocument, archive?: { fileName: string; storagePath: string; sha256: string; size: number }): Promise<void>;
   markFailed(record: PendingGeneratedDocument): Promise<void>;
 };
 
@@ -73,7 +73,8 @@ export function createGeneratedDocumentRepository(client: SupabaseClient): Gener
       google_pdf_id: refs.googlePdfId, google_pdf_url: refs.googlePdfUrl,
       generation_status: "PDF_CREATED" satisfies GeneratedDocumentGenerationStatus,
     }),
-    markCompleted: (record) => update(record, {
+    markCompleted: (record, archive) => update(record, {
+      ...(archive ? { file_name: archive.fileName, pdf_storage_path: archive.storagePath, pdf_sha256: archive.sha256, pdf_size_bytes: archive.size } : {}),
       generation_status: "COMPLETED" satisfies GeneratedDocumentGenerationStatus,
     }),
     markFailed: (record) => update(record, {

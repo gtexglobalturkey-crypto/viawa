@@ -263,6 +263,7 @@ export async function handleContractDocxHttpRequest(
       "X-VIAWA-Google-Pdf-Id": generated.artifacts.googlePdfFileId,
       "X-VIAWA-Google-Pdf-Url": generated.artifacts.googlePdfUrl,
       "X-VIAWA-Generation-Status": "COMPLETED",
+      "X-VIAWA-Generated-Document-Id": generated.artifacts.generatedDocumentId ?? "",
     } : {};
     return {
       status: 200,

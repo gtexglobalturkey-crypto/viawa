@@ -38,6 +38,13 @@ export function createStoredPdfEndpointDependencies(input: {
       if (!generated.result.success || !generated.docxBuffer) return generated;
       try {
         assertValidPdf(generated.docxBuffer);
+        if (generated.artifacts) {
+          if (!generated.artifacts.generatedDocumentId || !generated.artifacts.pdfStoragePath) {
+            throw new Error("Current Google PDF archive is missing.");
+          }
+          // Google generation already archived these exact bytes before COMPLETED.
+          return generated;
+        }
         const stored = await input.storage.store({ ...identity, fileName: generated.result.outputFileName, pdfBuffer: generated.docxBuffer });
         return { ...generated, result: { ...generated.result, outputFileName: stored.fileName }, docxBuffer: stored.pdfBuffer };
       } catch (error) {

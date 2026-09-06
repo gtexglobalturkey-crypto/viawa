@@ -94,3 +94,19 @@ test("PDF route preserves authentication and authorization", async () => {
   const denied = createStoredPdfEndpointDependencies({ base: deniedBase, generatePdf: async () => { throw new Error("must not run"); }, storage: { find: async () => null, store: async () => { throw new Error("must not run"); } } });
   assert.equal((await run(denied)).statusCode, 403);
 });
+
+test("actual PDF response exposes the generated-document identity to the allowed frontend origin", async () => {
+  const res = await run(dependencies().value, { headers: { ...headers, origin: "https://app.example" } });
+  assert.equal(res.statusCode, 200);
+  assert.match(res.getHeader("access-control-expose-headers"), /X-VIAWA-Generated-Document-Id/);
+  assert.match(res.getHeader("access-control-expose-headers"), /X-VIAWA-Google-Doc-Url/);
+});
+
+test("production does not expose the legacy DOCX generation route", async () => {
+  let generated = false;
+  const handler = createNodeRequestHandler({ environment: { ...environment, nodeEnv: "production" }, endpointDependencies: endpoint({ generate: async () => { generated = true; } }), pdfEndpointDependencies: dependencies().value, checkReadiness: async () => { throw new Error("unused"); } });
+  const res = response();
+  await handler(request({ method: "POST", url: "/api/contracts/generate-docx", headers, body: validBody }), res);
+  assert.equal(res.statusCode, 404);
+  assert.equal(generated, false);
+});

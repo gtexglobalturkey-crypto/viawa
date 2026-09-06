@@ -1,3 +1,4 @@
+import { GeneratedContractActions } from "./GeneratedContractActions";
 import {
   useEffect,
   useMemo,
@@ -46,26 +47,6 @@ import { ParticipationContractDocument } from "../templates/participation-contra
 const QUANTITY_MATERIAL_KEY_SET: ReadonlySet<string> = new Set(
   QUANTITY_MATERIAL_KEYS,
 );
-
-// Sprint 25.10 / Adım 2 — same pattern WorkspaceEmailPanel's own
-// resolveDownloadFileName already uses, duplicated locally (not
-// imported, matching that file's own established precedent) since it's
-// only needed here for the preview's "PDF İndir" affordance.
-const FALLBACK_CONTRACT_FILE_NAME = "sozlesme.pdf";
-
-function resolveDownloadFileName(
-  fileName: string,
-): string {
-  const trimmed = fileName.trim();
-
-  if (!trimmed) {
-    return FALLBACK_CONTRACT_FILE_NAME;
-  }
-
-  return /\.pdf$/i.test(trimmed)
-    ? trimmed
-    : `${trimmed}.pdf`;
-}
 
 // RC-02 — display-only preview of the server's own payment-plan-total
 // rule (see generateParticipationContract.ts's isCloseEnough/
@@ -121,6 +102,9 @@ type ContractPreviewModalProps = {
   contractDraft: ContractDraftData | null;
   approvedSnapshot: ApprovedPriceSnapshot | null;
   existingRecords: GeneratedDocumentRecord[];
+  historyLoading?: boolean;
+  historyError?: string | null;
+  onReloadHistory?: () => Promise<unknown>;
   // Sprint 25.8 — the opportunity's currently-saved Stand Malzemeleri
   // selection/quantities and extra-information note. Read fresh from the
   // opportunity every time the modal opens (never guessed) so reopening
@@ -169,6 +153,9 @@ export function ContractPreviewModal({
   contractDraft,
   approvedSnapshot,
   existingRecords,
+  historyLoading = false,
+  historyError = null,
+  onReloadHistory,
   standMaterials,
   extraInformation,
   onSaveStandDetails,
@@ -504,7 +491,7 @@ export function ContractPreviewModal({
       (record) =>
         record.contractNumber ===
           preparedDocument.contractNumber &&
-        Boolean(record.pdfDataUrl),
+        Boolean(record.googleDocUrl || record.pdfDataUrl),
     );
 
     if (candidates.length === 0) {
@@ -524,7 +511,7 @@ export function ContractPreviewModal({
 
   async function handleGeneratePdf() {
     if (
-      isGenerating ||
+      isGenerating || historyLoading || historyError ||
       !preparedDocument ||
       !contractDraft ||
       !approvedSnapshot
@@ -561,7 +548,6 @@ export function ContractPreviewModal({
 
     if (result.success) {
       setIsGenerating(false);
-      onClose();
       return;
     }
 
@@ -1214,7 +1200,7 @@ export function ContractPreviewModal({
             overflow: "auto",
           }}
         >
-          {preparedDocument && latestGeneratedRecord ? (
+          {preparedDocument && latestGeneratedRecord?.pdfDataUrl ? (
             <div>
               <p
                 style={{
@@ -1242,6 +1228,11 @@ export function ContractPreviewModal({
                 }}
               />
             </div>
+          ) : latestGeneratedRecord ? (
+            <p role="status" style={{ padding: "24px", color: "#334155" }}>
+              {latestGeneratedRecord.contractNumber} · v{latestGeneratedRecord.version} kaydedildi.
+              Sözleşmeyi Google Docs'ta açabilir veya PDF'ini aşağıdaki işlemlerden indirebilirsiniz.
+            </p>
           ) : preparedDocument ? (
             <div>
               <p
@@ -1285,6 +1276,14 @@ export function ContractPreviewModal({
           )}
         </div>
 
+        {existingRecords.filter((record) => record.opportunityId === contractDraft?.opportunityId).length > 0 && <section aria-label="Sözleşme geçmişi" style={{ padding: "14px 22px", borderTop: "1px solid #e2e8f0" }}>
+          <h3>Sözleşme geçmişi</h3>
+          <p>İmza işlemini Google Docs üzerinden Google Workspace'te başlatın.</p>
+          {existingRecords.filter((record) => record.opportunityId === contractDraft?.opportunityId).map((record) => <div key={record.id} style={{ marginBottom: "12px" }}>
+            <p>{record.contractNumber} · v{record.version}</p>
+            <GeneratedContractActions record={record} />
+          </div>)}
+        </section>}
         <footer
           style={{
             display: "flex",
@@ -1294,28 +1293,11 @@ export function ContractPreviewModal({
             borderTop: "1px solid #e2e8f0",
           }}
         >
-          {latestGeneratedRecord && (
-            <a
-              href={latestGeneratedRecord.pdfDataUrl}
-              download={resolveDownloadFileName(
-                latestGeneratedRecord.fileName,
-              )}
-              style={{
-                padding: "10px 16px",
-                border: "1px solid #cbd5e1",
-                borderRadius: "10px",
-                background: "#ffffff",
-                color: "#334155",
-                fontSize: "13px",
-                fontWeight: 700,
-                textDecoration: "none",
-                display: "inline-flex",
-                alignItems: "center",
-              }}
-            >
-              PDF İndir
-            </a>
-          )}
+          {(historyError || generateError) && onReloadHistory && <button type="button" disabled={historyLoading || isGenerating} onClick={() => {
+            void onReloadHistory().then(() => setGenerateError(null)).catch(() => {});
+          }}>Sözleşme Geçmişini Yeniden Yükle</button>}
+          {historyLoading && <span role="status">Sözleşme geçmişi yükleniyor…</span>}
+          {latestGeneratedRecord && <GeneratedContractActions record={latestGeneratedRecord} />}
 
           {latestGeneratedRecord &&
           latestGeneratedRecord.status !==
@@ -1398,19 +1380,19 @@ export function ContractPreviewModal({
             type="button"
             disabled={
               !preparedDocument ||
-              isGenerating
+              isGenerating || historyLoading || Boolean(historyError)
             }
             onClick={() =>
               void handleGeneratePdf()
             }
             style={{
               padding: "10px 18px",
-              border: 0,
+              border: "1px solid #cbd5e1",
               borderRadius: "10px",
-              background: preparedDocument
+              background: latestGeneratedRecord ? "#ffffff" : preparedDocument
                 ? "#7A0F23"
                 : "#94a3b8",
-              color: "#ffffff",
+              color: latestGeneratedRecord ? "#334155" : "#ffffff",
               fontSize: "13px",
               fontWeight: 800,
               cursor:
@@ -1422,7 +1404,7 @@ export function ContractPreviewModal({
           >
             {isGenerating
               ? "Hazırlanıyor..."
-              : "Sözleşme PDF'i Oluştur"}
+              : latestGeneratedRecord ? "Yeni Sürüm Oluştur" : "Sözleşme Oluştur"}
           </button>
         </footer>
       </section>

@@ -40,6 +40,7 @@ export function createNodeRequestHandler(input: {
     if (originAllowed) {
       response.setHeader("Access-Control-Allow-Origin", origin);
       response.setHeader("Vary", "Origin");
+      response.setHeader("Access-Control-Expose-Headers", "Content-Disposition, X-VIAWA-Master-Template-Id, X-VIAWA-Google-Doc-Id, X-VIAWA-Google-Doc-Url, X-VIAWA-Google-Pdf-Id, X-VIAWA-Google-Pdf-Url, X-VIAWA-Generation-Status, X-VIAWA-Generated-Document-Id");
     }
 
     if (request.method === "OPTIONS") {
@@ -65,6 +66,9 @@ export function createNodeRequestHandler(input: {
     }
 
     if (url.pathname !== DOCX_PATH && url.pathname !== PDF_PATH) return json(response, 404, safeError(404, "NOT_FOUND", "Route not found."));
+    if (url.pathname === DOCX_PATH && (input.environment.googleWorkspace || input.environment.nodeEnv === "production")) {
+      return json(response, 404, safeError(404, "NOT_FOUND", "Route not found."));
+    }
     if (request.method !== "POST") return json(response, 405, safeError(405, "METHOD_NOT_ALLOWED", "Only POST is supported."), { Allow: "POST" });
     if (!(request.headers["content-type"] ?? "").toLowerCase().startsWith("application/json")) {
       return json(response, 415, safeError(415, "UNSUPPORTED_MEDIA_TYPE", "Content-Type must be application/json."));

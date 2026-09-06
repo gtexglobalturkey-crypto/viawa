@@ -10,6 +10,7 @@ export type GoogleContractArtifacts = {
   googlePdfUrl: string;
   generatedDocumentId?: string;
   generatedDocumentVersion?: number;
+  pdfStoragePath?: string;
 };
 
 type Request = (url: string, init?: RequestInit) => Promise<Response>;
@@ -54,7 +55,7 @@ export function createGoogleWorkspaceClient(input: {
   const auth = { Authorization: `Bearer ${input.accessToken}` };
 
   async function copyMaster(name: string) {
-    const response = await request(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(input.masterTemplateId)}/copy?fields=id,webViewLink,name`, {
+    const response = await request(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(input.masterTemplateId)}/copy?supportsAllDrives=true&fields=id,webViewLink,name`, {
       method: "POST", headers: { ...auth, "Content-Type": "application/json" },
       body: JSON.stringify({ name, parents: [input.generatedDocumentsFolderId] }),
     });
@@ -102,7 +103,7 @@ export function createGoogleWorkspaceClient(input: {
       Buffer.from(`\r\n--${boundary}\r\nContent-Type: application/pdf\r\n\r\n`), pdf,
       Buffer.from(`\r\n--${boundary}--\r\n`),
     ]);
-    const response = await request("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink", {
+    const response = await request("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,webViewLink", {
       method: "POST", headers: { ...auth, "Content-Type": `multipart/related; boundary=${boundary}` }, body,
     });
     if (!response.ok) return providerError(response, "Google Drive PDF upload");

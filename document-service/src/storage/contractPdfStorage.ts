@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 
+import { archiveGenerationPdf } from "./immutableGenerationPdf.ts";
+
 import { createClient } from "@supabase/supabase-js";
 
 const BUCKET = "contract-documents";
@@ -73,6 +75,10 @@ export function createContractPdfStorage(input: { supabaseUrl: string; supabaseA
   }
 
   return {
+    async storeGeneration(inputValue: { accessToken: string; userId: string; companyId: string; generatedDocumentId: string; fileName: string; pdf: Buffer }) {
+      return archiveGenerationPdf({ ...inputValue, upload: (path, pdf) =>
+        client(inputValue.accessToken).storage.from(BUCKET).upload(path, pdf, { contentType: "application/pdf", upsert: false }) });
+    },
     async find(inputValue: { accessToken: string; userId: string; companyId: string; opportunityId: string }) {
       const folder = await prefix(inputValue.accessToken, inputValue.userId, inputValue.companyId, inputValue.opportunityId);
       return folder ? downloadExisting(inputValue.accessToken, folder) : null;

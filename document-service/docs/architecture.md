@@ -15,3 +15,8 @@ merge and DOCX adapter. The existing PDF adapter invokes the existing LibreOffic
 validated `%PDF-` buffer is uploaded with `upsert: false` to private Storage before the identical
 bytes are returned. Existing objects in the deterministic document folder are downloaded instead
 of generating a duplicate. Queue and concurrency control remain outside this sprint.
+
+
+## Google-first production path
+
+See `../../docs/google-first-hardening.md` for the authoritative Google generation, immutable PDF archive, database history and readiness behavior. DOCX/LibreOffice descriptions above apply only to non-production technical fallback. Production uses Google Docs/Drive and manual Workspace signing.

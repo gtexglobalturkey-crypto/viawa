@@ -48,6 +48,7 @@ export async function createDocumentServiceServer(environment: DocumentServiceEn
     tempRoot: environment.documentTempRoot,
     defaultTimeoutMs: environment.pdfConversionTimeoutMs,
   });
+  const storage = createContractPdfStorage(supabase);
   const generatePdf = environment.googleWorkspace
     ? createRequestScopedGoogleContractGenerator({
         temporaryRoot: environment.documentTempRoot,
@@ -58,6 +59,7 @@ export async function createDocumentServiceServer(environment: DocumentServiceEn
         generatedDocumentsFolderId: environment.googleWorkspace.generatedDocumentsFolderId,
         createDataSource,
         createPersistence,
+        archivePdf: (input) => storage.storeGeneration(input),
       })
     : createRequestScopedPdfGenerator({
         templatePath: environment.documentTemplatePath,
@@ -68,7 +70,7 @@ export async function createDocumentServiceServer(environment: DocumentServiceEn
   const pdfEndpointDependencies = createStoredPdfEndpointDependencies({
     base: endpointDependencies,
     generatePdf,
-    storage: createContractPdfStorage(supabase),
+    storage,
     reuseExisting: !environment.googleWorkspace,
   });
   const handle = createNodeRequestHandler({

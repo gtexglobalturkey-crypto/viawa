@@ -1,10 +1,4 @@
-// BUG-S26-001.3 — the ONE frontend caller of the production Document
-// Service's authenticated PDF endpoint (see document-service/src/pdf and
-// vite-plugins/contract-docx-endpoint/httpHandler.ts). Server-side DOCX
-// generation → LibreOffice PDF conversion → PDF validation → Storage
-// upload were already built and tested in "Sprint 24" — this file adds
-// no generation logic of its own, it only sends the request and shapes
-// the response/error for the UI.
+// Authenticated Google-first contract generation. Provider credentials stay server-side.
 
 const GENERATE_PDF_PATH = "/api/contracts/generate-pdf";
 
@@ -17,6 +11,7 @@ export type ContractPdfSuccess = {
   ok: true;
   pdfBlob: Blob;
   fileName: string;
+  generatedDocumentId?: string;
   masterTemplateId?: string;
   googleDocFileId?: string;
   googleDocUrl?: string;
@@ -138,10 +133,8 @@ async function parseErrorBody(
  * POSTs `{ companyId, opportunityId }` to the Document Service's
  * `generate-pdf` endpoint (auth via Bearer token) and returns either the
  * generated PDF (as a Blob, with the server-confirmed file name from
- * `Content-Disposition`) or a structured failure. The endpoint is
- * idempotent server-side — calling this twice for the same
- * company/opportunity/approved-snapshot returns the same stored PDF
- * rather than generating or uploading a second time.
+ * `Content-Disposition`) or a structured failure. Each successful Google generation
+ * creates an immutable database version and archives its exact PDF bytes.
  */
 export async function requestContractPdf(
   input: RequestContractPdfInput,
@@ -212,6 +205,7 @@ export async function requestContractPdf(
   const optionalHeader = (name: string) => response.headers.get(name)?.trim() || undefined;
   return {
     ok: true, pdfBlob, fileName,
+    generatedDocumentId: optionalHeader("X-VIAWA-Generated-Document-Id"),
     masterTemplateId: optionalHeader("X-VIAWA-Master-Template-Id"),
     googleDocFileId: optionalHeader("X-VIAWA-Google-Doc-Id"),
     googleDocUrl: optionalHeader("X-VIAWA-Google-Doc-Url"),

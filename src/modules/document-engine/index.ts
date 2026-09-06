@@ -48,5 +48,4 @@ export {
 
 export {
   loadGeneratedDocuments,
-  saveGeneratedDocuments,
 } from "./services/generatedDocumentStorage";

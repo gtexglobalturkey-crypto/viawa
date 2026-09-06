@@ -44,6 +44,7 @@ function input(setupValue) {
     companyId: "company", opportunityId: "opportunity", exhibitionId: "exhibition",
     generatedAt: "2026-08-25T10:00:00.000Z", masterTemplateId: "master-id",
     google: setupValue.google, persistence: setupValue.persistence,
+    onPdfReady: async (pdf, baseName, pending) => ({ fileName: `${baseName}.pdf`, storagePath: `user/company/${pending.id}/contract.pdf`, sha256: "a".repeat(64), size: pdf.length }),
   };
 }
 
@@ -78,4 +79,19 @@ test("server persistence path does not read, write, or migrate browser localStor
   const repositorySource = await readFile(new URL("../../../src/modules/document-engine/repositories/generatedDocumentRepository.ts", import.meta.url), "utf8");
   assert.doesNotMatch(generationSource, /localStorage|generatedDocumentStorage/);
   assert.doesNotMatch(repositorySource, /localStorage|generatedDocumentStorage/);
+});
+
+test("archive failure marks FAILED; COMPLETED is never published for an unarchived PDF", async () => {
+  const state = setup();
+  await assert.rejects(() => runPersistedGoogleGeneration({ ...input(state), onPdfReady: async () => { throw new Error("collision"); } }), /collision/);
+  assert.equal(state.calls.at(-1)[0], "FAILED");
+  assert.equal(state.calls.some(([name]) => name === "COMPLETED"), false);
+});
+
+test("unresolved copied-document placeholders stop before PDF export/upload", async () => {
+  const state = setup();
+  state.google.verifyPlaceholders = async () => { throw new Error("UNRESOLVED_CONTRACT_PLACEHOLDERS"); };
+  await assert.rejects(() => runPersistedGoogleGeneration(input(state)), /UNRESOLVED/);
+  assert.equal(state.calls.some(([name]) => name === "EXPORT" || name === "UPLOAD"), false);
+  assert.equal(state.calls.at(-1)[0], "FAILED");
 });

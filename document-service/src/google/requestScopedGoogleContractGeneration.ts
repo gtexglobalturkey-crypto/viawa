@@ -1,3 +1,4 @@
+import type { GenerationPdfArchive } from "../storage/immutableGenerationPdf.ts";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -23,7 +24,7 @@ export async function runPersistedGoogleGeneration(input: {
   masterTemplateId: string;
   google: GoogleGenerationClient;
   persistence: GeneratedDocumentPersistence;
-  onPdfReady?: (pdf: Buffer, baseName: string) => Promise<void>;
+  onPdfReady: (pdf: Buffer, baseName: string, pending: PendingGeneratedDocument) => Promise<GenerationPdfArchive>;
 }) {
   if (!input.contractIdentity.id) throw new Error("CANONICAL_CONTRACT_UUID_MISSING");
   const baseName = safeName(`${input.values.CNO} — ${input.values.COMPANY_LEGAL_NAME} — ${input.values.FNM}`);
@@ -45,14 +46,15 @@ export async function runPersistedGoogleGeneration(input: {
     const pdf = await input.google.exportPdf(copied.id);
     const uploaded = await input.google.uploadPdf(`${baseName}.pdf`, pdf);
     await input.persistence.markPdfCreated(pending, { googlePdfId: uploaded.id, googlePdfUrl: uploaded.url });
-    await input.onPdfReady?.(pdf, baseName);
-    await input.persistence.markCompleted(pending);
+    const archive = await input.onPdfReady(pdf, baseName, pending);
+    await input.persistence.markCompleted(pending, archive);
     return {
       baseName, pdf,
       artifacts: {
         masterTemplateId: input.masterTemplateId, googleDocFileId: copied.id, googleDocUrl: copied.url,
         googlePdfFileId: uploaded.id, googlePdfUrl: uploaded.url,
         generatedDocumentId: pending.id, generatedDocumentVersion: pending.version,
+        pdfStoragePath: archive.storagePath,
       } satisfies GoogleContractArtifacts,
     };
   } catch (error) {
@@ -75,6 +77,7 @@ export function createRequestScopedGoogleContractGenerator(input: {
   generatedDocumentsFolderId: string;
   createDataSource: (context: { user: AuthenticatedContractUser; accessToken: string }) => ContractGenerationDataSource;
   createPersistence: (context: { accessToken: string }) => GeneratedDocumentPersistence;
+  archivePdf: (input: { accessToken: string; userId: string; companyId: string; generatedDocumentId: string; fileName: string; pdf: Buffer }) => Promise<GenerationPdfArchive>;
   now?: () => Date;
 }): ContractDocxEndpointDependencies["generate"] {
   return async ({ user, accessToken, companyId, opportunityId }) => {
@@ -99,9 +102,10 @@ export function createRequestScopedGoogleContractGenerator(input: {
           const generated = await runPersistedGoogleGeneration({
             values, contractIdentity, companyId: resolvedCompanyId, opportunityId: resolvedOpportunityId,
             exhibitionId, generatedAt, masterTemplateId: input.masterTemplateId, google, persistence,
-            onPdfReady: async (pdf, baseName) => {
+            onPdfReady: async (pdf, baseName, pending) => {
               outputPath = path.join(directory, `${baseName}.pdf`);
               await writeFile(outputPath, pdf, { flag: "wx", mode: 0o600 });
+              return input.archivePdf({ accessToken, userId: user.id, companyId: resolvedCompanyId, generatedDocumentId: pending.id, fileName: `${baseName}.pdf`, pdf });
             },
           });
           artifacts = generated.artifacts;

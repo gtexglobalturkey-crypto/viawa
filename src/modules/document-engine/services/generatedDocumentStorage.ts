@@ -1,13 +1,8 @@
 import type { GeneratedDocumentRecord } from "../models/GeneratedDocumentRecord";
 
-// TEMPORARY repository for this sprint only — see
-// call-workspace/pricing/services/approvedPriceSnapshotStorage.ts for the
-// same rationale. GeneratedDocumentRecord has no Supabase table yet; this
-// localStorage layer keeps a confirmed document's contract number,
-// version history and status across a page reload. When a real
-// `generated_documents` table exists, replace this file with a
-// Supabase-backed service exposing the same load/save signatures —
-// CustomerWorkspace should not need to change.
+// Read-only compatibility for historical browser records.
+// Active contract generation/history uses Supabase generated_documents.
+// Existing browser data is never migrated or deleted implicitly.
 
 const STORAGE_KEY_PREFIX =
   "viawa.generatedDocuments.v1.";
@@ -331,57 +326,5 @@ export function loadGeneratedDocuments(
     );
 
     return [];
-  }
-}
-
-/**
- * Persists the full current generated-document list for this company.
- * Storage failures (quota exceeded, private browsing, etc.) are
- * swallowed — records simply keep working in-memory for the rest of the
- * session, exactly like before this repository existed.
- */
-export function saveGeneratedDocuments(
-  companyId: string,
-  records: GeneratedDocumentRecord[],
-): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  // BUG-S26.2.8 — TEMPORARY DIAGNOSTIC.
-  console.error(
-    "[BUG-S26.2.8] STORAGE SAVE",
-    {
-      companyId,
-      key: storageKeyForCompany(companyId),
-      recordCount: records.length,
-      recordIds: records.map(
-        (record) => record.id,
-      ),
-    },
-  );
-
-  try {
-    window.localStorage.setItem(
-      storageKeyForCompany(companyId),
-      JSON.stringify(records),
-    );
-  } catch (error) {
-    // BUG-S26.2.8 — TEMPORARY DIAGNOSTIC.
-    console.error(
-      "[BUG-S26.2.8] STORAGE SAVE",
-      {
-        companyId,
-        key: storageKeyForCompany(
-          companyId,
-        ),
-        threw: true,
-        errorName:
-          error instanceof Error
-            ? error.name
-            : typeof error,
-      },
-    );
-    // Ignored on purpose — see function comment above.
   }
 }
