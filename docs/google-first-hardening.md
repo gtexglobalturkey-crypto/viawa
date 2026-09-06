@@ -48,11 +48,10 @@ Application build, document-service typecheck/build and `git diff --check` pass.
 
 ## Staging and rollout boundary
 
-**Live staging smoke: NOT RUN — pending dedicated staging output folder ID.**
-The user confirmed that the current template/master folder is not an approved output folder and instructed that no live Drive smoke run until a dedicated folder is provided. No Google files were created, changed or deleted. No remote migration, push or deployment was performed.
+**Live staging backend/Drive smoke: PASS — 2026-09-06.** The user supplied the dedicated staging folder; the additive migration was applied only to explicitly addressed VIAWA Staging. Readiness returned 200, generation created one COMPLETED version 5, master snapshots remained identical, and HTTP/Drive/Storage/UI-loader PDF bytes matched. All four historical rows remained unchanged. Fresh-session owner history and non-owner/inactive denial passed.
 
-The sole configuration item holding the requested live Drive smoke is the dedicated staging output folder ID. Once provided, stage this release and its additive migration in the correct environment and validate the requested synthetic end-to-end flow, including unchanged master, intended Drive parents, Turkish characters, `12 m²`, no placeholders, persisted references, exact PDF equality, UI handoff and authorization. Do not send for signature automatically.
+See [exact staging validation results](google-first-staging-validation.md) for artifact links, IDs, hashes, migration evidence and the full acceptance matrix. Actual React handoff rendering passed using the persisted live row, but browser click/navigation remains unverified because no browser connection was available. The smoke used the local built service with live staging backends; no hosted deployment is claimed.
 
-**Production decision: NO-GO — FIX REQUIRED.** This is a rollout gate pending staging configuration/validation and reviewed environment migration/deployment, not a claim that production has been updated. No production configuration or deployment state is inferred from local tests.
+**Production decision: NO-GO — FIX REQUIRED.** Complete actual browser handoff and hosted environment validation before production rollout. No production push, deployment or migration was performed. The dedicated folder was used only by the task-local synthetic staging process.
 
 Dropbox sender/parser/Edge Function source is removed and no UI calls it. Previously deployed remote Dropbox functions, if any, are outside this task and remain unused by this implementation; remote removal is a separate controlled cleanup.
