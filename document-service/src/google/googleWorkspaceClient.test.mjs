@@ -1,8 +1,10 @@
+import { registerHooks } from "node:module";
+registerHooks({resolve(s,c,next){try{return next(s,c)}catch(e){if(s.startsWith(".")&&!s.endsWith(".ts"))return next(s+".ts",c);throw e;}}});
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { assertCopyTarget, createGoogleWorkspaceClient } from "./googleWorkspaceClient.ts";
+const { assertCopyTarget, createGoogleWorkspaceClient } = await import("./googleWorkspaceClient.ts");
 
 test("master mutation is blocked", () => {
   assert.throws(() => assertCopyTarget("master", "master"), /MASTER_TEMPLATE_MUTATION_BLOCKED/);

@@ -1,5 +1,6 @@
 import { GeneratedContractActions } from "./GeneratedContractActions";
 import { extraInformationFormText } from "../engine/extraInformationFormText";
+import { parseContractStandDetails, type ContractStandDetails } from "../engine/contractStandDetails";
 import {
   useEffect,
   useMemo,
@@ -134,6 +135,7 @@ type ContractPreviewModalProps = {
   // losing anything.
   onGenerate: (
     base: PendingRecordBase,
+    standDetails: ContractStandDetails,
   ) => Promise<
     | { success: true }
     | { success: false; message: string }
@@ -543,7 +545,15 @@ export function ContractPreviewModal({
       fileName: preparedDocument.fileName,
     };
 
-    const result = await onGenerate(base);
+    let result: { success: true } | { success: false; message: string };
+    try {
+      result = await onGenerate(base, parseContractStandDetails({
+        standMaterials: materials,
+        extraInformation: parseExtraInformationLines(extraInfoText),
+      }));
+    } catch {
+      result = { success: false, message: "Sözleşme oluşturulamadı. Malzeme bilgilerini kontrol edip yeniden deneyin." };
+    }
 
     if (result.success) {
       setIsGenerating(false);

@@ -73,6 +73,7 @@ import type { ManualFollowUpSelection } from "./components/LiveInteraction";
 import { TimelinePanel } from "./components/TimelinePanel";
 import { WorkspaceEmailPanel } from "./components/WorkspaceEmailPanel";
 import { ContractTemplateModal } from "./contract-tool";
+import type { ContractStandDetails } from "../document-engine/engine/contractStandDetails";
 import { DocumentBasketModal } from "./document-basket";
 import type {
   DocumentBasketItem,
@@ -2308,6 +2309,7 @@ export function CustomerWorkspace({
       GeneratedDocumentRecord,
       "status" | "createdAt"
     >,
+    standDetails: ContractStandDetails,
   ): Promise<
     | { success: true }
     | { success: false; message: string }
@@ -2336,6 +2338,7 @@ export function CustomerWorkspace({
       accessToken: session.access_token,
       companyId: base.companyId,
       opportunityId: base.opportunityId,
+      standDetails,
     });
 
     if (!generated.ok) {

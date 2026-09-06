@@ -1,7 +1,9 @@
+import { registerHooks } from "node:module";
+registerHooks({resolve(s,c,next){try{return next(s,c)}catch(e){if(s.startsWith(".")&&!s.endsWith(".ts"))return next(s+".ts",c);throw e;}}});
 import assert from "node:assert/strict";
 import test from "node:test";
-import { checkGoogleReadiness } from "./googleReadiness.ts";
-import { createReadinessChecker } from "../readiness/readinessChecks.ts";
+const { checkGoogleReadiness } = await import("./googleReadiness.ts");
+const { createReadinessChecker } = await import("../readiness/readinessChecks.ts");
 import { environment } from "../../tests/testHttp.mjs";
 
 const config = { clientId: "client", clientSecret: "secret", refreshToken: "refresh", masterContractTemplateId: "master", generatedDocumentsFolderId: "output" };

@@ -32,6 +32,7 @@ export type ContractPdfResult =
   | ContractPdfFailure;
 
 export type RequestContractPdfInput = {
+  standDetails?: import("../engine/contractStandDetails").ContractStandDetails;
   accessToken: string;
   companyId: string;
   opportunityId: string;
@@ -166,6 +167,7 @@ export async function requestContractPdf(
           apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({
+          ...(input.standDetails ? { standDetails: input.standDetails } : {}),
           companyId: input.companyId,
           opportunityId:
             input.opportunityId,

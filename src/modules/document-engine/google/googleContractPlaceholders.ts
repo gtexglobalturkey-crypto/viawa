@@ -1,4 +1,5 @@
 import type { TemplateMergeResult } from "../merge/models";
+import { MATERIAL_KEYS, QUANTITY_MATERIAL_KEYS } from "../merge/participationContractMapping";
 
 export const GOOGLE_CONTRACT_PLACEHOLDERS = [
   "CNO", "CDT", "FNM", "FDT", "FCI", "FCO", "FVE", "FHL", "SNO", "SAR", "STY",
@@ -61,6 +62,14 @@ export function buildGoogleContractPlaceholderMap(merge: TemplateMergeResult): G
     result[`A${i}`] = value(`PaymentPlan.Payment${i}.Amount`);
     result[`P${i}`] = result[`A${i}`] === FALLBACK ? FALLBACK : currency;
     result[`R${i}`] = value(`PaymentPlan.Payment${i}.Payee`);
+  }
+  for (const key of MATERIAL_KEYS) {
+    result[`StandMaterials.${key}.Selected`] = merge.values[`StandMaterials.${key}.Selected`] === true ? "☑" : "☐";
+  }
+  for (const key of QUANTITY_MATERIAL_KEYS) {
+    const quantity = merge.values[`StandMaterials.${key}.Quantity`];
+    result[`StandMaterials.${key}.Quantity`] = merge.values[`StandMaterials.${key}.Selected`] === true
+      && typeof quantity === "number" && Number.isSafeInteger(quantity) && quantity > 0 ? String(quantity) : "___";
   }
   return result;
 }

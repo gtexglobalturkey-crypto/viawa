@@ -1,4 +1,5 @@
 import { readBoundedBytes } from "../edge/runtime.ts";
+import { googleStandMaterialReplacements } from "../../../src/modules/document-engine/google/googleStandMaterialReplacements.ts";
 
 import { findDisallowedUnresolvedPlaceholders, type GoogleContractPlaceholderMap } from "../../../src/modules/document-engine/google/googleContractPlaceholders.ts";
 
@@ -73,9 +74,16 @@ export function createGoogleWorkspaceClient(input: {
 
   async function replaceAll(targetId: string, values: GoogleContractPlaceholderMap) {
     assertCopyTarget(input.masterTemplateId, targetId);
+    let materialRequests: ReturnType<typeof googleStandMaterialReplacements> = [];
+    if (Object.keys(values).some(key => key.startsWith("StandMaterials."))) {
+      const copy = await request(`https://docs.googleapis.com/v1/documents/${encodeURIComponent(targetId)}?includeTabsContent=true`, { headers: auth });
+      if (!copy.ok) return providerError(copy, "Google Docs material fields read");
+      materialRequests = googleStandMaterialReplacements(collectText(JSON.parse(new TextDecoder().decode(await readBoundedBytes(copy, 5 * 1024 * 1024)))), values);
+    }
     const requests = Object.entries(values).map(([key, replaceText]) => ({
       replaceAllText: { containsText: { text: `{{${key}}}`, matchCase: true }, replaceText },
     }));
+    requests.push(...materialRequests);
     const response = await request(`https://docs.googleapis.com/v1/documents/${encodeURIComponent(targetId)}:batchUpdate`, {
       method: "POST", headers: { ...auth, "Content-Type": "application/json" }, body: JSON.stringify({ requests }),
     });

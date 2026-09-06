@@ -9,6 +9,7 @@ import { runPersistedGoogleGeneration } from "../google/portableGoogleContractGe
 import { archiveGenerationPdf } from "../storage/immutableGenerationPdf.ts";
 import { checkGoogleReadiness } from "../google/googleReadiness.ts";
 import { boundedFetch, readBoundedBytes } from "./runtime.ts";
+import { parseContractStandDetails, type ContractStandDetails } from "../../../src/modules/document-engine/engine/contractStandDetails.ts";
 
 type Environment = Record<string, string | undefined>;
 const EXPOSE = "Content-Disposition, X-VIAWA-Master-Template-Id, X-VIAWA-Google-Doc-Id, X-VIAWA-Google-Doc-Url, X-VIAWA-Google-Pdf-Id, X-VIAWA-Google-Pdf-Url, X-VIAWA-Generation-Status, X-VIAWA-Generated-Document-Id, X-VIAWA-Duration-Ms";
@@ -45,9 +46,12 @@ export function createContractEdgeHandler(env: Environment, baseFetch: typeof fe
       let body: Record<string, unknown>;
       try { body = JSON.parse(new TextDecoder().decode(await readBoundedBytes(new Response(request.body, { headers: request.headers }), 16_384))); }
       catch { return fail(400, "INVALID_REQUEST"); }
-      if (!body || typeof body !== "object" || Object.keys(body).sort().join(",") !== "companyId,opportunityId"
+      if (!body || typeof body !== "object" || !["companyId,opportunityId", "companyId,opportunityId,standDetails"].includes(Object.keys(body).sort().join(","))
         || ![body.companyId, body.opportunityId].every(x => typeof x === "string" && /^[0-9a-f-]{36}$/i.test(x))) return fail(400, "INVALID_REQUEST");
       const companyId = body.companyId as string, opportunityId = body.opportunityId as string;
+      let standDetails: ContractStandDetails | undefined;
+      try { if ("standDetails" in body) standDetails = parseContractStandDetails(body.standDetails); }
+      catch { return fail(400, "INVALID_REQUEST"); }
       const user = { id: auth.data.user.id, email: auth.data.user.email };
       const authorized = await createSupabaseContractAuthorizer({ supabaseUrl: url, supabaseAnonKey: key, fetchImpl: fetcher })({ user, accessToken: token, companyId, opportunityId });
       if (!authorized.allowed) return fail(authorized.status, authorized.code);
@@ -71,8 +75,14 @@ export function createContractEdgeHandler(env: Environment, baseFetch: typeof fe
         await createGeneratedDocumentRepository(cleanupClient).markFailed(row);
       } };
       let generated: Awaited<ReturnType<typeof runPersistedGoogleGeneration>> | undefined;
+      const dataSource = createPersistentEndpointDataSourceFactory({ supabaseUrl: url, supabaseAnonKey: key, fetchImpl: fetcher })({ user, accessToken: token });
       const result = await generateParticipationContract({ companyId, opportunityId }, {
-        dataSource: createPersistentEndpointDataSourceFactory({ supabaseUrl: url, supabaseAnonKey: key, fetchImpl: fetcher })({ user, accessToken: token }),
+        dataSource: { ...dataSource, async loadOpportunity(id) {
+          const opportunity = await dataSource.loadOpportunity(id);
+          return opportunity && standDetails && id === opportunityId
+            ? { ...opportunity, stand_materials: standDetails.standMaterials, extra_information: standDetails.extraInformation }
+            : opportunity;
+        } },
         docxGenerator: { async generate(input) {
           const values = buildGoogleContractPlaceholderMap(input.mergeResult);
           if (validateGoogleContractPlaceholderMap(values).length) throw new Error("REQUIRED_GOOGLE_FIELDS_MISSING");

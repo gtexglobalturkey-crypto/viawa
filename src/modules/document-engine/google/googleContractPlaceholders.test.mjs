@@ -1,7 +1,9 @@
+import { registerHooks } from "node:module";
+registerHooks({resolve(s,c,next){try{return next(s,c)}catch(e){if(s.startsWith(".")&&!s.endsWith(".ts"))return next(s+".ts",c);throw e;}}});
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildGoogleContractPlaceholderMap, findDisallowedUnresolvedPlaceholders, formatGoogleContractStandArea, validateGoogleContractPlaceholderMap } from "./googleContractPlaceholders.ts";
+const { buildGoogleContractPlaceholderMap, findDisallowedUnresolvedPlaceholders, formatGoogleContractStandArea, validateGoogleContractPlaceholderMap } = await import("./googleContractPlaceholders.ts");
 
 function merge(values) { return { documentType: "participation-contract", templateFileName: "x", missingRequiredTags: [], values }; }
 
