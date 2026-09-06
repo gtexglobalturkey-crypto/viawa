@@ -4,6 +4,7 @@ import type { PricingServiceFeeType } from "../call-workspace/pricing/models/Exh
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useToast } from "../../components/feedback/toastContext";
+import { useAuth } from "../../features/auth/AuthContext";
 import { Button } from "../../components/ui/Button";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Panel } from "../../components/ui/Panel";
@@ -333,6 +334,7 @@ function NumberField({
 
 type PricingCalculatorFormProps = {
   form: PricingFormState;
+  canSave: boolean;
   isSaving: boolean;
   onFieldChange: (
     field: keyof PricingFormState,
@@ -344,6 +346,7 @@ type PricingCalculatorFormProps = {
 
 function PricingCalculatorForm({
   form,
+  canSave,
   isSaving,
   onFieldChange,
   onSave,
@@ -351,6 +354,7 @@ function PricingCalculatorForm({
 }: PricingCalculatorFormProps) {
   return (
     <div className="repository-pricing-form">
+      {!canSave && <p role="status">Fuar fiyatlarını yalnız aktif yöneticiler kaydedebilir.</p>}
       <div className="repository-pricing-form-scroll">
       <p
         className="eyebrow"
@@ -700,7 +704,7 @@ function PricingCalculatorForm({
         <Button
           type="button"
           variant="primary"
-          disabled={isSaving}
+          disabled={isSaving || !canSave}
           onClick={onSave}
         >
           {isSaving
@@ -719,6 +723,8 @@ export function ExhibitionRepositoryPage() {
 
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { profile } = useAuth();
+  const canSave = profile?.is_active === true && profile.role === "admin";
 
   const [activeTab, setActiveTab] =
     useState<RepositoryTabId>(
@@ -854,7 +860,7 @@ export function ExhibitionRepositoryPage() {
   }
 
   async function handleSave(): Promise<void> {
-    if (!id || !form || isSaving) {
+    if (!id || !form || isSaving || !canSave) {
       return;
     }
 
@@ -1050,6 +1056,7 @@ export function ExhibitionRepositoryPage() {
         form ? (
           <PricingCalculatorForm
             form={form}
+            canSave={canSave}
             isSaving={isSaving}
             onFieldChange={
               handleFieldChange
