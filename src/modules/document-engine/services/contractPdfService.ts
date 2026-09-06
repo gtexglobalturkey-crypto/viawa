@@ -1,6 +1,6 @@
 // Authenticated Google-first contract generation. Provider credentials stay server-side.
 
-const GENERATE_PDF_PATH = "/api/contracts/generate-pdf";
+const GENERATE_PDF_PATH = "/functions/v1/contract-generate";
 
 export type ContractPdfValidationError = {
   code: string;
@@ -39,7 +39,7 @@ export type RequestContractPdfInput = {
 
 function resolveDocumentServiceBaseUrl(): string | null {
   const value = import.meta.env
-    .VITE_DOCUMENT_SERVICE_URL;
+    .VITE_SUPABASE_URL;
 
   if (typeof value !== "string") {
     return null;
@@ -147,7 +147,7 @@ export async function requestContractPdf(
       ok: false,
       code: "DOCUMENT_SERVICE_NOT_CONFIGURED",
       message:
-        "Document Service adresi yapılandırılmamış (VITE_DOCUMENT_SERVICE_URL).",
+        "Document Service adresi yapılandırılmamış (VITE_SUPABASE_URL).",
       validationErrors: [],
     };
   }
@@ -163,6 +163,7 @@ export async function requestContractPdf(
           "Content-Type":
             "application/json",
           Authorization: `Bearer ${input.accessToken}`,
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({
           companyId: input.companyId,

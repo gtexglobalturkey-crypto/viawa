@@ -1,4 +1,4 @@
-import { refreshGoogleWorkspaceAccessToken } from "./googleWorkspaceClient.ts";
+import { refreshGoogleWorkspaceAccessToken } from "./portableGoogleWorkspaceClient.ts";
 import type { DocumentServiceEnvironment } from "../config/environment.ts";
 
 export type GoogleReadiness = {

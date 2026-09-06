@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "document-service:typecheck": "tsc -p document-service/tsconfig.json --noEmit",
     "document-service:build": "vite build --config document-service/vite.config.ts",
-    "document-service:start": "node document-service/dist/server.js"
+    "document-service:start": "node document-service/dist/server.js",
+    "contract-edge:build": "node scripts/build-contract-edge.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",

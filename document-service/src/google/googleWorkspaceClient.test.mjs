@@ -41,7 +41,7 @@ test("Drive export and upload preserve opaque PDF bytes", async () => {
     fetchImpl: async (url, init = {}) => {
       if (url.includes("/export?")) return new Response(expected, { status: 200 });
       if (url.includes("uploadType=multipart")) {
-        uploadedBody = Buffer.from(init.body);
+        uploadedBody = Buffer.from(init.body instanceof Blob ? await init.body.arrayBuffer() : init.body);
         return Response.json({ id: "pdf-1" });
       }
       throw new Error(`unexpected request: ${url}`);

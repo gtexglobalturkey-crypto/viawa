@@ -12,13 +12,14 @@ import { createGeneratedDocumentRepository } from "../../src/modules/document-en
 export function createPersistentEndpointDataSourceFactory(input: {
   supabaseUrl: string;
   supabaseAnonKey: string;
+  fetchImpl?: typeof fetch;
 }) {
   return ({ accessToken }: {
     user: AuthenticatedContractUser;
     accessToken: string;
   }): ContractGenerationDataSource => {
     const client = createClient(input.supabaseUrl, input.supabaseAnonKey, {
-      global: { headers: { Authorization: `Bearer ${accessToken}` } },
+      global: { fetch: input.fetchImpl, headers: { Authorization: `Bearer ${accessToken}` } },
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
@@ -59,10 +60,11 @@ export function createPersistentEndpointDataSourceFactory(input: {
 export function createPersistentGeneratedDocumentRepositoryFactory(input: {
   supabaseUrl: string;
   supabaseAnonKey: string;
+  fetchImpl?: typeof fetch;
 }) {
   return ({ accessToken }: { accessToken: string }) => createGeneratedDocumentRepository(
     createClient(input.supabaseUrl, input.supabaseAnonKey, {
-      global: { headers: { Authorization: `Bearer ${accessToken}` } },
+      global: { fetch: input.fetchImpl, headers: { Authorization: `Bearer ${accessToken}` } },
       auth: { autoRefreshToken: false, persistSession: false },
     }),
   );
