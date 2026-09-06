@@ -1,4 +1,5 @@
 import { GeneratedContractActions } from "./GeneratedContractActions";
+import { extraInformationFormText } from "../engine/extraInformationFormText";
 import {
   useEffect,
   useMemo,
@@ -214,9 +215,7 @@ export function ContractPreviewModal({
       ),
     );
     setExtraInfoText(
-      (extraInformation ?? [])
-        .filter((line) => line && line.trim())
-        .join("\n"),
+      extraInformationFormText(extraInformation),
     );
     setStandDetailsError(null);
     // Deliberately only re-seeds on open, not on every standMaterials/
