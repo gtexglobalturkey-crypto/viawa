@@ -1,0 +1,122 @@
+.fairy-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 1000px;
+  min-height: 480px;
+  height: calc(100dvh - var(--viawa-topbar-height, 64px));
+  margin: 0 auto;
+}
+
+.fairy-page .fairy-heading {
+  flex-shrink: 0;
+  margin-bottom: 0;
+}
+
+.fairy-page .fairy-heading p {
+  margin-top: 5px;
+  font-size: 12px;
+}
+
+.fairy-conversation {
+  flex: 1 1 auto;
+  min-height: 120px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 12px;
+  scrollbar-width: thin;
+}
+
+.fairy-intro,
+.fairy-pending {
+  margin: 0;
+  color: var(--viawa-muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.fairy-intro {
+  max-width: 700px;
+  padding-bottom: 8px;
+}
+
+.fairy-message {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--viawa-border);
+}
+
+.fairy-message-label {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--viawa-muted);
+}
+
+.fairy-message-assistant .fairy-message-label {
+  color: var(--viawa-primary);
+}
+
+.fairy-message-content {
+  margin: 0;
+  color: var(--viawa-text);
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.fairy-pending {
+  padding-top: 16px;
+}
+
+.fairy-composer {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--viawa-border);
+}
+
+.fairy-composer label {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.fairy-composer textarea {
+  width: 100%;
+  min-height: 88px;
+  max-height: 180px;
+  padding: 11px 12px;
+  resize: vertical;
+  border: 1px solid var(--viawa-border-strong);
+  border-radius: 10px;
+  background: var(--viawa-panel);
+  color: var(--viawa-text);
+  line-height: 1.5;
+}
+
+.fairy-composer textarea:focus-visible {
+  outline: 2px solid var(--viawa-primary);
+  outline-offset: 2px;
+}
+
+.fairy-composer textarea:disabled {
+  color: var(--viawa-muted);
+  background: var(--viawa-soft);
+}
+
+.fairy-composer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fairy-error {
+  margin: 0;
+  color: var(--viawa-danger);
+  font-size: 12px;
+  line-height: 1.5;
+}

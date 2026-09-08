@@ -126,6 +126,11 @@ const OrganizerReportPage = lazy(async () => {
   return { default: module.OrganizerReportPage };
 });
 
+const FairyPage = lazy(async () => {
+  const module = await import("../../modules/fairy/FairyPage");
+  return { default: module.FairyPage };
+});
+
 // Sprint 25.1 / Adım 4 — CommunicationPage is no longer rendered for any
 // user. This is the one remaining reason /communication still exists as
 // a route: a stale bookmark/link must still land the user in the right
@@ -231,6 +236,11 @@ function AppRoutes() {
         <Route
           path="/today"
           element={<TodayPage />}
+        />
+
+        <Route
+          path="/fairy"
+          element={<FairyPage />}
         />
 
         <Route

@@ -2,6 +2,7 @@ import {
   Building2,
   Home,
   Mail,
+  MessageSquare,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
@@ -21,6 +22,11 @@ const items = [
     label: "Firmalar",
     to: "/companies",
     icon: Building2,
+  },
+  {
+    label: "Fairy",
+    to: "/fairy",
+    icon: MessageSquare,
   },
   {
     label: "Mail Merkezi",
