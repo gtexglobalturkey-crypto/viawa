@@ -1,6 +1,15 @@
 # VIAWA Document Service
 
-Production Node.js 22 runtime exposes four routes:
+**Not the canonical contract-generation path.** The canonical runtime is the
+Supabase Edge Function `contract-generate` (`supabase/functions/contract-generate`,
+built from `document-service/src/edge/handler.ts` — see
+`docs/google-first-edge-migration.md`). The frontend (`contractPdfService.ts`)
+calls that Edge Function exclusively; nothing in the app calls the routes
+below. This local Node/LibreOffice service is retained only for local
+development, rollback reference, and its own test suite — it must not be
+deployed as, or mistaken for, the production contract path.
+
+This Node.js 22 runtime exposes four routes:
 
 - `GET /health` — process liveness; no filesystem or database access.
 - `GET /ready` — DOCX readiness; checks the master template, Supabase, and canonical settings.
