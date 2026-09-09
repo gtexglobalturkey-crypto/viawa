@@ -5,6 +5,7 @@ import { Button } from "../../components/ui/Button";
 import { useAuth } from "../../features/auth/AuthContext";
 import { askFairy, FairyServiceError } from "../../services/supabase/fairyService";
 import { FAIRY_HISTORY_MAX_MESSAGES, FAIRY_MESSAGE_MAX_LENGTH, type FairyMessage } from "./fairyConversation";
+import { FairyMessageContent } from "./FairyMessageContent";
 import "./fairy.css";
 
 function FairyConversation({ userId }: { userId: string }) {
@@ -70,7 +71,9 @@ function FairyConversation({ userId }: { userId: string }) {
         {messages.map((message, index) => (
           <article className={`fairy-message fairy-message-${message.role}`} key={`${index}-${message.role}`}>
             <p className="fairy-message-label">{message.role === "user" ? "Siz" : "Fairy"}</p>
-            <p className="fairy-message-content">{message.content}</p>
+            {message.role === "assistant"
+              ? <FairyMessageContent content={message.content} />
+              : <p className="fairy-message-content">{message.content}</p>}
           </article>
         ))}
         {pendingMessage !== null && (

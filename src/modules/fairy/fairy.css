@@ -66,6 +66,55 @@
   overflow-wrap: anywhere;
 }
 
+.fairy-markdown {
+  white-space: normal;
+}
+
+.fairy-markdown :is(p, ul, ol, blockquote, pre, hr, h1, h2, h3, h4, h5, h6) {
+  margin: 0 0 10px;
+}
+
+.fairy-markdown > :last-child,
+.fairy-markdown li > p {
+  margin-bottom: 0;
+}
+
+.fairy-markdown p {
+  white-space: pre-wrap;
+}
+
+.fairy-markdown :is(ul, ol) {
+  padding-left: 24px;
+}
+
+.fairy-markdown li + li {
+  margin-top: 4px;
+}
+
+.fairy-markdown :is(h1, h2, h3, h4, h5, h6) {
+  font-size: 1em;
+  line-height: inherit;
+}
+
+.fairy-markdown blockquote {
+  padding-left: 12px;
+  border-left: 2px solid var(--viawa-border-strong);
+  color: var(--viawa-muted);
+}
+
+.fairy-markdown pre {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--viawa-soft);
+  white-space: pre;
+}
+
+.fairy-markdown code {
+  font-size: 0.9em;
+}
+
 .fairy-pending {
   padding-top: 16px;
 }
