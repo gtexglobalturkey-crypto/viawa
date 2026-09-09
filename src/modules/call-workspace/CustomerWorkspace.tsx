@@ -20,8 +20,8 @@ import {
   updateOpportunity,
 } from "../../services/supabase/opportunityService";
 import {
+  approveOpportunityPrice,
   getApprovedPriceSnapshot,
-  saveApprovedPriceSnapshot,
 } from "../../services/supabase/documentProviderService";
 import {
   canCloseOpportunity,
@@ -2007,9 +2007,10 @@ export function CustomerWorkspace({
   const PRICE_APPROVED_STAGE: OpportunityStage =
     "quotation-ready";
 
-  // The persistent approved_price_snapshots row (written via
-  // saveApprovedPriceSnapshot below) is the only thing document
-  // generation actually reads — both the browser preview
+  // The persistent approved_price_snapshots row (written atomically
+  // alongside the opportunity's price fields via approveOpportunityPrice
+  // below) is the only thing document generation actually reads — both
+  // the browser preview
   // (viawaContractDataSource.ts) and the document-service
   // (persistentContractDataSource.ts) resolve the approved price through
   // loadPersistentApprovedPriceSnapshot(), never through localStorage.
@@ -2047,52 +2048,20 @@ export function CustomerWorkspace({
       priceResult: result,
     };
 
+    // Sprint 26 — the opportunity's price_* columns and this snapshot are
+    // now applied together by approveOpportunityPrice as a single atomic
+    // database transaction (see approve_opportunity_price RPC), so there
+    // is no window where one is written without the other. Every column
+    // it writes (including clearing a stale payment_plan — Kritik Akış
+    // Düzeltmesi 1) is derived server-side from the snapshot itself; the
+    // opportunity's stand materials/extra information are opportunity-
+    // level facts, not tied to a price snapshot, and are deliberately
+    // left untouched here.
     const persistResult = await commitApprovedPrice(
-      { updateOpportunity, saveApprovedPriceSnapshot },
+      { approveOpportunityPrice },
       {
         companyId: company.id,
-        opportunityId: opportunity.id,
         snapshot: persistentSnapshot,
-        opportunityPricePatch: {
-          price_stand_type:
-            result.appliedInput
-              .standType,
-          price_stand_area_sqm:
-            result.appliedInput
-              .standAreaSqm,
-          price_location_surcharge_type:
-            result.appliedInput
-              .standLocationType,
-          price_currency:
-            result.currency,
-          price_base_amount:
-            result.sqmAmount,
-          price_location_surcharge_amount:
-            result.locationSurcharge,
-          price_registration_fee:
-            result.registrationFee,
-          price_service_fee:
-            result.serviceFee,
-          price_subtotal:
-            result.subtotal,
-          price_vat_rate:
-            result.appliedInput
-              .vatRate ?? null,
-          price_vat_amount:
-            result.vatAmount,
-          price_grand_total:
-            result.grandTotal,
-          price_calculated_at: approvedAt,
-          // Kritik Akış Düzeltmesi 1 — a payment plan is entered against
-          // a specific approved price/teklif. The moment a *new* price
-          // snapshot is approved for this opportunity (this exact write),
-          // any payment_plan left over from the previous teklif no longer
-          // corresponds to the new figures, so it must not silently carry
-          // forward into the next contract. Stand materials/extra
-          // information are opportunity-level facts (not tied to a price
-          // snapshot) and are deliberately left untouched here.
-          payment_plan: null,
-        },
         onPersisted: (snapshot) => {
           setApprovedPrices((current) => ({
             ...current,

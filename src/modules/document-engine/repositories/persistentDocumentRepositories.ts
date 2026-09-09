@@ -82,6 +82,57 @@ export async function createPersistentApprovedPriceSnapshot(
   if (error) throw error;
 }
 
+/**
+ * Atomically updates the opportunity's price_* columns and inserts the
+ * immutable approved_price_snapshots row that justifies them, via the
+ * approve_opportunity_price RPC (see migration
+ * 20260909090000_create_approve_opportunity_price_rpc.sql). Both writes
+ * happen inside one Postgres function call — an implicit transaction — so
+ * a failure of either half (including the snapshot's own RLS check)
+ * leaves the opportunity's price fields untouched and no snapshot row
+ * behind. Every value written is derived from the snapshot itself
+ * (priceInput/priceResult), so there is nothing here that could drift
+ * out of sync with the snapshot it accompanies.
+ */
+export async function approvePersistentOpportunityPrice(
+  client: SupabaseClient,
+  input: {
+    companyId: string;
+    snapshot: ApprovedPriceSnapshot;
+  },
+): Promise<string> {
+  const { snapshot } = input;
+  const { data, error } = await client.rpc("approve_opportunity_price", {
+    p_opportunity_id: snapshot.opportunityId,
+    p_company_id: input.companyId,
+    p_exhibition_id: snapshot.exhibitionId,
+    p_currency: snapshot.priceResult.currency,
+    p_price_stand_type: snapshot.priceInput.standType,
+    p_price_stand_area_sqm: snapshot.priceInput.standAreaSqm,
+    p_price_location_surcharge_type: snapshot.priceInput.standLocationType,
+    p_price_base_amount: snapshot.priceResult.sqmAmount,
+    p_price_location_surcharge_amount: snapshot.priceResult.locationSurcharge,
+    p_price_registration_fee: snapshot.priceResult.registrationFee,
+    p_price_service_fee: snapshot.priceResult.serviceFee,
+    p_price_subtotal: snapshot.priceResult.subtotal,
+    p_price_vat_rate: snapshot.priceInput.vatRate ?? null,
+    p_price_vat_amount: snapshot.priceResult.vatAmount,
+    p_price_grand_total: snapshot.priceResult.grandTotal,
+    p_price_calculated_at: snapshot.approvedAt,
+    p_snapshot_approved_at: snapshot.approvedAt,
+    p_snapshot_pricing_source: snapshot.pricingSource,
+    p_snapshot_pricing_source_version: snapshot.pricingSourceVersion ?? null,
+    p_snapshot_pricing_config_updated_at:
+      snapshot.pricingConfigUpdatedAt ?? null,
+    p_snapshot_matched_repository_folder:
+      snapshot.matchedRepositoryFolder ?? null,
+    p_snapshot_price_input: snapshot.priceInput,
+    p_snapshot_price_result: snapshot.priceResult,
+  });
+  if (error) throw error;
+  return data as string;
+}
+
 export async function loadPersistentDocumentSettings(
   client: SupabaseClient,
 ): Promise<DocumentMergeSettings | null> {
