@@ -2296,8 +2296,8 @@ export function CustomerWorkspace({
   }
 
   // BUG-S26-001.3 — the ONE way a contract PDF is created: calls the
-  // already production-verified Document Service (server-side DOCX
-  // generation, LibreOffice PDF conversion, PDF validation, Storage
+  // already production-verified Supabase Edge Function contract-generate
+  // (server-side Google Docs/Drive generation, PDF export, Storage
   // upload — see contractPdfService.ts). No print step, no manual file
   // re-selection. ContractPreviewModal's "Sözleşme PDF'i Oluştur" button
   // calls this directly and awaits the result — the modal only closes

@@ -3,8 +3,6 @@ registerHooks({resolve(s,c,next){try{return next(s,c)}catch(e){if(s.startsWith("
 import assert from "node:assert/strict";
 import test from "node:test";
 const { checkGoogleReadiness } = await import("./googleReadiness.ts");
-const { createReadinessChecker } = await import("../readiness/readinessChecks.ts");
-import { environment } from "../../tests/testHttp.mjs";
 
 const config = { clientId: "client", clientSecret: "secret", refreshToken: "refresh", masterContractTemplateId: "master", generatedDocumentsFolderId: "output" };
 function mock({ fail, master = {}, folder = {} } = {}) {
@@ -53,17 +51,4 @@ for (const [name, overrides, check] of [
   const result = await checkGoogleReadiness(config, mock(overrides).request);
   assert.equal(result[check], "unavailable");
   assert.doesNotMatch(JSON.stringify(result), /private|secret|refresh/);
-});
-
-test("Google readiness does not require LibreOffice/local DOCX, production cannot use fallback", async () => {
-  const dependencies = { checkTemplate: async () => { throw new Error("missing DOCX"); }, loadSettings: async () => ({ issuer: {}, bank: {} }), checkGoogle: (value) => checkGoogleReadiness(value, mock().request), checkGeneratedDocuments: async () => {} };
-  const ready = await createReadinessChecker({ ...environment, nodeEnv: "production", googleWorkspace: config }, dependencies)();
-  assert.equal(ready.status, "ready");
-  assert.equal(ready.checks.template, "not_required");
-  const missing = await createReadinessChecker({ ...environment, nodeEnv: "production" }, dependencies)();
-  assert.equal(missing.status, "not_ready");
-  const missingSchema = await createReadinessChecker({ ...environment, googleWorkspace: config }, { ...dependencies, checkGeneratedDocuments: async () => { throw new Error("private schema detail"); } })();
-  assert.equal(missingSchema.status, "not_ready");
-  assert.equal(missingSchema.checks.generatedDocuments, "unavailable");
-  assert.doesNotMatch(JSON.stringify(missingSchema), /private/);
 });

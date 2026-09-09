@@ -1,6 +1,3 @@
-import type { GenerateParticipationContractResult } from "../../src/modules/document-engine/orchestration/models";
-import type { GoogleContractArtifacts } from "../../document-service/src/google/googleWorkspaceClient.ts";
-
 export type AuthenticatedContractUser = {
   id: string;
   email?: string;
@@ -20,42 +17,3 @@ export type ContractEndpointAuthorizationResult =
         | "COMPANY_OPPORTUNITY_MISMATCH";
       message: string;
     };
-
-export type ContractDocxEndpointDependencies = {
-  authenticate: (
-    accessToken: string,
-  ) => Promise<AuthenticatedContractUser | null>;
-  authorize: (input: {
-    user: AuthenticatedContractUser;
-    accessToken: string;
-    companyId: string;
-    opportunityId: string;
-  }) => Promise<ContractEndpointAuthorizationResult>;
-  generate: (input: {
-    user: AuthenticatedContractUser;
-    accessToken: string;
-    companyId: string;
-    opportunityId: string;
-  }) => Promise<{
-    result: GenerateParticipationContractResult;
-    docxBuffer?: Buffer;
-    cleanup?: () => Promise<void>;
-    artifacts?: GoogleContractArtifacts;
-  }>;
-  logError?: (message: string, error: unknown) => void;
-  logCheckpoint?: (stage: string, context?: Record<string, unknown>) => void;
-  isDevelopment?: boolean;
-};
-
-export type ContractDocxHttpRequest = {
-  method?: string;
-  headers: Readonly<Record<string, string | string[] | undefined>>;
-  body: AsyncIterable<Uint8Array>;
-  maxBodyBytes?: number;
-};
-
-export type ContractDocxHttpResponse = {
-  status: number;
-  headers: Readonly<Record<string, string>>;
-  body: Buffer;
-};

@@ -126,8 +126,8 @@ type ContractPreviewModalProps = {
   ) => Promise<void>;
   onClose: () => void;
   // BUG-S26-001.3 — the ONLY way a contract PDF gets created now: the
-  // Document Service call (DOCX generation, LibreOffice PDF conversion,
-  // validation, Storage upload) happens entirely server-side. Resolves
+  // contract-generate Edge Function call (Google Docs/Drive generation,
+  // PDF export, validation, Storage upload) happens entirely server-side. Resolves
   // `{ success: true }` once the caller has actually persisted the
   // resulting GeneratedDocumentRecord — the modal closes only then.
   // Resolves `{ success: false, message }` on any failure, so the modal
@@ -474,7 +474,7 @@ export function ContractPreviewModal({
   ]);
 
   // Sprint 25.10 / Adım 2 — the actual server-generated PDF (real master
-  // DOCX -> Document Engine -> Merge Engine -> LibreOffice, captured as
+  // Google Doc copy -> Merge Engine -> Google Docs PDF export, captured as
   // pdfDataUrl at generation time — see GeneratedDocumentRecord) for the
   // highest version already on record for this contract number. This is
   // the exact same pdfDataUrl the Workspace Email Panel's "PDF'i aç" /

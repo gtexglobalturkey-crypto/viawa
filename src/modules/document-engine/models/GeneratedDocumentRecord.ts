@@ -38,12 +38,12 @@ export type GeneratedDocumentRecord = {
   // document generation. No signing provider is required by V1.
   signatureCompletedAt?: string;
 
-  // BUG-S26-001.3 — set once the Document Service has generated and
-  // stored this PDF in the private contract-documents Storage bucket
-  // (server-side upload; the browser never uploads this file itself —
-  // see contractPdfService.ts/contractPdfStorageIdentity.ts). The
-  // generated PDF archive. Independent of signedPdfDataUrl below, which
-  // is the separately-uploaded post-signature copy.
+  // BUG-S26-001.3 — set once the contract-generate Edge Function has
+  // generated and stored this PDF in the private contract-documents
+  // Storage bucket (server-side upload; the browser never uploads this
+  // file itself — see contractPdfService.ts/immutableGenerationPdf.ts).
+  // The generated PDF archive. Independent of signedPdfDataUrl below,
+  // which is the separately-uploaded post-signature copy.
   storageBucket?: "contract-documents";
   storagePath?: string;
   storageUploadedAt?: string;

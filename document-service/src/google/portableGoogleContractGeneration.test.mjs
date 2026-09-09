@@ -13,7 +13,7 @@ registerHooks({
   },
 });
 
-const { runPersistedGoogleGeneration } = await import("./requestScopedGoogleContractGeneration.ts");
+const { runPersistedGoogleGeneration } = await import("./portableGoogleContractGeneration.ts");
 
 const CONTRACT_ID = "11111111-1111-4111-8111-111111111111";
 const values = { CNO: "EXP-2027-000001", COMPANY_LEGAL_NAME: "Test ÇĞİÖŞÜ çğıöşü AŞ", FNM: "Test Fair" };
@@ -74,8 +74,8 @@ test("missing canonical UUID stops before PENDING or Google calls", async () => 
   assert.deepEqual(state.calls, []);
 });
 
-test("server persistence path does not read, write, or migrate browser localStorage", async () => {
-  const generationSource = await readFile(new URL("./requestScopedGoogleContractGeneration.ts", import.meta.url), "utf8");
+test("persisted generation path does not read, write, or migrate browser localStorage", async () => {
+  const generationSource = await readFile(new URL("./portableGoogleContractGeneration.ts", import.meta.url), "utf8");
   const repositorySource = await readFile(new URL("../../../src/modules/document-engine/repositories/generatedDocumentRepository.ts", import.meta.url), "utf8");
   assert.doesNotMatch(generationSource, /localStorage|generatedDocumentStorage/);
   assert.doesNotMatch(repositorySource, /localStorage|generatedDocumentStorage/);

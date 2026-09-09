@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
 import { archiveGenerationPdf } from "./immutableGenerationPdf.ts";
-import { createStoredPdfEndpointDependencies, handleContractPdfHttpRequest } from "../pdf/contractPdfEndpoint.ts";
 
 const userId = "11111111-1111-4111-8111-111111111111";
 const companyId = "22222222-2222-4222-8222-222222222222";
@@ -25,20 +24,4 @@ test("identical logical filenames use distinct generated-document storage identi
   assert.equal(b.sha256, createHash("sha256").update(currentPdf).digest("hex"));
   await assert.rejects(() => archiveGenerationPdf({ userId, companyId, generatedDocumentId: first, fileName: "same.pdf", pdf: currentPdf, upload }), /could not be archived/);
   assert.deepEqual(objects.get(a.storagePath), oldPdf);
-});
-
-test("Google HTTP response never substitutes legacy cached PDF bytes", async () => {
-  const archive = await archiveGenerationPdf({ userId, companyId, generatedDocumentId: second, fileName: "same.pdf", pdf: currentPdf, upload: async () => ({ error: null }) });
-  const dependencies = createStoredPdfEndpointDependencies({
-    base: { authenticate: async () => ({ id: userId }), authorize: async () => ({ allowed: true }) },
-    reuseExisting: false,
-    storage: { find: async () => { throw new Error("legacy lookup forbidden"); }, store: async () => ({ fileName: "old.pdf", pdfBuffer: oldPdf }) },
-    generatePdf: async () => ({ result: { success: true, outputFileName: "same.pdf", warnings: [], validationErrors: [] }, docxBuffer: currentPdf,
-      artifacts: { masterTemplateId: "master", googleDocFileId: "copy", googleDocUrl: "https://docs.google.com/document/d/copy/edit", googlePdfFileId: "pdf", googlePdfUrl: "https://drive.google.com/file/d/pdf/view", generatedDocumentId: second, pdfStoragePath: archive.storagePath } }),
-  });
-  const response = await handleContractPdfHttpRequest({ method: "POST", headers: { authorization: "Bearer token" }, body: (async function* () { yield Buffer.from(JSON.stringify({ companyId, opportunityId: first })); })() }, dependencies);
-  assert.equal(response.status, 200);
-  assert.deepEqual(response.body, currentPdf);
-  assert.equal(response.headers["X-VIAWA-Generated-Document-Id"], second);
-  assert.equal(createHash("sha256").update(response.body).digest("hex"), archive.sha256);
 });

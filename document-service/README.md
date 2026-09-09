@@ -1,45 +1,32 @@
 # VIAWA Document Service
 
-**Not the canonical contract-generation path.** The canonical runtime is the
-Supabase Edge Function `contract-generate` (`supabase/functions/contract-generate`,
-built from `document-service/src/edge/handler.ts` — see
-`docs/google-first-edge-migration.md`). The frontend (`contractPdfService.ts`)
-calls that Edge Function exclusively; nothing in the app calls the routes
-below. This local Node/LibreOffice service is retained only for local
-development, rollback reference, and its own test suite — it must not be
-deployed as, or mistaken for, the production contract path.
+This directory is **not a runnable service anymore** — the local Node/LibreOffice
+HTTP server, its Dockerfile, and every legacy-only DOCX/PDF/storage path under it
+were removed once the canonical path proved stable (see
+`docs/google-first-edge-migration.md`, `docs/google-first-edge-staging-results.md`).
 
-This Node.js 22 runtime exposes four routes:
+What remains here is the source the canonical Supabase Edge Function
+`contract-generate` is built from:
 
-- `GET /health` — process liveness; no filesystem or database access.
-- `GET /ready` — DOCX readiness; checks the master template, Supabase, and canonical settings.
-- `POST /api/contracts/generate-docx` — the existing authenticated DOCX contract.
-- `POST /api/contracts/generate-pdf` — the same request contract, converted with LibreOffice,
-  validated, persisted in private Storage, and returned as a download.
+- `src/edge/handler.ts` — the Edge request handler (`Deno.serve` entrypoint is
+  `supabase/functions/contract-generate/index.ts`).
+- `src/google/portableGoogleWorkspaceClient.ts`,
+  `src/google/portableGoogleContractGeneration.ts`, `src/google/googleReadiness.ts`
+  — Deno/Edge-safe Google Docs/Drive client, generation pipeline, and read-only
+  preflight checks.
+- `src/storage/immutableGenerationPdf.ts` — immutable PDF archival into Supabase
+  Storage.
+- `src/config/environment.ts` — the small `DocumentServiceEnvironment` type the
+  Edge readiness check still needs.
 
-The process can be alive while not ready for production traffic. `/ready` reports technical readiness and identifies the current
-placeholder setup only as `businessConfiguration: "demo"`; it never returns issuer/bank values.
-
-## Local commands
+Build/typecheck:
 
 ```text
 npm run document-service:typecheck
-npm run document-service:build
-npm run document-service:start
+npm run contract-edge:build
 ```
 
-Configuration is read from process environment and documented in `.env.example`. Secrets must
-come from a secret manager; the service-role key is server-only. The deterministic container
-build uses the repository root as build context:
-
-```text
-docker build -f document-service/Dockerfile .
-```
-
-The image copies the unchanged master template from
-`resources/templates/VIAWA_Sozlesme_Sablonu_v2.3_1_Doldurulabilir.docx`.
-
-PDF objects use the existing private `contract-documents` path contract:
-`{userId}/{companyId}/{documentRecordId}/{fileName}`. The record folder is deterministically tied
-to the latest approved-price snapshot, preventing duplicate generation while allowing a new
-approved snapshot to produce a new document version.
+`contract-edge:build` bundles `supabase/functions/contract-generate` into
+`.tmp/contract-edge` and fails if any Node-only/native dependency (LibreOffice,
+`child_process`, `node:` imports) leaks into the bundle — Docker is not required
+to build or deploy it (`supabase functions deploy --use-api`).
