@@ -5,14 +5,7 @@ export type GeneratedDocumentStatus =
   | "sent-for-signature"
   | "signed";
 
-/**
- * An immutable record of one generated document version. Never edited in
- * place once created — a re-generation for the same contract creates a
- * new record with version+1 (see engine/documentVersioning.ts). Kept in
- * memory for this sprint (see report: no migration yet), mirroring how
- * ApprovedPriceSnapshot itself is kept — the shape is already what a
- * future `generated_documents` table would look like.
- */
+/** One persisted generation version; PDF data URLs are session-only preview caches. */
 export type GeneratedDocumentRecord = {
   id: string;
   documentType: "participation-contract";
@@ -24,6 +17,7 @@ export type GeneratedDocumentRecord = {
   approvedSnapshotId: string;
   fileName: string;
   filePath?: string;
+  pdfSha256?: string;
   status: GeneratedDocumentStatus;
   createdAt: string;
 
@@ -34,11 +28,9 @@ export type GeneratedDocumentRecord = {
   googlePdfUrl?: string;
   generationStatus?: "COMPLETED" | "FAILED";
 
-  // Set once the user manually uploads the signed PDF (status becomes
-  // "signed"). No backend yet, so the file itself — not just a path —
-  // is stored as a data URL, same place GeneratedDocumentRecord already
-  // lives (company-scoped localStorage).
+  // Manual evidence is archived in private Storage and referenced by the database.
   signedPdfDataUrl?: string;
+  signedPdfStoragePath?: string;
   signedPdfFileName?: string;
 
 
@@ -46,12 +38,12 @@ export type GeneratedDocumentRecord = {
   // document generation. No signing provider is required by V1.
   signatureCompletedAt?: string;
 
-  // BUG-S26-001.3 — set once the Document Service has generated and
-  // stored this PDF in the private contract-documents Storage bucket
-  // (server-side upload; the browser never uploads this file itself —
-  // see contractPdfService.ts/contractPdfStorageIdentity.ts). The
-  // generated PDF archive. Independent of signedPdfDataUrl below, which
-  // is the separately-uploaded post-signature copy.
+  // BUG-S26-001.3 — set once the contract-generate Edge Function has
+  // generated and stored this PDF in the private contract-documents
+  // Storage bucket (server-side upload; the browser never uploads this
+  // file itself — see contractPdfService.ts/immutableGenerationPdf.ts).
+  // The generated PDF archive. Independent of signedPdfDataUrl below,
+  // which is the separately-uploaded post-signature copy.
   storageBucket?: "contract-documents";
   storagePath?: string;
   storageUploadedAt?: string;

@@ -69,6 +69,12 @@ export async function getOpportunities(): Promise<
   return data ?? [];
 }
 
+export async function getOpportunitiesByExhibition(exhibitionId: string): Promise<Opportunity[]> {
+  const { data, error } = await supabase.from("opportunities").select("*").eq("exhibition_id", exhibitionId).order("created_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function getOpportunitiesByCompany(
   companyId: string,
 ): Promise<Opportunity[]> {

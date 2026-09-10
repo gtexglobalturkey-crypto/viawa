@@ -10,7 +10,7 @@ test("active application and server code contain no Dropbox signing runtime", as
     "src/modules/call-workspace/CustomerWorkspace.tsx",
     "src/modules/call-workspace/hooks/useWorkspaceEmailDraft.ts",
     "document-service/src/config/environment.ts",
-    "document-service/src/server.ts",
+    "document-service/src/edge/handler.ts",
   ]) {
     assert.doesNotMatch(await source(path), /dropbox|DROPBOX_SIGN|sendForSignature/i);
   }

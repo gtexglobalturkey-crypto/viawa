@@ -1,3 +1,5 @@
+import { supabase } from "../../services/supabase/client";
+import { saveManualSignedDocument } from "../document-engine/services/manualSignedDocumentService";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useLocation,
@@ -20,8 +22,8 @@ import {
   updateOpportunity,
 } from "../../services/supabase/opportunityService";
 import {
+  approveOpportunityPrice,
   getApprovedPriceSnapshot,
-  saveApprovedPriceSnapshot,
 } from "../../services/supabase/documentProviderService";
 import {
   canCloseOpportunity,
@@ -71,6 +73,7 @@ import type { ManualFollowUpSelection } from "./components/LiveInteraction";
 import { TimelinePanel } from "./components/TimelinePanel";
 import { WorkspaceEmailPanel } from "./components/WorkspaceEmailPanel";
 import { ContractTemplateModal } from "./contract-tool";
+import type { ContractStandDetails } from "../document-engine/engine/contractStandDetails";
 import { DocumentBasketModal } from "./document-basket";
 import type {
   DocumentBasketItem,
@@ -132,19 +135,13 @@ import type {
 } from "../document-engine";
 import { ParticipationConfirmedModal } from "../document-engine/components/ParticipationConfirmedModal";
 import { selectLatestUnsignedDocument } from "../document-engine/engine/selectLatestUnsignedDocument";
-import {
-  loadGeneratedDocuments,
-  saveGeneratedDocuments,
-} from "../document-engine";
+import { useGeneratedDocumentHistory } from "../document-engine/services/useGeneratedDocumentHistory";
 import {
   describeContractPdfFailure,
   readBlobAsDataUrl,
   requestContractPdf,
 } from "../document-engine/services/contractPdfService";
-import {
-  buildContractPdfStoragePath,
-  computeContractPdfDocumentRecordId,
-} from "../document-engine/engine/contractPdfStorageIdentity";
+
 
 // BUG-S26.2.8 — TEMPORARY DIAGNOSTIC helper: a safe, secret/PDF-content-free
 // summary of one GeneratedDocumentRecord for console logging. Never
@@ -468,24 +465,10 @@ export function CustomerWorkspace({
     setIsContractPreviewOpen,
   ] = useState(false);
 
-  // Immutable, versioned record of every PDF the user actually confirmed
-  // saving (see the print-confirmation flow below) — backed by the same
-  // kind of TEMPORARY localStorage repository as approvedPrices (see
-  // document-engine/services/generatedDocumentStorage.ts), so contract
-  // numbers and version history survive a page reload.
-  const [
-    generatedDocuments,
-    setGeneratedDocuments,
-  ] = useState<
-    GeneratedDocumentRecord[]
-  >(() => loadGeneratedDocuments(company.id));
-
-  useEffect(() => {
-    saveGeneratedDocuments(
-      company.id,
-      generatedDocuments,
-    );
-  }, [company.id, generatedDocuments]);
+  const {
+    records: generatedDocuments, setRecords: setGeneratedDocuments,
+    reload: reloadGeneratedDocuments, loading: documentHistoryLoading, error: documentHistoryError,
+  } = useGeneratedDocumentHistory(company.id, user?.id);
 
   // BUG-S26.2.8 — TEMPORARY DIAGNOSTIC: fires on every commit where
   // generatedDocuments actually changed (including any change caused
@@ -2007,9 +1990,10 @@ export function CustomerWorkspace({
   const PRICE_APPROVED_STAGE: OpportunityStage =
     "quotation-ready";
 
-  // The persistent approved_price_snapshots row (written via
-  // saveApprovedPriceSnapshot below) is the only thing document
-  // generation actually reads — both the browser preview
+  // The persistent approved_price_snapshots row (written atomically
+  // alongside the opportunity's price fields via approveOpportunityPrice
+  // below) is the only thing document generation actually reads — both
+  // the browser preview
   // (viawaContractDataSource.ts) and the document-service
   // (persistentContractDataSource.ts) resolve the approved price through
   // loadPersistentApprovedPriceSnapshot(), never through localStorage.
@@ -2047,52 +2031,20 @@ export function CustomerWorkspace({
       priceResult: result,
     };
 
+    // Sprint 26 — the opportunity's price_* columns and this snapshot are
+    // now applied together by approveOpportunityPrice as a single atomic
+    // database transaction (see approve_opportunity_price RPC), so there
+    // is no window where one is written without the other. Every column
+    // it writes (including clearing a stale payment_plan — Kritik Akış
+    // Düzeltmesi 1) is derived server-side from the snapshot itself; the
+    // opportunity's stand materials/extra information are opportunity-
+    // level facts, not tied to a price snapshot, and are deliberately
+    // left untouched here.
     const persistResult = await commitApprovedPrice(
-      { updateOpportunity, saveApprovedPriceSnapshot },
+      { approveOpportunityPrice },
       {
         companyId: company.id,
-        opportunityId: opportunity.id,
         snapshot: persistentSnapshot,
-        opportunityPricePatch: {
-          price_stand_type:
-            result.appliedInput
-              .standType,
-          price_stand_area_sqm:
-            result.appliedInput
-              .standAreaSqm,
-          price_location_surcharge_type:
-            result.appliedInput
-              .standLocationType,
-          price_currency:
-            result.currency,
-          price_base_amount:
-            result.sqmAmount,
-          price_location_surcharge_amount:
-            result.locationSurcharge,
-          price_registration_fee:
-            result.registrationFee,
-          price_service_fee:
-            result.serviceFee,
-          price_subtotal:
-            result.subtotal,
-          price_vat_rate:
-            result.appliedInput
-              .vatRate ?? null,
-          price_vat_amount:
-            result.vatAmount,
-          price_grand_total:
-            result.grandTotal,
-          price_calculated_at: approvedAt,
-          // Kritik Akış Düzeltmesi 1 — a payment plan is entered against
-          // a specific approved price/teklif. The moment a *new* price
-          // snapshot is approved for this opportunity (this exact write),
-          // any payment_plan left over from the previous teklif no longer
-          // corresponds to the new figures, so it must not silently carry
-          // forward into the next contract. Stand materials/extra
-          // information are opportunity-level facts (not tied to a price
-          // snapshot) and are deliberately left untouched here.
-          payment_plan: null,
-        },
         onPersisted: (snapshot) => {
           setApprovedPrices((current) => ({
             ...current,
@@ -2344,8 +2296,8 @@ export function CustomerWorkspace({
   }
 
   // BUG-S26-001.3 — the ONE way a contract PDF is created: calls the
-  // already production-verified Document Service (server-side DOCX
-  // generation, LibreOffice PDF conversion, PDF validation, Storage
+  // already production-verified Supabase Edge Function contract-generate
+  // (server-side Google Docs/Drive generation, PDF export, Storage
   // upload — see contractPdfService.ts). No print step, no manual file
   // re-selection. ContractPreviewModal's "Sözleşme PDF'i Oluştur" button
   // calls this directly and awaits the result — the modal only closes
@@ -2357,32 +2309,13 @@ export function CustomerWorkspace({
       GeneratedDocumentRecord,
       "status" | "createdAt"
     >,
+    standDetails: ContractStandDetails,
   ): Promise<
     | { success: true }
     | { success: false; message: string }
   > {
-    // Defensive dedup: don't create a second record or a second
-    // timeline entry for the same contract version on a retry.
-    const isDuplicate = generatedDocuments.some(
-      (existing) =>
-        existing.companyId ===
-          base.companyId &&
-        (existing.opportunityId ?? null) ===
-          (base.opportunityId ?? null) &&
-        existing.exhibitionId ===
-          base.exhibitionId &&
-        existing.contractNumber ===
-          base.contractNumber &&
-        existing.version === base.version,
-    );
-
-    if (isDuplicate) {
-      showToast(
-        "Bu sözleşme sürümü zaten kaydedilmiş.",
-        "info",
-      );
-
-      return { success: true };
+    if (documentHistoryLoading || documentHistoryError) {
+      return { success: false, message: "Önce sözleşme geçmişini yeniden yükleyin." };
     }
 
     if (!user || !session?.access_token) {
@@ -2405,6 +2338,7 @@ export function CustomerWorkspace({
       accessToken: session.access_token,
       companyId: base.companyId,
       opportunityId: base.opportunityId,
+      standDetails,
     });
 
     if (!generated.ok) {
@@ -2439,86 +2373,16 @@ export function CustomerWorkspace({
       },
     );
 
-    let storagePath: string;
-    let pdfDataUrl: string;
-
+    let record: GeneratedDocumentRecord;
     try {
-      const documentRecordId =
-        await computeContractPdfDocumentRecordId(
-          base.companyId,
-          base.opportunityId,
-          base.approvedSnapshotId,
-        );
-
-      storagePath =
-        buildContractPdfStoragePath(
-          user.id,
-          base.companyId,
-          documentRecordId,
-          generated.fileName,
-        );
-
-      pdfDataUrl = await readBlobAsDataUrl(
-        generated.pdfBlob,
-      );
-    } catch (identityError) {
-      console.error(
-        "Contract PDF storage identity error:",
-        identityError,
-      );
-
-      return {
-        success: false,
-        message:
-          "Sözleşme PDF'i oluşturuldu ancak kaydedilemedi. Lütfen tekrar deneyin.",
-      };
+      const persisted = await reloadGeneratedDocuments();
+      const current = persisted.find((item) => item.id === generated.generatedDocumentId);
+      if (!current) throw new Error("Current generated document is not readable.");
+      record = { ...current, pdfDataUrl: await readBlobAsDataUrl(generated.pdfBlob) };
+      setGeneratedDocuments((rows) => rows.map((item) => item.id === record.id ? record : item));
+    } catch {
+      return { success: false, message: "Sözleşme üretildi ancak geçmişi yüklenemedi. Yeni sürüm üretmeden geçmişi yeniden yükleyin." };
     }
-
-    const record: GeneratedDocumentRecord = {
-      ...base,
-      fileName: generated.fileName,
-      status: "completed",
-      createdAt: new Date().toISOString(),
-      storageBucket: "contract-documents",
-      storagePath,
-      storageUploadedAt:
-        new Date().toISOString(),
-      storageSize:
-        generated.pdfBlob.size,
-      storageMimeType: "application/pdf",
-      pdfDataUrl,
-      masterTemplateId: generated.masterTemplateId,
-      googleDocFileId: generated.googleDocFileId,
-      googleDocUrl: generated.googleDocUrl,
-      googlePdfFileId: generated.googlePdfFileId,
-      googlePdfUrl: generated.googlePdfUrl,
-      generationStatus: generated.generationStatus,
-    };
-
-    // BUG-S26.2.8 — TEMPORARY DIAGNOSTIC.
-    console.error(
-      "[BUG-S26.2.8] GENERATED RECORD CREATED",
-      summarizeGeneratedDocumentForDiagnostics(
-        record,
-      ),
-    );
-
-    setGeneratedDocuments((current) => {
-      // BUG-S26.2.8 — TEMPORARY DIAGNOSTIC.
-      console.error(
-        "[BUG-S26.2.8] SET GENERATED DOCUMENTS",
-        {
-          previousCount: current.length,
-          nextCount: current.length + 1,
-          addingRecordId: record.id,
-          previousRecordIds: current.map(
-            (existing) => existing.id,
-          ),
-        },
-      );
-
-      return [...current, record];
-    });
 
     try {
       await createTimelineEvent({
@@ -2890,7 +2754,7 @@ export function CustomerWorkspace({
       );
     };
 
-    reader.onload = () => {
+    reader.onload = async () => {
       const signedPdfDataUrl =
         typeof reader.result === "string"
           ? reader.result
@@ -2905,6 +2769,13 @@ export function CustomerWorkspace({
         return;
       }
 
+      if (!user) return;
+      let evidence;
+      try { evidence = await saveManualSignedDocument(supabase, user.id, record, file); }
+      catch (error) {
+        showToast(error instanceof Error ? error.message : "İmzalı PDF kaydedilemedi.", "error");
+        return;
+      }
       setGeneratedDocuments((current) =>
         current.map((existing) =>
           existing.id === record.id
@@ -2912,10 +2783,10 @@ export function CustomerWorkspace({
                 ...existing,
                 status: "signed",
                 signedPdfDataUrl,
+                signedPdfStoragePath: evidence.path,
                 signedPdfFileName:
                   file.name,
-                signatureCompletedAt:
-                  new Date().toISOString(),
+                signatureCompletedAt: evidence.completedAt,
               }
             : existing,
         ),
@@ -3278,8 +3149,16 @@ export function CustomerWorkspace({
         }
       />
 
+      {(documentHistoryLoading || documentHistoryError) && <div role="status">
+        {documentHistoryLoading ? "Sözleşme geçmişi yükleniyor…" : <>
+          {documentHistoryError} <button type="button" onClick={() => void reloadGeneratedDocuments().catch(() => {})}>Yeniden Yükle</button>
+        </>}
+      </div>}
       <ContractPreviewModal
         open={isContractPreviewOpen}
+        historyLoading={documentHistoryLoading}
+        historyError={documentHistoryError}
+        onReloadHistory={reloadGeneratedDocuments}
         contractDraft={contractDraft}
         approvedSnapshot={
           contractDraftSnapshot

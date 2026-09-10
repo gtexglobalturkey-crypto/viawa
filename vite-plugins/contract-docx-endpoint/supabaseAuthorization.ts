@@ -15,6 +15,7 @@ type AuthorizationInput = {
 export function createSupabaseContractAuthorizer(input: {
   supabaseUrl: string;
   supabaseAnonKey: string;
+  fetchImpl?: typeof fetch;
 }) {
   return async ({
     user,
@@ -23,7 +24,7 @@ export function createSupabaseContractAuthorizer(input: {
     opportunityId,
   }: AuthorizationInput): Promise<ContractEndpointAuthorizationResult> => {
     const client = createClient(input.supabaseUrl, input.supabaseAnonKey, {
-      global: {
+      global: { fetch: input.fetchImpl,
         headers: { Authorization: `Bearer ${accessToken}` },
       },
       auth: { autoRefreshToken: false, persistSession: false },

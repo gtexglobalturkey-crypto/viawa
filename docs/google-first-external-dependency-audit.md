@@ -7,7 +7,7 @@ Scope: repository runtime dependencies reviewed for the Google-first contract V1
 | Application database, authentication, RLS, operational state and private PDF archive | Supabase | KEEP | Core VIAWA infrastructure. Do not replace. |
 | Contract master, copy, merge, PDF export and document archive | Google Docs and Drive | KEEP | Authoritative Google-first document path. Master remains immutable. |
 | Contract signing | Legacy Dropbox Sign sender and Edge Function | REMOVE | Runtime sender, parser, tests and function removed. V1 users initiate Google eSignature manually; no speculative API integration. |
-| Legacy browser document history | `viawa.generatedDocuments.v1.*` localStorage | DEFER | Read compatibility is retained. Do not migrate or delete silently; Supabase becomes authoritative after the migration is approved. |
+| Legacy browser document history | `viawa.generatedDocuments.v1.*` localStorage | DEFER | Read compatibility is retained in the unchanged legacy CompanyDetail reader. Active workspace history reads Supabase; no browser records are written, imported or deleted. |
 | Generated PDF private application copy | Supabase Storage `contract-documents` | KEEP | Shared application archive/audit path, not a signing-provider dependency. Drive remains the Google document archive. |
 | Organizer Report email | Gmail OAuth and Gmail send API | KEEP | Existing working integration; preserved unchanged. |
 | Workspace Contract email action | Client mailto draft | DEFER | No signing-provider call. A broader Gmail operational-email integration should be a separate release. |

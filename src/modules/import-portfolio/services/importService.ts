@@ -1,9 +1,5 @@
 import { splitPersonName } from "../../../core/formatters/textFormatter";
-import {
-  findDuplicateCompanyField,
-  getCompanyConstraintErrorMessage,
-  getDuplicateFieldMessage,
-} from "../../../core/validation/companyDuplicateCheck";
+import { getCompanyConstraintErrorMessage } from "../../../core/validation/companyDuplicateCheck";
 import { getContactConstraintErrorMessage } from "../../../core/validation/contactDuplicateCheck";
 import { createCompany } from "../../../services/supabase/companyService";
 import { createContact } from "../../../services/supabase/contactService";
@@ -122,33 +118,6 @@ async function resolveMasterListValues<
 async function importOneCompany(
   company: ImportedCompany,
 ): Promise<ImportRowResult> {
-  // Re-checked immediately before writing, not reused from the earlier
-  // preview — existing data (and companies created earlier in this same
-  // import run) may have changed since the file was first read.
-  const duplicateField =
-    await findDuplicateCompanyField({
-      companyName: company.name,
-      phone: company.phone,
-      email: company.email,
-      taxNumber: company.taxNumber,
-      website: company.website,
-      address: company.address,
-    });
-
-  if (duplicateField) {
-    return {
-      rowNumber: company.rowNumber,
-      companyName: company.name,
-      companyCode: null,
-      status: "skipped_duplicate",
-      message: getDuplicateFieldMessage(
-        duplicateField,
-      ),
-      contactsCreated: 0,
-      contactsFailed: 0,
-    };
-  }
-
   // Master-list records don't depend on the company existing yet, so
   // they're resolved up front — this also means the primary sector's
   // canonical (possibly already-existing) name is known before the
@@ -205,15 +174,13 @@ async function importOneCompany(
       error,
     );
 
+    const duplicateMessage = getCompanyConstraintErrorMessage(error);
     return {
       rowNumber: company.rowNumber,
       companyName: company.name,
       companyCode: null,
-      status: "failed",
-      message:
-        getCompanyConstraintErrorMessage(
-          error,
-        ) ?? "Firma oluşturulamadı.",
+      status: duplicateMessage ? "skipped_duplicate" : "failed",
+      message: duplicateMessage ?? "Firma oluşturulamadı.",
       contactsCreated: 0,
       contactsFailed: 0,
     };
@@ -330,9 +297,9 @@ async function importOneCompany(
 
 /**
  * Commits every previewed row to Supabase, one company at a time
- * (deliberately sequential, not Promise.all — this also makes each
- * row's duplicate check see companies created by earlier rows in the
- * same run, without needing a separate in-memory dedupe list). Never
+ * (deliberately sequential, not Promise.all). Normalized UNIQUE indexes
+ * provide retry/in-file duplicate safety without an O(n²) full-company
+ * scan before every insert. Never
  * throws for a single row's failure; every row gets its own result so
  * one bad row cannot abort the batch.
  */
@@ -344,6 +311,10 @@ export async function importCompanies(
   ) => void,
 ): Promise<ImportSummary> {
   const results: ImportRowResult[] = [];
+  // Keep the browser responsive and make progress/retry boundaries explicit.
+  // Rows remain isolated (one failed row cannot abort the batch); no
+  // opportunity API is imported or called anywhere in this service.
+  const chunkSize = 250;
 
   for (
     let index = 0;
@@ -359,6 +330,9 @@ export async function importCompanies(
       index + 1,
       companies.length,
     );
+    if ((index + 1) % chunkSize === 0) {
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    }
   }
 
   return {

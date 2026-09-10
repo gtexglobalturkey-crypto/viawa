@@ -32,12 +32,9 @@ function baseInput(overrides = {}) {
   };
 
   const dependencies = {
-    updateOpportunity: async (...args) => {
-      calls.push(["updateOpportunity", ...args]);
-      return {};
-    },
-    saveApprovedPriceSnapshot: async (...args) => {
-      calls.push(["saveApprovedPriceSnapshot", ...args]);
+    approveOpportunityPrice: async (...args) => {
+      calls.push(["approveOpportunityPrice", ...args]);
+      return "snapshot-1";
     },
     ...overrides.dependencies,
   };
@@ -45,8 +42,6 @@ function baseInput(overrides = {}) {
   const onPersistedCalls = [];
   const input = {
     companyId: "company-1",
-    opportunityId: "opp-1",
-    opportunityPricePatch: { price_grand_total: 1000 },
     snapshot,
     onPersisted: (persisted) => {
       calls.push(["onPersisted", persisted]);
@@ -58,7 +53,7 @@ function baseInput(overrides = {}) {
   return { calls, dependencies, input, onPersistedCalls, snapshot };
 }
 
-test("remote persistence success: saves the snapshot once and only then commits local state", async () => {
+test("atomic persistence success: applies the price and only then commits local state", async () => {
   const { calls, dependencies, input, onPersistedCalls, snapshot } =
     baseInput();
 
@@ -69,19 +64,19 @@ test("remote persistence success: saves the snapshot once and only then commits 
   assert.equal(onPersistedCalls[0], snapshot);
 
   const order = calls.map((call) => call[0]);
-  assert.deepEqual(order, [
-    "updateOpportunity",
-    "saveApprovedPriceSnapshot",
-    "onPersisted",
-  ]);
+  assert.deepEqual(order, ["approveOpportunityPrice", "onPersisted"]);
+
+  const [, callInput] = calls[0];
+  assert.equal(callInput.companyId, "company-1");
+  assert.equal(callInput.snapshot, snapshot);
 });
 
-test("remote persistence failure (snapshot insert rejects): local state is never committed", async () => {
-  const failure = new Error("insert rejected");
+test("atomic persistence failure: local state is never committed", async () => {
+  const failure = new Error("approve_opportunity_price rejected");
   const { calls, dependencies, input } = baseInput({
     dependencies: {
-      saveApprovedPriceSnapshot: async () => {
-        calls.push(["saveApprovedPriceSnapshot"]);
+      approveOpportunityPrice: async () => {
+        calls.push(["approveOpportunityPrice"]);
         throw failure;
       },
     },
@@ -93,31 +88,13 @@ test("remote persistence failure (snapshot insert rejects): local state is never
   assert.equal(result.error, failure);
   assert.ok(
     !calls.some((call) => call[0] === "onPersisted"),
-    "onPersisted must not be called when saveApprovedPriceSnapshot fails",
+    "onPersisted must not be called when approveOpportunityPrice fails",
   );
 });
 
-test("remote persistence failure (opportunity update rejects): snapshot is never written and local state is never committed", async () => {
-  const failure = new Error("update rejected");
-  const { calls, dependencies, input } = baseInput({
-    dependencies: {
-      updateOpportunity: async () => {
-        calls.push(["updateOpportunity"]);
-        throw failure;
-      },
-    },
-  });
-
-  const result = await commitApprovedPrice(dependencies, input);
-
-  assert.equal(result.success, false);
-  assert.equal(result.error, failure);
-  assert.ok(
-    !calls.some((call) => call[0] === "saveApprovedPriceSnapshot"),
-    "saveApprovedPriceSnapshot must not run when the opportunity update fails",
-  );
-  assert.ok(
-    !calls.some((call) => call[0] === "onPersisted"),
-    "onPersisted must not be called when the opportunity update fails",
+test("dependency surface exposes a single atomic call, not two independent writes", () => {
+  assert.deepEqual(
+    Object.keys(baseInput().dependencies).sort(),
+    ["approveOpportunityPrice"],
   );
 });
