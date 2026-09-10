@@ -1,7 +1,9 @@
 node_modules/
 dist/
 .tmp/
+*.tsbuildinfo
 /supabase/.temp/
+/supabase/.branches/
 **/viawa-gmail-oauth-capture.bin
 .env
 .env.local
