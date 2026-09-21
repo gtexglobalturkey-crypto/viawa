@@ -59,7 +59,8 @@ export function ExhibitionSalesDocumentsView({ documents, loading, error }: View
 
 type LoadState = ViewProps & { exhibitionId: string };
 
-export function ExhibitionSalesDocuments({ exhibitionId }: { exhibitionId: string }) {
+// Shared by this block and the Flyer/Kroki tiles of the exhibition workspace.
+export function useExhibitionSalesDocuments(exhibitionId: string): ViewProps {
   const [state, setState] = useState<LoadState>({
     exhibitionId,
     documents: [],
@@ -87,9 +88,11 @@ export function ExhibitionSalesDocuments({ exhibitionId }: { exhibitionId: strin
   }, [exhibitionId]);
 
   // Hide the previous exhibition's links during the render before its effect resets.
-  const visible = state.exhibitionId === exhibitionId
+  return state.exhibitionId === exhibitionId
     ? state
     : { documents: [], loading: true, error: null };
+}
 
-  return <ExhibitionSalesDocumentsView {...visible} />;
+export function ExhibitionSalesDocuments({ exhibitionId }: { exhibitionId: string }) {
+  return <ExhibitionSalesDocumentsView {...useExhibitionSalesDocuments(exhibitionId)} />;
 }

@@ -3,6 +3,9 @@ import type { ExhibitionDocument } from "../models/ExhibitionDocument";
 type ExhibitionDocumentCardProps = {
   document: ExhibitionDocument;
   exists: boolean;
+  // Google Drive source (exhibition_sales_documents). When present the tile
+  // is a real link that opens the current Drive file in a new tab.
+  driveUrl?: string | null;
   isSelected: boolean;
   isPreviewed: boolean;
   onPreview: () => void;
@@ -12,11 +15,32 @@ type ExhibitionDocumentCardProps = {
 export function ExhibitionDocumentCard({
   document,
   exists,
+  driveUrl = null,
   isSelected,
   isPreviewed,
   onPreview,
   onToggleSelected,
 }: ExhibitionDocumentCardProps) {
+  if (driveUrl) {
+    return (
+      <a
+        className="exhibition-doc-card"
+        href={driveUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={`${document.title} — Google Drive'da aç`}
+      >
+        <div className="exhibition-doc-card-thumb">
+          <document.icon size={20} />
+        </div>
+
+        <p className="exhibition-doc-card-title">
+          {document.title}
+        </p>
+      </a>
+    );
+  }
+
   return (
     <div
       className={`exhibition-doc-card${

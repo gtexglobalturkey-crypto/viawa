@@ -36,6 +36,21 @@ function buildExhibitionQuery(
   return params.toString();
 }
 
+// /api/document-basket/* is served from the local template folders by the
+// Vite dev/preview server middleware only (vite-plugins/documentBasketPlugin.ts).
+// A static production deployment has no such backend, so its SPA fallback
+// answers 200 with index.html. Parsing that as JSON used to surface as
+// "Unexpected token '<'". Callers can tell "no local document service on this
+// deployment" apart from a real failure via this error.
+export class DocumentServiceUnavailableError extends Error {
+  constructor() {
+    super(
+      "Yerel belge servisi bu ortamda mevcut değil.",
+    );
+    this.name = "DocumentServiceUnavailableError";
+  }
+}
+
 export async function fetchExhibitionDocumentStatus(
   exhibitionName: string,
   exhibitionShortName?: string,
@@ -51,6 +66,13 @@ export async function fetchExhibitionDocumentStatus(
     throw new Error(
       "Fuar belgeleri durumu alınamadı.",
     );
+  }
+
+  const contentType =
+    response.headers.get("content-type") ?? "";
+
+  if (!/^application\/(?:[\w.+-]+\+)?json(?:\s*;|$)/i.test(contentType)) {
+    throw new DocumentServiceUnavailableError();
   }
 
   const data = (await response.json()) as {

@@ -14,3 +14,25 @@ export function getDriveFileViewUrl(fileId: string): string | null {
     ? `https://drive.google.com/file/d/${fileId}/view`
     : null;
 }
+
+export type ExhibitionSalesDocumentLink = {
+  document: ExhibitionSalesDocument;
+  url: string;
+};
+
+// Resolves the current Drive reference for one document type, so existing UI
+// (e.g. the Flyer/Kroki tiles) can consume the generic table without knowing
+// any exhibition or file id. `documents` arrives ordered by sort_order.
+export function findSalesDocumentLink(
+  documents: ExhibitionSalesDocument[],
+  documentType: string,
+): ExhibitionSalesDocumentLink | null {
+  for (const document of documents) {
+    if (document.documentType !== documentType) continue;
+
+    const url = getDriveFileViewUrl(document.driveFileId);
+    if (url) return { document, url };
+  }
+
+  return null;
+}

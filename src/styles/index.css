@@ -3999,6 +3999,15 @@ main.companies-page .page-header p:last-child {
   background: var(--viawa-primary-soft);
 }
 
+a.exhibition-doc-card {
+  text-decoration: none;
+}
+
+a.exhibition-doc-card:focus-visible {
+  outline: 2px solid var(--viawa-primary);
+  outline-offset: 2px;
+}
+
 .exhibition-doc-card-active {
   border-color: var(--viawa-primary);
   background: var(--viawa-primary-soft);

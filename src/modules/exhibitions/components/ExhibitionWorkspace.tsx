@@ -5,9 +5,11 @@ import { Panel } from "../../../components/ui/Panel";
 import { EXHIBITION_DOCUMENTS } from "../models/ExhibitionDocument";
 import type { ExhibitionDocumentId } from "../models/ExhibitionDocument";
 import type { Exhibition } from "../models/Exhibition";
+import { findSalesDocumentLink } from "../models/ExhibitionSalesDocument";
 import type { SelectedExhibitionDocument } from "../models/SelectedExhibitionDocument";
 import {
   buildExhibitionDocumentFileUrl,
+  DocumentServiceUnavailableError,
   fetchExhibitionDocumentStatus,
 } from "../services/exhibitionDocumentApi";
 import type { ExhibitionDocumentStatus } from "../services/exhibitionDocumentApi";
@@ -15,7 +17,7 @@ import { resolveMimeType } from "../utils/resolveMimeType";
 
 import { ExhibitionDocumentCard } from "./ExhibitionDocumentCard";
 import { ExhibitionDocumentPreview } from "./ExhibitionDocumentPreview";
-import { ExhibitionSalesDocuments } from "./ExhibitionSalesDocuments";
+import { useExhibitionSalesDocuments } from "./ExhibitionSalesDocuments";
 
 type ExhibitionWorkspaceProps = {
   exhibition: Exhibition | null;
@@ -95,6 +97,13 @@ export function ExhibitionWorkspace({
       null,
     );
 
+  // Google Drive references (exhibition_sales_documents) for the tiles that
+  // declare a salesDocumentType — resolved per exhibition, never per file id.
+  const salesDocuments =
+    useExhibitionSalesDocuments(
+      exhibition?.id ?? "",
+    );
+
   // Sprint 25.10 — a previous exhibition's checked-off selection and open
   // preview must never survive a fuar switch (even though both fuars may
   // happen to offer the same document *roles*, e.g. both have a
@@ -127,19 +136,50 @@ export function ExhibitionWorkspace({
         }
       })
       .catch((error) => {
-        if (!cancelled) {
-          setLoadError(
-            error instanceof Error
-              ? error.message
-              : "Fuar belgeleri alınamadı.",
-          );
+        if (cancelled) {
+          return;
         }
+
+        // A static production host has no local document service, so there
+        // are simply no local documents. Real failures still surface below.
+        if (
+          error instanceof
+          DocumentServiceUnavailableError
+        ) {
+          setDocumentStatuses([]);
+
+          return;
+        }
+
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : "Fuar belgeleri alınamadı.",
+        );
       });
 
     return () => {
       cancelled = true;
     };
   }, [exhibition]);
+
+  // Drive-backed tiles (Flyer, Kroki) are links to the current Drive file;
+  // they take no part in local preview or attachment selection.
+  function driveLinkFor(
+    id: ExhibitionDocumentId,
+  ): string | null {
+    const salesDocumentType =
+      EXHIBITION_DOCUMENTS.find(
+        (document) => document.id === id,
+      )?.salesDocumentType;
+
+    return salesDocumentType
+      ? (findSalesDocumentLink(
+          salesDocuments.documents,
+          salesDocumentType,
+        )?.url ?? null)
+      : null;
+  }
 
   function documentExists(
     id: ExhibitionDocumentId,
@@ -164,7 +204,10 @@ export function ExhibitionWorkspace({
   function toggleDocumentSelected(
     id: ExhibitionDocumentId,
   ) {
-    if (!documentExists(id)) {
+    if (
+      !documentExists(id) ||
+      driveLinkFor(id)
+    ) {
       return;
     }
 
@@ -184,7 +227,10 @@ export function ExhibitionWorkspace({
   function handlePreview(
     id: ExhibitionDocumentId,
   ) {
-    if (!documentExists(id)) {
+    if (
+      !documentExists(id) ||
+      driveLinkFor(id)
+    ) {
       return;
     }
 
@@ -201,7 +247,8 @@ export function ExhibitionWorkspace({
     return EXHIBITION_DOCUMENTS.filter(
       (document) =>
         selectedRoleIds.has(document.id) &&
-        documentExists(document.id),
+        documentExists(document.id) &&
+        !driveLinkFor(document.id),
     ).map((document) => {
       const fileName =
         documentFileName(document.id) ??
@@ -230,6 +277,7 @@ export function ExhibitionWorkspace({
     exhibition,
     selectedRoleIds,
     documentStatuses,
+    salesDocuments.documents,
   ]);
 
   useEffect(() => {
@@ -283,8 +331,6 @@ export function ExhibitionWorkspace({
         <h2>{titleLabel}</h2>
       </div>
 
-      <ExhibitionSalesDocuments exhibitionId={exhibition.id} />
-
       {loadError && (
         <p
           role="alert"
@@ -294,32 +340,49 @@ export function ExhibitionWorkspace({
         </p>
       )}
 
+      {salesDocuments.error && (
+        <p
+          role="alert"
+          className="exhibition-workspace-error"
+        >
+          {salesDocuments.error}
+        </p>
+      )}
+
       <div className="exhibition-workspace-doc-bar">
         {EXHIBITION_DOCUMENTS.map(
-          (document) => (
-            <ExhibitionDocumentCard
-              key={document.id}
-              document={document}
-              exists={documentExists(
-                document.id,
-              )}
-              isSelected={selectedRoleIds.has(
-                document.id,
-              )}
-              isPreviewed={
-                previewedDocumentId ===
-                document.id
-              }
-              onPreview={() =>
-                handlePreview(document.id)
-              }
-              onToggleSelected={() =>
-                toggleDocumentSelected(
+          (document) => {
+            const driveUrl = driveLinkFor(
+              document.id,
+            );
+
+            return (
+              <ExhibitionDocumentCard
+                key={document.id}
+                document={document}
+                exists={
+                  driveUrl !== null ||
+                  documentExists(document.id)
+                }
+                driveUrl={driveUrl}
+                isSelected={selectedRoleIds.has(
                   document.id,
-                )
-              }
-            />
-          ),
+                )}
+                isPreviewed={
+                  previewedDocumentId ===
+                  document.id
+                }
+                onPreview={() =>
+                  handlePreview(document.id)
+                }
+                onToggleSelected={() =>
+                  toggleDocumentSelected(
+                    document.id,
+                  )
+                }
+              />
+            );
+          },
         )}
       </div>
 
