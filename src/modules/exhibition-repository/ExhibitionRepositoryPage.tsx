@@ -8,6 +8,7 @@ import { useAuth } from "../../features/auth/AuthContext";
 import { Button } from "../../components/ui/Button";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Panel } from "../../components/ui/Panel";
+import { ExhibitionSalesDocuments } from "../exhibitions/components/ExhibitionSalesDocuments";
 import {
   getExhibition,
   type Exhibition,
@@ -949,6 +950,8 @@ export function ExhibitionRepositoryPage() {
         title={exhibition.name}
         subtitle="Fuar yönetim modülü — bu sprintte yalnızca Fiyat Hesaplayıcı aktif, diğer sekmeler yakında."
       />
+
+      <ExhibitionSalesDocuments exhibitionId={exhibition.id} />
 
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "10px" }}>
         <Button

@@ -3899,6 +3899,78 @@ main.companies-page .page-header p:last-child {
   margin: 6px 0;
 }
 
+.exhibition-sales-documents {
+  flex: 0 0 auto;
+  margin: 6px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--viawa-border);
+  border-radius: 8px;
+  background: var(--viawa-soft);
+}
+
+.exhibition-sales-documents h3 {
+  margin: 0 0 8px;
+  color: var(--viawa-label);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.exhibition-sales-documents p {
+  margin: 0;
+  font-size: 12px;
+}
+
+.exhibition-sales-documents-error {
+  color: var(--viawa-danger, #b3261e);
+}
+
+.exhibition-sales-documents-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.exhibition-sales-documents-links li {
+  max-width: 100%;
+}
+
+.exhibition-sales-document-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  max-width: 100%;
+  padding: 7px 12px;
+  border: 1px solid var(--viawa-border);
+  border-radius: 7px;
+  color: var(--viawa-primary);
+  background: white;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.exhibition-sales-document-link:hover {
+  border-color: var(--viawa-primary);
+  background: var(--viawa-primary-soft);
+}
+
+.exhibition-sales-document-link:focus-visible {
+  outline: 2px solid var(--viawa-primary);
+  outline-offset: 2px;
+}
+
+.exhibition-sales-document-link span {
+  overflow-wrap: anywhere;
+}
+
+.exhibition-sales-document-link svg {
+  flex-shrink: 0;
+}
+
 .exhibition-workspace-doc-bar .exhibition-doc-card {
   flex: 1 1 0;
   min-width: 84px;

@@ -15,6 +15,7 @@ import { resolveMimeType } from "../utils/resolveMimeType";
 
 import { ExhibitionDocumentCard } from "./ExhibitionDocumentCard";
 import { ExhibitionDocumentPreview } from "./ExhibitionDocumentPreview";
+import { ExhibitionSalesDocuments } from "./ExhibitionSalesDocuments";
 
 type ExhibitionWorkspaceProps = {
   exhibition: Exhibition | null;
@@ -281,6 +282,8 @@ export function ExhibitionWorkspace({
       <div className="exhibition-workspace-titlebar">
         <h2>{titleLabel}</h2>
       </div>
+
+      <ExhibitionSalesDocuments exhibitionId={exhibition.id} />
 
       {loadError && (
         <p
