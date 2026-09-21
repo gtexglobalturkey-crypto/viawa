@@ -34,18 +34,6 @@ revoke all on public.application_users from anon;
 revoke insert, update, delete on public.application_users from authenticated;
 grant select on public.application_users to authenticated;
 
--- These project-specific UUID/email pairs are the two real accounts
--- already in use in the target VIAWA Supabase project. They are kept
--- explicit here rather than inferred or replaced. On conflict, only the
--- email mirror and updated_at are refreshed: an existing account is never
--- reactivated and its role is never changed by replaying this migration.
--- Any further employee is added by an admin via the Dashboard (see README).
--- admin@atlascrm.com is the protected test account (RC-AUTH task's own
--- "MEVCUT TEST HESABI" requirement — must keep signing in unchanged).
-insert into public.application_users (id, email, full_name, role, is_active)
-values
-  ('d0f87b86-71f2-4818-a2ed-aa04c93a5f87', 'admin@atlascrm.com', null, 'admin', true),
-  ('0df4da7b-8f96-44e3-a9d1-f5c3d131907f', 'gtexglobalturkey@gmail.com', null, 'admin', true)
-on conflict (id) do update set
-  email = excluded.email,
-  updated_at = now();
+-- Environment-specific application users are fixtures, not schema. Create the
+-- Auth identity first, then add the matching application_users row through the
+-- controlled environment bootstrap. No production identity is seeded here.

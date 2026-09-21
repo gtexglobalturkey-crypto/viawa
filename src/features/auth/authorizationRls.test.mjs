@@ -64,7 +64,8 @@ test("authorization policies are replay-safe and application users remain self-r
   );
   assert.equal(coreTablesMigration.match(/drop policy if exists %I/gi)?.length, 4);
 
-  const conflictClause = applicationUsersMigration.split(/on conflict \(id\)/i)[1];
-  assert.ok(conflictClause);
-  assert.doesNotMatch(conflictClause, /\b(role|is_active)\s*=/i);
+  assert.doesNotMatch(
+    applicationUsersMigration,
+    /insert into public\.application_users/i,
+  );
 });

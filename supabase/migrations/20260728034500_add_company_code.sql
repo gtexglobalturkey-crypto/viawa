@@ -51,9 +51,13 @@ select setval(
       from public.companies
       where company_code ~ '^VWA-[0-9]+$'
     ),
-    0
+    1
   ),
-  true
+  exists (
+    select 1
+    from public.companies
+    where company_code ~ '^VWA-[0-9]+$'
+  )
 );
 
 -- New rows get their code from the sequence automatically — the app never
