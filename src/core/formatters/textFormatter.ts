@@ -258,19 +258,25 @@ export function formatNote(
  * import template) only collects a single "Ad Soyad" field. Splitting on
  * the first space is a standard, non-destructive convention — not
  * fabricated data.
+ *
+ * `contacts.first_name`/`last_name` are `not null` in the database, so a
+ * blank or single-word name (no space) must never produce `null` here —
+ * that previously caused every such save to fail with a raw 23502
+ * constraint error. Empty string is the correct "nothing to put here"
+ * value for a not-null text column.
  */
 export function splitPersonName(
   fullName: string,
 ): {
-  firstName: string | null;
-  lastName: string | null;
+  firstName: string;
+  lastName: string;
 } {
   const trimmed = fullName.trim();
 
   if (!trimmed) {
     return {
-      firstName: null,
-      lastName: null,
+      firstName: "",
+      lastName: "",
     };
   }
 
@@ -280,7 +286,7 @@ export function splitPersonName(
   const lastName = rest.join(" ");
 
   return {
-    firstName: firstName || null,
-    lastName: lastName || null,
+    firstName,
+    lastName,
   };
 }
