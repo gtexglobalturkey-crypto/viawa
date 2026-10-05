@@ -114,6 +114,18 @@ test("keeps server instructions separate from untrusted context and history; off
   assert.doesNotMatch(payload.instructions, /StoneGal|PTAK|TechnoPrint/);
 });
 
+test("instructions define open offer m2 as the current figure and forbid inventing any other", () => {
+  assert.match(FAIRY_INSTRUCTIONS, /openOffers\[\]\.openOfferSqm is the only authoritative figure/);
+  assert.match(FAIRY_INSTRUCTIONS, /CURRENTLY open offer area/);
+  assert.match(FAIRY_INSTRUCTIONS, /not cumulative or historical offered area/);
+  assert.match(FAIRY_INSTRUCTIONS, /no authoritative cumulative or historical offered-m2 metric/);
+  assert.match(FAIRY_INSTRUCTIONS, /status incomplete or too_large[\s\S]*exact figure is not available/);
+  assert.match(FAIRY_INSTRUCTIONS, /Never infer m2 from estimated_value or any other field/);
+  assert.match(FAIRY_INSTRUCTIONS, /never add up company rows into a total yourself/);
+  // The capability is still context-only: strictly read-only and without tools.
+  assert.match(FAIRY_INSTRUCTIONS, /V0 is strictly read-only\. You have no tools/);
+});
+
 test("oversized context fails instead of silently losing operational evidence", () => {
   assert.throws(() => buildFairyResponseRequest({ message: "Hi", conversation: [] }, { text: "x".repeat(30000) }), code("CONTEXT_UNAVAILABLE"));
 });

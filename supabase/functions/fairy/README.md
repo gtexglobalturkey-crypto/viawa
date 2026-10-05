@@ -18,6 +18,17 @@ tables, recipients, tokens, credentials, storage contents or arbitrary metadata
 enter the model context. Existing `ai_memory`, AIContextCard and workflow code
 remain in place and are not invoked by Fairy.
 
+For exhibitions matched by name (at most three), the server also calculates the
+current open offer area in m² with the Organizer Report rule from
+`_shared/organizerReport.ts`: one representative opportunity per company, only
+the "Teklif" group, latest approved snapshot, `price_input.standAreaSqm`. It
+reads that exhibition's opportunities (hard cap 500, otherwise `too_large`) and
+only the stand area of the needed `approved_price_snapshots` rows, all under the
+caller's row level security. The model receives the aggregate, never snapshot
+rows. If any required approved area is missing or not visible to the caller, the
+status is `incomplete` and no total or breakdown is given. This is not a
+cumulative or historical offered-area figure; VIAWA has none.
+
 The server uses direct HTTPS to the [Responses API](https://developers.openai.com/api/docs/guides/text)
 with [`gpt-5.6-terra`](https://developers.openai.com/api/docs/models/gpt-5.6-terra),
 medium reasoning, at most 6,000 output/reasoning tokens, `store: false`, a 45-second

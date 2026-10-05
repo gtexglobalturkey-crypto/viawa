@@ -36,7 +36,9 @@ function mockClient(tables = {}, fail = () => null) {
         then(resolve, reject) {
           return Promise.resolve().then(() => {
             calls.push(call);
-            assert.ok(call.limit > 0 && call.limit <= 97, "every database query is bounded");
+            // 501 = the open-offer opportunity cap (500) plus its truncation sentinel.
+            assert.ok(call.limit > 0 && call.limit <= 501, "every database query is bounded");
+            if (call.limit > 97) assert.ok(["opportunities", "approved_price_snapshots"].includes(table), "only open-offer reads use the larger cap");
             assert.deepEqual(call.orders.at(-1), ["id", { ascending: true }], "every bounded query has a unique final sort key");
             const failure = fail(call);
             if (failure === "throw") throw new Error("secret internal diagnostics");
@@ -356,4 +358,219 @@ test("query errors, transport failures and invalid null results fail closed with
 test("a failed named lookup is not silently presented as an absent company", async () => {
   const client = mockClient(namedFixture(), (call) => call.filters.some(([kind]) => kind === "ilike") ? "lookup failed" : null);
   await assert.rejects(fairy.loadFairyContext(client, request("Kuzey")), fairy.FairyContextUnavailableError);
+});
+
+// ---- Open offer area (m2): the Organizer Report rule, calculated server-side ----
+const FAIR = "fair-zeta";
+const ZETA_QUESTION = "Zeta Expo için açık teklif alanı kaç m²?";
+const fairOpportunity = (id, company, stage, extra = {}) => row(id, { company_id: company, exhibition_id: FAIR, stage, ...extra });
+// Shape PostgREST returns for select=...,price_input->standAreaSqm.
+const approved = (id, opportunity, area, approvedAt = "2026-09-01T10:00:00Z", createdAt = approvedAt) =>
+  ({ id, opportunity_id: opportunity, exhibition_id: FAIR, approved_at: approvedAt, created_at: createdAt, standAreaSqm: area });
+function fairTables(opportunities, snapshots = [], extra = {}) {
+  const companyIds = [...new Set(opportunities.map((item) => item.company_id))];
+  return {
+    exhibitions: [row(FAIR, { name: "Zeta Expo 2027", start_date: "2027-05-01", end_date: "2027-05-03" })],
+    companies: companyIds.map((id) => row(id, { company_name: `Firma ${id}` })),
+    opportunities, approved_price_snapshots: snapshots, ...extra,
+  };
+}
+async function openOffersFor(tables, message = ZETA_QUESTION, fail) {
+  const client = mockClient(tables, fail);
+  const context = await fairy.loadFairyContext(client, request(message));
+  return { context, client, offers: context.openOffers, offer: context.openOffers[0] };
+}
+
+test("open offer m2 sums the latest approved area of each Teklif representative", async () => {
+  const { offer, offers, client, context } = await openOffersFor(fairTables(
+    [fairOpportunity("o1", "c1", "quotation-ready"), fairOpportunity("o2", "c2", "proposal-ready"), fairOpportunity("o3", "c3", "quotation-ready"), fairOpportunity("o4", "c4", "new")],
+    [approved("s1", "o1", 12), approved("s2", "o2", 18.5), approved("s3", "o3", 9), approved("s4", "o4", 500)],
+  ));
+  assert.equal(offers.length, 1);
+  assert.deepEqual(
+    { id: offer.exhibitionId, name: offer.exhibitionName, status: offer.status, sqm: offer.openOfferSqm, count: offer.teklifCompanyCount, missing: offer.missingAreaCount, truncated: offer.companiesTruncated },
+    { id: FAIR, name: "Zeta Expo 2027", status: "complete", sqm: 39.5, count: 3, missing: 0, truncated: false },
+  );
+  assert.deepEqual(offer.companies, [
+    { companyName: "Firma c2", offeredSqm: 18.5 }, { companyName: "Firma c1", offeredSqm: 12 }, { companyName: "Firma c3", offeredSqm: 9 },
+  ]);
+  assert.match(offer.definition, /CURRENT open offer area/);
+  assert.match(offer.definition, /Not cumulative or historical/);
+  // Only the minimum fields are requested, and no raw snapshot reaches the model.
+  const snapshotReads = client.calls.filter((call) => call.table === "approved_price_snapshots");
+  assert.ok(snapshotReads.length >= 1);
+  for (const call of snapshotReads) {
+    assert.equal(call.columns, "opportunity_id,approved_at,created_at,price_input->standAreaSqm");
+    assert.deepEqual(call.filters.find(([kind, column]) => kind === "eq" && column === "exhibition_id"), ["eq", "exhibition_id", FAIR]);
+    assert.deepEqual([...call.filters.find(([kind]) => kind === "in")[2]].sort(), ["o1", "o2", "o3"], "only Teklif representatives are looked up");
+  }
+  const fairRead = client.calls.find((call) => call.table === "opportunities" && call.limit === 501);
+  assert.equal(fairRead.columns, "id,company_id,exhibition_id,stage,updated_at");
+  const serialized = JSON.stringify(context);
+  for (const hidden of ["approved_at", "price_input", "standAreaSqm"]) assert.equal(serialized.includes(hidden), false);
+  assert.equal(JSON.stringify(context.openOffers).includes("500"), false, "a non-Teklif approved area never enters the aggregate");
+});
+
+test("the latest approved snapshot wins, with created_at as the tie-break", async () => {
+  const { offer } = await openOffersFor(fairTables([fairOpportunity("o1", "c1", "quotation-ready")], [
+    approved("s1", "o1", 10, "2026-09-01T10:00:00Z"),
+    approved("s2", "o1", 20, "2026-09-05T10:00:00Z", "2026-09-05T10:00:01Z"),
+    approved("s3", "o1", 30, "2026-09-05T10:00:00Z", "2026-09-05T10:00:02Z"),
+    approved("s4", "o1", 99, "2026-08-01T10:00:00Z"),
+  ]));
+  assert.equal(offer.status, "complete");
+  assert.equal(offer.openOfferSqm, 30);
+  assert.deepEqual(offer.companies, [{ companyName: "Firma c1", offeredSqm: 30 }]);
+});
+
+test("one representative opportunity per company prevents double counting", async () => {
+  const { offer } = await openOffersFor(fairTables([
+    fairOpportunity("o1", "c1", "quotation-ready", { updated_at: "2026-09-01T12:00:00Z" }),
+    fairOpportunity("o2", "c1", "proposal-ready", { updated_at: "2026-09-08T12:00:00Z" }),
+    // furthest stage group wins: this company is represented by its contract-stage opportunity
+    fairOpportunity("o3", "c2", "quotation-ready", { updated_at: "2026-09-08T12:00:00Z" }),
+    fairOpportunity("o4", "c2", "contract", { updated_at: "2026-09-01T12:00:00Z" }),
+    // an opportunity of the same company at another exhibition is ignored
+    row("o5", { company_id: "c1", exhibition_id: "another-fair", stage: "quotation-ready" }),
+  ], [approved("s1", "o1", 40), approved("s2", "o2", 15), approved("s3", "o3", 60), approved("s4", "o4", 60), { ...approved("s5", "o5", 70), exhibition_id: "another-fair" }]));
+  assert.equal(offer.status, "complete");
+  assert.equal(offer.openOfferSqm, 15);
+  assert.equal(offer.teklifCompanyCount, 1);
+  assert.deepEqual(offer.companies, [{ companyName: "Firma c1", offeredSqm: 15 }]);
+});
+
+test("contract-group and terminal stages contribute no open offer m2; no Teklif means complete 0", async (t) => {
+  for (const stage of ["quotation-sent", "negotiation", "contract", "signed", "won", "lost"]) {
+    await t.test(stage, async () => {
+      const { offer, client } = await openOffersFor(fairTables([fairOpportunity("o1", "c1", stage)], [approved("s1", "o1", 100)]));
+      assert.deepEqual(
+        { status: offer.status, sqm: offer.openOfferSqm, count: offer.teklifCompanyCount, missing: offer.missingAreaCount, companies: offer.companies },
+        { status: "complete", sqm: 0, count: 0, missing: 0, companies: [] },
+      );
+      assert.equal(client.calls.some((call) => call.table === "approved_price_snapshots"), false, "no approved price is read without a Teklif representative");
+    });
+  }
+  const { offer } = await openOffersFor(fairTables([]));
+  assert.equal(offer.status, "complete");
+  assert.equal(offer.openOfferSqm, 0);
+});
+
+test("a required snapshot that is hidden by RLS or missing gives incomplete with no total and no partial areas", async () => {
+  const { offer, context } = await openOffersFor(fairTables(
+    [fairOpportunity("o1", "c1", "quotation-ready"), fairOpportunity("o2", "c2", "proposal-ready")],
+    [approved("s1", "o1", 77.25)], // the approved price of o2 is not returned to this caller
+  ));
+  assert.deepEqual(
+    { status: offer.status, sqm: offer.openOfferSqm, count: offer.teklifCompanyCount, missing: offer.missingAreaCount, companies: offer.companies, truncated: offer.companiesTruncated },
+    { status: "incomplete", sqm: null, count: 2, missing: 1, companies: [], truncated: false },
+  );
+  assert.equal(JSON.stringify(context).includes("77.25"), false, "a visible area must not be exposed as a partial figure");
+});
+
+test("an invalid, zero, negative or non-numeric approved area gives incomplete with no total", async (t) => {
+  for (const area of [0, -5, "12", null, undefined, Number.NaN, {}]) {
+    await t.test(String(area), async () => {
+      const { offer } = await openOffersFor(fairTables(
+        [fairOpportunity("o1", "c1", "quotation-ready"), fairOpportunity("o2", "c2", "quotation-ready")],
+        [approved("s1", "o1", area), approved("s2", "o2", 20)],
+      ));
+      assert.equal(offer.status, "incomplete");
+      assert.equal(offer.openOfferSqm, null);
+      assert.equal(offer.missingAreaCount, 1);
+      assert.deepEqual(offer.companies, []);
+    });
+  }
+});
+
+test("unreadable approved prices leave the figure unavailable while the rest of the context still loads", async () => {
+  const { offer, context } = await openOffersFor(
+    fairTables([fairOpportunity("o1", "c1", "quotation-ready")], [approved("s1", "o1", 12)]),
+    ZETA_QUESTION,
+    (call) => call.table === "approved_price_snapshots" ? "relation is not available" : null,
+  );
+  assert.equal(offer.status, "incomplete");
+  assert.equal(offer.openOfferSqm, null);
+  assert.equal(context.exhibitions.some((item) => item.id === FAIR), true);
+  assert.equal(JSON.stringify(context).includes("relation is not available"), false);
+});
+
+test("more than 500 opportunities for a fair gives too_large with no total and no snapshot read", async () => {
+  const many = Array.from({ length: 501 }, (_, index) => fairOpportunity(`o${String(index).padStart(4, "0")}`, `c${index}`, "quotation-ready"));
+  const { offer, client } = await openOffersFor(fairTables(many, many.map((item, index) => approved(`s${index}`, item.id, 10))));
+  assert.deepEqual(
+    { status: offer.status, sqm: offer.openOfferSqm, count: offer.teklifCompanyCount, missing: offer.missingAreaCount, companies: offer.companies },
+    { status: "too_large", sqm: null, count: null, missing: null, companies: [] },
+  );
+  assert.equal(client.calls.some((call) => call.table === "approved_price_snapshots"), false);
+
+  const exactly500 = many.slice(0, 500);
+  const full = await openOffersFor(fairTables(exactly500, exactly500.map((item, index) => approved(`s${index}`, item.id, 2))));
+  assert.equal(full.offer.status, "complete");
+  assert.equal(full.offer.openOfferSqm, 1000);
+  assert.equal(full.offer.teklifCompanyCount, 500);
+  const chunkReads = full.client.calls.filter((call) => call.table === "approved_price_snapshots");
+  assert.ok(chunkReads.length >= 10, "representative ids are looked up in chunks");
+  assert.ok(chunkReads.every((call) => call.filters.find(([kind]) => kind === "in")[2].length <= 50));
+});
+
+test("without a matched exhibition there is no open offer block and no approved price read", async () => {
+  for (const message of ["Bugün neye odaklanmalıyım?", "Toplam kaç m² teklif verdik?", "Kuzey firması için durum nedir?"]) {
+    const { offers, client } = await openOffersFor(fairTables([fairOpportunity("o1", "c1", "quotation-ready")], [approved("s1", "o1", 12)]), message);
+    assert.deepEqual(offers, []);
+    assert.equal(client.calls.some((call) => call.table === "approved_price_snapshots"), false);
+    assert.equal(client.calls.some((call) => call.limit > 97), false, "no large fair read without a matched exhibition");
+  }
+});
+
+test("at most three matched exhibitions are aggregated", async () => {
+  const exhibitions = ["Zeta A", "Zeta B", "Zeta C", "Omega A", "Omega B", "Omega C"].map((name, index) =>
+    row(`fair-${index}`, { name, start_date: `2027-0${index + 1}-01`, end_date: `2027-0${index + 1}-03` }));
+  const client = mockClient({ exhibitions, companies: [], opportunities: [], approved_price_snapshots: [] });
+  const context = await fairy.loadFairyContext(client, request("Zeta ve Omega için açık teklif alanı kaç m²?"));
+  assert.equal(context.coverage.namedLookup.exhibitionIds.length, 6);
+  assert.equal(context.openOffers.length, 3);
+  assert.equal(client.calls.filter((call) => call.table === "opportunities" && call.limit === 501).length, 3);
+  assert.ok(context.openOffers.every((offer) => offer.status === "complete" && offer.openOfferSqm === 0));
+});
+
+test("the company breakdown is capped at twenty rows while the total stays exact", async () => {
+  const opportunities = Array.from({ length: 25 }, (_, index) => fairOpportunity(`o${index}`, `c${String(index).padStart(2, "0")}`, "proposal-ready"));
+  const { offer } = await openOffersFor(fairTables(opportunities, opportunities.map((item, index) => approved(`s${index}`, item.id, index + 1))));
+  assert.equal(offer.status, "complete");
+  assert.equal(offer.openOfferSqm, 325); // 1 + 2 + ... + 25, including the five rows not listed
+  assert.equal(offer.teklifCompanyCount, 25);
+  assert.equal(offer.companies.length, 20);
+  assert.equal(offer.companiesTruncated, true);
+  assert.deepEqual(offer.companies[0], { companyName: "Firma c24", offeredSqm: 25 });
+  assert.equal(offer.companies.at(-1).offeredSqm, 6);
+});
+
+test("the context budget trims ordinary samples first and never changes an open offer total", () => {
+  const long = (label) => `${label} ${"x".repeat(190)}`;
+  const openOffers = ["a", "b", "c"].map((id, fairIndex) => ({
+    exhibitionId: `fair-${id}`, exhibitionName: long(`Fuar ${id}`), status: "complete", openOfferSqm: 1000 + fairIndex,
+    teklifCompanyCount: 40, missingAreaCount: 0, companiesTruncated: true, definition: "ignored",
+    companies: Array.from({ length: 25 }, (_, index) => ({ companyName: long(`Firma ${index}`), offeredSqm: index + 1 })),
+  }));
+  const bulk = (prefix, extra) => Array.from({ length: 40 }, (_, index) => row(`${prefix}${index}`, extra(index)));
+  const context = fairy.shapeFairyContext({
+    now: NOW, openOffers: [...openOffers, { ...openOffers[0], exhibitionId: "fair-d" }],
+    records: {
+      companies: bulk("c", () => ({ company_name: long("Firma"), country: long("Ülke"), industry: long("Sektör") })),
+      timeline_events: bulk("t", (index) => ({ company_id: `c${index}`, title: long("Olay"), description: "y".repeat(480) })),
+      emails: bulk("m", (index) => ({ company_id: `c${index}`, subject: long("Konu"), body: "z".repeat(500), status: "sent" })),
+    },
+  });
+  assert.ok(JSON.stringify(context).length <= fairy.FAIRY_CONTEXT_MAX_CHARS);
+  assert.equal(context.openOffers.length, 3);
+  assert.deepEqual(context.openOffers.map((offer) => offer.openOfferSqm), [1000, 1001, 1002]);
+  assert.ok(context.openOffers.every((offer) => offer.status === "complete" && offer.teklifCompanyCount === 40 && offer.companiesTruncated));
+  assert.ok(context.openOffers.every((offer) => offer.companies.length <= 20));
+  assert.ok(context.openOffers.every((offer) => offer.definition === fairy.FAIRY_OPEN_OFFER_DEFINITION));
+  assert.ok(context.coverage.tables.timeline_events.truncated || context.coverage.tables.emails.truncated, "ordinary samples absorb the trimming");
+  // An incomplete or too_large entry can never carry a number or a breakdown, whatever it is given.
+  const unsafe = fairy.shapeFairyContext({ now: NOW, records: {}, openOffers: [
+    { ...openOffers[0], status: "incomplete" }, { ...openOffers[1], status: "too_large" },
+  ] });
+  assert.deepEqual(unsafe.openOffers.map((offer) => [offer.openOfferSqm, offer.companies.length]), [[null, 0], [null, 0]]);
 });

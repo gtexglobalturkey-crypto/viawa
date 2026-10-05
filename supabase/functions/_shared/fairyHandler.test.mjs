@@ -79,6 +79,68 @@ test("the full handler and context loader use only authenticated GETs through th
   for (const secret of [TOKEN, API_KEY, SERVICE_KEY]) assert.equal(JSON.stringify(providerCalls).includes(secret), false);
 });
 
+test("open offer m2 reads stay caller-bound GETs through the real Supabase SDK and send only the aggregate", async () => {
+  const requests = [];
+  const now = new Date().toISOString();
+  const tables = {
+    application_users: { id: "verified-user", is_active: true },
+    companies: [{ id: "company-1", company_name: "Örnek Firma", status: "contacted", updated_at: now }],
+    exhibitions: [{ id: "exhibition-1", name: "Örnek Fuar", start_date: now.slice(0, 10), end_date: now.slice(0, 10), updated_at: now }],
+    opportunities: [{ id: "opportunity-1", company_id: "company-1", exhibition_id: "exhibition-1", stage: "quotation-ready", updated_at: now }],
+    reminders: [], timeline_events: [], emails: [],
+    // Shape PostgREST returns for select=...,price_input->standAreaSqm.
+    approved_price_snapshots: [{ opportunity_id: "opportunity-1", approved_at: now, created_at: now, standAreaSqm: 24 }],
+  };
+  const providerCalls = [];
+  const handler = createFairyHandler({
+    env: (name) => ({ SUPABASE_URL: "https://offline.invalid", SUPABASE_ANON_KEY: ANON_KEY, SUPABASE_SERVICE_ROLE_KEY: SERVICE_KEY, OPENAI_API_KEY: API_KEY })[name],
+    createClient,
+    async supabaseFetch(input, init) {
+      const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
+      const sent = new Headers(init.headers);
+      assert.equal(url.origin, "https://offline.invalid");
+      assert.equal(init.method, "GET", "open offer reads must never mutate");
+      assert.equal(init.body ?? null, null);
+      assert.equal(sent.get("authorization"), `Bearer ${TOKEN}`, "reads must run under the caller JWT");
+      assert.equal(sent.get("apikey"), ANON_KEY, "reads must use the public anon key");
+      assert.equal([...sent.values()].some((value) => value.includes(SERVICE_KEY)), false, "service role must never be sent");
+      requests.push(url);
+      if (url.pathname === "/auth/v1/user") return Response.json({ id: "verified-user" });
+      assert.ok(url.pathname.startsWith("/rest/v1/") && !url.pathname.includes("/rpc/"));
+      const table = url.pathname.slice("/rest/v1/".length);
+      assert.ok(table in tables, `unexpected table ${table}`);
+      assert.equal(url.searchParams.get("select").includes("*"), false);
+      return Response.json(tables[table]);
+    },
+    async fetch(url, init) {
+      assert.equal(url, "https://api.openai.com/v1/responses");
+      providerCalls.push(JSON.parse(init.body));
+      return Response.json(completed());
+    },
+  });
+  const response = await handler(request({ body: { message: "Örnek Fuar için açık teklif alanı kaç m²?" } }));
+  assert.equal(response.status, 200, await response.clone().text());
+  const snapshotReads = requests.filter((url) => url.pathname === "/rest/v1/approved_price_snapshots");
+  assert.ok(snapshotReads.length >= 1);
+  for (const url of snapshotReads) {
+    assert.equal(url.searchParams.get("select"), "opportunity_id,approved_at,created_at,price_input->standAreaSqm");
+    assert.equal(url.searchParams.get("exhibition_id"), "eq.exhibition-1");
+    assert.equal(url.searchParams.get("opportunity_id"), "in.(opportunity-1)");
+  }
+  const fairRead = requests.find((url) => url.pathname === "/rest/v1/opportunities" && url.searchParams.get("limit") === "501");
+  assert.equal(fairRead.searchParams.get("select"), "id,company_id,exhibition_id,stage,updated_at");
+  assert.equal(fairRead.searchParams.get("exhibition_id"), "eq.exhibition-1");
+  const snapshot = JSON.parse(providerCalls[0].input[0].content.split("\n").slice(1).join("\n"));
+  assert.equal(snapshot.openOffers.length, 1);
+  assert.deepEqual(
+    { name: snapshot.openOffers[0].exhibitionName, status: snapshot.openOffers[0].status, sqm: snapshot.openOffers[0].openOfferSqm, companies: snapshot.openOffers[0].companies },
+    { name: "Örnek Fuar", status: "complete", sqm: 24, companies: [{ companyName: "Örnek Firma", offeredSqm: 24 }] },
+  );
+  const sentToProvider = JSON.stringify(providerCalls);
+  for (const hidden of ["approved_at", "price_input", "standAreaSqm", TOKEN, API_KEY, SERVICE_KEY]) assert.equal(sentToProvider.includes(hidden), false);
+  for (const forbidden of ["tools", "tool_choice"]) assert.equal(Object.hasOwn(providerCalls[0], forbidden), false);
+});
+
 test("the real Supabase SDK cannot log raw transport failures or malformed auth diagnostics", async (t) => {
   const logs = [];
   for (const method of ["log", "warn", "error"]) {

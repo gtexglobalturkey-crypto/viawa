@@ -58,7 +58,7 @@ export function selectRepresentativeOpportunities(
   return [...representatives.values()];
 }
 
-function snapshotArea(snapshot: ApprovedPriceSnapshotRow): number | null {
+export function snapshotArea(snapshot: ApprovedPriceSnapshotRow): number | null {
   if (!snapshot.price_input || typeof snapshot.price_input !== "object") return null;
   const value = (snapshot.price_input as Record<string, unknown>).standAreaSqm;
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;

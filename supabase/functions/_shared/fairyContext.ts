@@ -1,5 +1,13 @@
 // Columns verified against src/types/database.ts, the Supabase services, and
 // the checked-in migrations. This module intentionally has no write/RPC API.
+import {
+  canonicalReportStage,
+  selectLatestSnapshot,
+  selectRepresentativeOpportunities,
+  snapshotArea,
+} from "./organizerReport.ts";
+import type { ApprovedPriceSnapshotRow, ReportOpportunity } from "./organizerReport.ts";
+
 type Row = Record<string, unknown>;
 type Table = "companies" | "exhibitions" | "opportunities" | "reminders" | "timeline_events" | "emails";
 type QueryResult = { data: Row[] | null; error: unknown | null };
@@ -43,6 +51,28 @@ const ROW_LIMITS: Record<Table, number> = {
 const TERMINAL_STAGES = new Set(["signed", "lost", "won"]);
 const REDACTED = "[Credential-like text omitted]";
 const CREDENTIAL_PATTERN = /(?:\bbearer\s+[^\s<>]+|\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)?|\bsk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{8,}|\bsb_secret_[A-Za-z0-9_-]+|\bGOCSPX-[A-Za-z0-9_-]+|-----BEGIN (?:(?:RSA|EC|DSA|OPENSSH|ENCRYPTED) )?PRIVATE KEY-----|\bya29\.[A-Za-z0-9_-]+|\b1\/\/[A-Za-z0-9_-]{8,}|\b(?:[a-z0-9]+[_-])*(?:access[_ -]?token|refresh[_ -]?token|id[_ -]?token|api[_ -]?key|service[_ -]?(?:role[_ -]?)?key|client[_ -]?secret|password|authorization|secret|token)\b["']?\s*[:=]\s*["']?\S+)/i;
+
+// Open offer area reuses the Organizer Report rule; nothing here redefines it.
+export const FAIRY_OPEN_OFFER_LIMITS = { exhibitions: 3, opportunities: 500, companyRows: 20, snapshotChunk: 50 } as const;
+export const FAIRY_OPEN_OFFER_DEFINITION =
+  "CURRENT open offer area in m2: latest approved stand area of the representative Teklif-stage opportunity of each company for this exhibition. Not cumulative or historical offered area.";
+const OPEN_OFFER_OPPORTUNITY_COLUMNS = "id,company_id,exhibition_id,stage,updated_at";
+// Only the stand area leaves the approved price; no amounts or price detail.
+const OPEN_OFFER_SNAPSHOT_COLUMNS = "opportunity_id,approved_at,created_at,price_input->standAreaSqm";
+
+export type FairyOpenOffer = {
+  exhibitionId: string;
+  exhibitionName: string | null;
+  // complete: exact figure. incomplete: a required approved area is missing or
+  // not visible to this user. too_large: more opportunities than the read cap.
+  status: "complete" | "incomplete" | "too_large";
+  openOfferSqm: number | null;
+  teklifCompanyCount: number | null;
+  missingAreaCount: number | null;
+  companies: { companyName: string | null; offeredSqm: number }[];
+  companiesTruncated: boolean;
+  definition: string;
+};
 
 export class FairyContextUnavailableError extends Error {
   constructor() {
@@ -129,6 +159,7 @@ export type FairyContextShapeInput = {
   now?: Date;
   queryCapped?: Partial<Record<Table, boolean>>;
   lookup?: Lookup;
+  openOffers?: readonly FairyOpenOffer[];
 };
 
 function uniqueRows(rows: readonly Row[]): Row[] {
@@ -261,6 +292,23 @@ export function shapeFairyContext(input: FairyContextShapeInput) {
     },
     companies: rows.companies, exhibitions: rows.exhibitions, opportunities: rows.opportunities,
     reminders: rows.reminders, timeline_events: rows.timeline_events, emails: rows.emails,
+    // Server-calculated aggregates for name-matched exhibitions; never raw snapshots.
+    openOffers: (input.openOffers ?? []).slice(0, FAIRY_OPEN_OFFER_LIMITS.exhibitions).map((offer) => {
+      const companies = offer.status === "complete" ? offer.companies.slice(0, FAIRY_OPEN_OFFER_LIMITS.companyRows) : [];
+      return {
+        exhibitionId: sanitizeFairyText(offer.exhibitionId, 96),
+        exhibitionName: sanitizeFairyText(offer.exhibitionName, 200),
+        status: offer.status,
+        openOfferSqm: offer.status === "complete" ? numeric(offer.openOfferSqm) : null,
+        teklifCompanyCount: numeric(offer.teklifCompanyCount),
+        missingAreaCount: numeric(offer.missingAreaCount),
+        companies: companies.map((company) => ({
+          companyName: sanitizeFairyText(company.companyName, 200), offeredSqm: numeric(company.offeredSqm),
+        })),
+        companiesTruncated: offer.companiesTruncated || companies.length < offer.companies.length,
+        definition: FAIRY_OPEN_OFFER_DEFINITION,
+      };
+    }),
   };
 
   const refreshCoverage = () => {
@@ -284,9 +332,17 @@ export function shapeFairyContext(input: FairyContextShapeInput) {
     // Drop the lowest-priority record in the largest collection, preserving
     // a useful mix of communication, commercial and reminder evidence.
     const largest = [...TABLES].filter((table) => rows[table].length).sort((a, b) => JSON.stringify(rows[b]).length - JSON.stringify(rows[a]).length)[0];
-    if (!largest) throw new FairyContextUnavailableError();
-    rows[largest].pop();
-    refreshCoverage();
+    if (largest) {
+      rows[largest].pop();
+      refreshCoverage();
+      continue;
+    }
+    // Ordinary samples are exhausted: shorten the longest company breakdown.
+    // Status, counts and the total itself are never trimmed.
+    const breakdown = [...context.openOffers].sort((a, b) => b.companies.length - a.companies.length)[0];
+    if (!breakdown?.companies.length) throw new FairyContextUnavailableError();
+    breakdown.companies.pop();
+    breakdown.companiesTruncated = true;
   }
   return context;
 }
@@ -303,18 +359,22 @@ export async function loadFairyContext(client: FairyReadClient, request: FairyCo
   const upcomingBefore = new Date(Date.parse(todayStart) + 91 * 24 * 60 * 60 * 1000).toISOString();
   const queryCapped: Partial<Record<Table, boolean>> = {};
   const query = (table: Table) => client.from(table).select(COLUMNS[table]);
-  const read = async (table: Table, builder: FairyReadQuery, limit: number): Promise<Row[]> => {
+  const readCapped = async (builder: FairyReadQuery, limit: number): Promise<{ rows: Row[]; capped: boolean }> => {
     try {
       // One extra row detects an actual truncated query without an expensive
       // whole-table count. The sentinel itself is never included in context.
       const { data, error } = await builder.order("id", { ascending: true }).limit(limit + 1);
       if (error || !Array.isArray(data) || data.some((row) => !row || typeof row !== "object" || Array.isArray(row))) throw new FairyContextUnavailableError();
-      if (data.length > limit) queryCapped[table] = true;
-      return data.slice(0, limit);
+      return { rows: data.slice(0, limit), capped: data.length > limit };
     } catch {
       // Do not leak SQL, request URLs, internal diagnostics or bearer tokens.
       throw new FairyContextUnavailableError();
     }
+  };
+  const read = async (table: Table, builder: FairyReadQuery, limit: number): Promise<Row[]> => {
+    const result = await readCapped(builder, limit);
+    if (result.capped) queryCapped[table] = true;
+    return result.rows;
   };
   const byIds = (table: Table, column: string, values: string[], limit = 96) => values.length
     ? read(table, query(table).in(column, values.slice(0, limit)), limit)
@@ -366,8 +426,75 @@ export async function loadFairyContext(client: FairyReadClient, request: FairyCo
     byIds("companies", "id", ids([...opportunities, ...reminders, ...timelineEvents, ...emails], "company_id")),
     byIds("exhibitions", "id", ids(opportunities, "exhibition_id", 64), 64),
   ]);
+  // Open offer area for name-matched exhibitions only, by the Organizer Report
+  // rule. Every read is the caller's own (RLS-bound); a figure is exact or absent.
+  const openOffers = await Promise.all(namedExhibitions.slice(0, FAIRY_OPEN_OFFER_LIMITS.exhibitions).map(async (exhibition): Promise<FairyOpenOffer> => {
+    const exhibitionId = String(exhibition.id);
+    const entry = {
+      exhibitionId, exhibitionName: typeof exhibition.name === "string" ? exhibition.name : null,
+      companies: [], companiesTruncated: false, definition: FAIRY_OPEN_OFFER_DEFINITION,
+    };
+    const fair = await readCapped(
+      client.from("opportunities").select(OPEN_OFFER_OPPORTUNITY_COLUMNS).eq("exhibition_id", exhibitionId).lte("updated_at", cutoff),
+      FAIRY_OPEN_OFFER_LIMITS.opportunities,
+    );
+    if (fair.capped) return { ...entry, status: "too_large", openOfferSqm: null, teklifCompanyCount: null, missingAreaCount: null };
+    const fairOpportunities = fair.rows.filter((row): row is ReportOpportunity & Row =>
+      ["id", "company_id", "stage", "updated_at"].every((field) => typeof row[field] === "string"));
+    const representatives = selectRepresentativeOpportunities(fairOpportunities, exhibitionId)
+      .filter((opportunity) => canonicalReportStage(opportunity.stage) === "Teklif");
+    const snapshots: ApprovedPriceSnapshotRow[] = [];
+    let snapshotsComplete = true;
+    try {
+      for (let start = 0; start < representatives.length; start += FAIRY_OPEN_OFFER_LIMITS.snapshotChunk) {
+        const chunk = await readCapped(
+          client.from("approved_price_snapshots").select(OPEN_OFFER_SNAPSHOT_COLUMNS)
+            .eq("exhibition_id", exhibitionId)
+            .in("opportunity_id", representatives.slice(start, start + FAIRY_OPEN_OFFER_LIMITS.snapshotChunk).map((opportunity) => opportunity.id))
+            .lte("approved_at", cutoff).lte("created_at", cutoff),
+          FAIRY_OPEN_OFFER_LIMITS.opportunities,
+        );
+        if (chunk.capped) snapshotsComplete = false;
+        for (const row of chunk.rows) {
+          if (typeof row.opportunity_id !== "string" || typeof row.approved_at !== "string" || typeof row.created_at !== "string") continue;
+          snapshots.push({
+            opportunity_id: row.opportunity_id, approved_at: row.approved_at, created_at: row.created_at,
+            price_input: { standAreaSqm: row.standAreaSqm },
+          });
+        }
+      }
+    } catch {
+      // Unreadable approved prices leave the figure unavailable, never guessed.
+      snapshotsComplete = false;
+    }
+    let openOfferSqm = 0;
+    let missingAreaCount = 0;
+    const offered: { companyId: string; offeredSqm: number }[] = [];
+    for (const opportunity of representatives) {
+      const latest = selectLatestSnapshot(snapshots.filter((snapshot) => snapshot.opportunity_id === opportunity.id));
+      const area = latest ? snapshotArea(latest) : null;
+      if (area === null) { missingAreaCount++; continue; }
+      openOfferSqm += area;
+      offered.push({ companyId: opportunity.company_id, offeredSqm: area });
+    }
+    if (!snapshotsComplete || missingAreaCount > 0) {
+      // No partial total and no partial breakdown that could be summed into one.
+      return { ...entry, status: "incomplete", openOfferSqm: null, teklifCompanyCount: representatives.length, missingAreaCount };
+    }
+    offered.sort((a, b) => b.offeredSqm - a.offeredSqm || (a.companyId < b.companyId ? -1 : a.companyId > b.companyId ? 1 : 0));
+    const shown = offered.slice(0, FAIRY_OPEN_OFFER_LIMITS.companyRows);
+    const names = shown.length
+      ? await readCapped(client.from("companies").select("id,company_name").in("id", shown.map((item) => item.companyId)), FAIRY_OPEN_OFFER_LIMITS.companyRows)
+      : { rows: [] as Row[], capped: false };
+    const nameById = new Map(names.rows.map((row) => [row.id, typeof row.company_name === "string" ? row.company_name : null]));
+    return {
+      ...entry, status: "complete", openOfferSqm, teklifCompanyCount: representatives.length, missingAreaCount: 0,
+      companies: shown.map((item) => ({ companyName: nameById.get(item.companyId) ?? null, offeredSqm: item.offeredSqm })),
+      companiesTruncated: offered.length > shown.length,
+    };
+  }));
   return shapeFairyContext({
-    now, queryCapped,
+    now, queryCapped, openOffers,
     lookup: { terms, companyIds: namedCompanyIds, exhibitionIds: namedExhibitionIds, focusedCompanyIds },
     records: {
       companies: [...namedCompanies, ...linkedCompanies, ...base[0]],
