@@ -3877,10 +3877,47 @@ main.companies-page .page-header p:last-child {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 4px;
 }
 
+.exhibition-drive-folder-link,
+.exhibition-drive-folder-unbound {
+  flex: 0 0 auto;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.exhibition-drive-folder-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid var(--viawa-border);
+  border-radius: 7px;
+  color: var(--viawa-primary);
+  background: white;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.exhibition-drive-folder-link:hover {
+  border-color: var(--viawa-primary);
+  background: var(--viawa-primary-soft);
+}
+
+.exhibition-drive-folder-link:focus-visible {
+  outline: 2px solid var(--viawa-primary);
+  outline-offset: 2px;
+}
+
+.exhibition-drive-folder-unbound {
+  color: var(--viawa-label);
+}
+
 .exhibition-workspace-titlebar h2 {
+  min-width: 0;
   margin: 0;
   overflow: hidden;
   color: var(--viawa-label);

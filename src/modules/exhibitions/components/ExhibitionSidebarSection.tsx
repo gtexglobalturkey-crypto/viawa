@@ -14,6 +14,7 @@ import {
   getExhibitions,
 } from "../../../services/supabase/exhibitionService";
 import type { Exhibition } from "../models/Exhibition";
+import { normalizeDriveFolderId } from "../models/ExhibitionDriveFolder";
 import { saveExhibitions } from "../storage/exhibitionStorage";
 import { exhibitionNamesMatch } from "../utils/exhibitionNameMatch";
 
@@ -81,6 +82,31 @@ export function ExhibitionSidebarSection({
             ),
         );
 
+      // A Drive folder belongs to exactly one exhibition. Checked here for
+      // a clear message; the database unique index is the real guarantee.
+      const requestedFolderId =
+        exhibition.driveFolderId ?? null;
+
+      const folderOwner = requestedFolderId
+        ? dbExhibitions.find(
+            (candidate) =>
+              candidate.drive_folder_id ===
+              requestedFolderId,
+          )
+        : undefined;
+
+      if (
+        folderOwner &&
+        folderOwner.id !== existingMatch?.id
+      ) {
+        showToast(
+          `Bu Drive klasörü "${folderOwner.name}" fuarına bağlı.`,
+          "error",
+        );
+
+        return false;
+      }
+
       const supabaseExhibition =
         existingMatch ??
         (await createExhibition({
@@ -98,12 +124,27 @@ export function ExhibitionSidebarSection({
           end_date:
             exhibition.endDate ??
             null,
+          ...(requestedFolderId
+            ? {
+                drive_folder_id:
+                  requestedFolderId,
+              }
+            : {}),
         }));
+
+      // A reused record keeps whatever folder it already has; the typed
+      // folder is never written onto an existing exhibition from here.
+      const boundFolderId =
+        normalizeDriveFolderId(
+          supabaseExhibition.drive_folder_id,
+        );
 
       const localExhibition: Exhibition =
         {
           ...exhibition,
           id: supabaseExhibition.id,
+          driveFolderId:
+            boundFolderId ?? undefined,
         };
 
       const alreadyInLocalList =
@@ -129,7 +170,10 @@ export function ExhibitionSidebarSection({
 
       showToast(
         existingMatch
-          ? "Bu isimde bir fuar zaten mevcut, mevcut kayıt kullanıldı."
+          ? requestedFolderId &&
+            requestedFolderId !== boundFolderId
+            ? "Bu isimde bir fuar zaten mevcut, mevcut kayıt kullanıldı. Drive klasörü bağlantısı değiştirilmedi."
+            : "Bu isimde bir fuar zaten mevcut, mevcut kayıt kullanıldı."
           : "Fuar oluşturuldu ve Repository'ye bağlandı.",
         existingMatch
           ? "info"
@@ -143,8 +187,17 @@ export function ExhibitionSidebarSection({
         createError,
       );
 
+      // 23505: the unique drive_folder_id index rejected a folder that
+      // another exhibition bound between the check above and the insert.
+      const isDuplicateFolder =
+        Boolean(exhibition.driveFolderId) &&
+        (createError as { code?: string } | null)
+          ?.code === "23505";
+
       showToast(
-        "Fuar oluşturulamadı. Lütfen tekrar deneyin.",
+        isDuplicateFolder
+          ? "Bu Drive klasörü başka bir fuara bağlı."
+          : "Fuar oluşturulamadı. Lütfen tekrar deneyin.",
         "error",
       );
 

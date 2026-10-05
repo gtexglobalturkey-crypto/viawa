@@ -6,5 +6,6 @@ export type Exhibition = {
   country?: string;
   startDate?: string;
   endDate?: string;
+  driveFolderId?: string;
   createdAt: string;
 };

@@ -8,6 +8,7 @@ import { useAuth } from "../../features/auth/AuthContext";
 import { Button } from "../../components/ui/Button";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Panel } from "../../components/ui/Panel";
+import { ExhibitionDriveFolderLink } from "../exhibitions/components/ExhibitionDriveFolderLink";
 import { ExhibitionSalesDocuments } from "../exhibitions/components/ExhibitionSalesDocuments";
 import {
   getExhibition,
@@ -953,7 +954,11 @@ export function ExhibitionRepositoryPage() {
 
       <ExhibitionSalesDocuments exhibitionId={exhibition.id} />
 
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "10px" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+        <ExhibitionDriveFolderLink
+          driveFolderId={exhibition.drive_folder_id}
+        />
+
         <Button
           type="button"
           variant="secondary"

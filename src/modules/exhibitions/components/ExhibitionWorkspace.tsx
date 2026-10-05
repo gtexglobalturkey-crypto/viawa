@@ -17,6 +17,7 @@ import { resolveMimeType } from "../utils/resolveMimeType";
 
 import { ExhibitionDocumentCard } from "./ExhibitionDocumentCard";
 import { ExhibitionDocumentPreview } from "./ExhibitionDocumentPreview";
+import { ExhibitionDriveFolderLink } from "./ExhibitionDriveFolderLink";
 import { useExhibitionSalesDocuments } from "./ExhibitionSalesDocuments";
 
 type ExhibitionWorkspaceProps = {
@@ -329,6 +330,12 @@ export function ExhibitionWorkspace({
     <Panel className="exhibition-workspace-panel">
       <div className="exhibition-workspace-titlebar">
         <h2>{titleLabel}</h2>
+
+        <ExhibitionDriveFolderLink
+          driveFolderId={
+            exhibition.driveFolderId
+          }
+        />
       </div>
 
       {loadError && (

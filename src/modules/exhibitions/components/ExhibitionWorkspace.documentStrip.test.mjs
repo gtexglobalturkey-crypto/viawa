@@ -17,9 +17,11 @@ const realModules = [
   "./ExhibitionWorkspace.tsx",
   "./ExhibitionDocumentCard.tsx",
   "./ExhibitionDocumentPreview.tsx",
+  "./ExhibitionDriveFolderLink.tsx",
   "../services/exhibitionDocumentApi.ts",
   "../models/ExhibitionDocument.ts",
   "../models/ExhibitionSalesDocument.ts",
+  "../models/ExhibitionDriveFolder.ts",
   "../utils/resolveMimeType.ts",
   "../../../components/ui/Panel.tsx",
 ];
@@ -176,14 +178,14 @@ const productionSpaFallback = async () => new Response(
   { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } },
 );
 
-async function mount({ fetchImpl, sales }) {
+async function mount({ fetchImpl, sales, exhibition: mounted = exhibition }) {
   globalThis.fetch = fetchImpl;
   setSalesDocuments(sales);
   const driver = createDriver();
-  driver.render({ exhibition });
+  driver.render({ exhibition: mounted });
   driver.flush();
   await settle();
-  return { driver, html: driver.render({ exhibition }) };
+  return { driver, html: driver.render({ exhibition: mounted }) };
 }
 
 function tile(html, title) {
@@ -349,6 +351,61 @@ test("without any Drive record the Flyer/Kroki tiles keep their local-file behav
     assert.match(tile(html, "Flyer"), /role="button"/);
     assert.match(tile(html, "Flyer"), /type="checkbox"/);
     assert.match(tile(html, "Kroki"), new RegExp(NOT_FOUND));
+  } finally {
+    driver.cleanup();
+  }
+});
+
+const DRIVE_FOLDER_ID = "10u3GdBQjg0FBJyB81FUtUVFhaQJmQ6Ko";
+
+test("an exhibition without a Drive folder shows the unbound note and no folder link", async () => {
+  const { driver, html } = await mount({
+    fetchImpl: productionSpaFallback,
+    sales: { documents: [], loading: false, error: null },
+  });
+  try {
+    assert.match(html, /exhibition-drive-folder-unbound">Drive klasörü bağlı değil</);
+    assert.doesNotMatch(html, /<a\b|drive\/folders|Drive Klasörünü Aç|role="alert"/);
+    assert.deepEqual([...html.matchAll(/exhibition-doc-card-title">([^<]+)</g)].map((m) => m[1]), TITLES);
+  } finally {
+    driver.cleanup();
+  }
+});
+
+test("an exhibition with a Drive folder opens it in a new tab, next to unchanged sales tiles", async () => {
+  const { driver, html } = await mount({
+    fetchImpl: productionSpaFallback,
+    sales: { documents: [flyer, kroki], loading: false, error: null },
+    exhibition: { ...exhibition, name: "CONTECH Vietnam 2027", shortName: "CONTECH Vietnam 2027", driveFolderId: DRIVE_FOLDER_ID },
+  });
+  try {
+    const link = html.match(/<a [^>]*class="exhibition-drive-folder-link"[^>]*>[\s\S]*?<\/a>/)?.[0];
+    assert.ok(link, "folder action rendered");
+    assert.ok(link.includes(`href="https://drive.google.com/drive/folders/${DRIVE_FOLDER_ID}"`));
+    assert.match(link, /target="_blank"/);
+    assert.match(link, /rel="noopener noreferrer"/);
+    assert.match(link, /Drive Klasörünü Aç/);
+    assert.doesNotMatch(html, /Drive klasörü bağlı değil/);
+
+    // sales-document tiles are unaffected: still exactly Flyer + Kroki file links
+    assert.equal((html.match(/<a\b/g) ?? []).length, 3);
+    assert.ok(tile(html, "Flyer").includes(`href="https://drive.google.com/file/d/${FLYER_ID}/view"`));
+    assert.ok(tile(html, "Kroki").includes(`href="https://drive.google.com/file/d/${KROKI_ID}/view"`));
+    assert.doesNotMatch(tile(html, "Flyer") + tile(html, "Kroki"), /drive\/folders/);
+  } finally {
+    driver.cleanup();
+  }
+});
+
+test("an unsafe stored folder id never becomes a link", async () => {
+  const { driver, html } = await mount({
+    fetchImpl: productionSpaFallback,
+    sales: { documents: [], loading: false, error: null },
+    exhibition: { ...exhibition, driveFolderId: "x/../../evil?y=javascript:alert(1)" },
+  });
+  try {
+    assert.doesNotMatch(html, /<a\b|javascript:|evil/);
+    assert.match(html, /Drive klasörü bağlı değil/);
   } finally {
     driver.cleanup();
   }

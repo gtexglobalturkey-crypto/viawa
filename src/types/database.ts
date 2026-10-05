@@ -125,6 +125,9 @@ export interface Exhibition {
   start_date: string | null;
   end_date: string | null;
 
+  // Canonical Google Drive folder id; the URL is derived at runtime.
+  drive_folder_id: string | null;
+
   created_at: string;
   updated_at: string;
 }

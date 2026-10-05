@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
 
 import type { Exhibition } from "../models/Exhibition";
+import { parseDriveFolderInput } from "../models/ExhibitionDriveFolder";
 
 type ExhibitionCreateModalProps = {
   open: boolean;
@@ -20,6 +21,7 @@ type FieldErrors = {
   name?: string;
   shortName?: string;
   endDate?: string;
+  driveFolder?: string;
 };
 
 function createExhibitionId(): string {
@@ -77,6 +79,8 @@ export function ExhibitionCreateModal({
     useState("");
   const [endDate, setEndDate] =
     useState("");
+  const [driveFolder, setDriveFolder] =
+    useState("");
 
   const [errors, setErrors] =
     useState<FieldErrors>({});
@@ -98,6 +102,7 @@ export function ExhibitionCreateModal({
     setCountry("");
     setStartDate("");
     setEndDate("");
+    setDriveFolder("");
     setErrors({});
     setIsSaving(false);
     isSubmittingRef.current = false;
@@ -168,6 +173,20 @@ export function ExhibitionCreateModal({
         "Bitiş tarihi başlangıç tarihinden önce olamaz.";
     }
 
+    // Optional: binds an existing Drive folder. Nothing is created in Drive.
+    const trimmedDriveFolder =
+      driveFolder.trim();
+    const driveFolderId = trimmedDriveFolder
+      ? parseDriveFolderInput(
+          trimmedDriveFolder,
+        )
+      : null;
+
+    if (trimmedDriveFolder && !driveFolderId) {
+      nextErrors.driveFolder =
+        "Geçerli bir Drive klasör ID'si veya klasör bağlantısı girin.";
+    }
+
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
       return;
@@ -187,6 +206,8 @@ export function ExhibitionCreateModal({
         startDate.trim() || undefined,
       endDate:
         endDate.trim() || undefined,
+      driveFolderId:
+        driveFolderId ?? undefined,
       createdAt:
         new Date().toISOString(),
     };
@@ -539,6 +560,53 @@ export function ExhibitionCreateModal({
                 </p>
               )}
             </div>
+          </div>
+
+          <div>
+            <label
+              htmlFor="exhibition-drive-folder"
+              style={labelStyle()}
+            >
+              Mevcut Drive Klasörü (ID veya bağlantı)
+            </label>
+
+            <input
+              id="exhibition-drive-folder"
+              type="text"
+              value={driveFolder}
+              placeholder="Opsiyonel"
+              onChange={(event) =>
+                setDriveFolder(
+                  event.target.value,
+                )
+              }
+              style={inputStyle(
+                Boolean(errors.driveFolder),
+              )}
+              aria-invalid={Boolean(
+                errors.driveFolder,
+              )}
+              aria-describedby={
+                errors.driveFolder
+                  ? "exhibition-drive-folder-error"
+                  : undefined
+              }
+            />
+
+            {errors.driveFolder && (
+              <p
+                id="exhibition-drive-folder-error"
+                role="alert"
+                style={{
+                  margin: "4px 0 0",
+                  color: "#b91c1c",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                }}
+              >
+                {errors.driveFolder}
+              </p>
+            )}
           </div>
 
           {submissionError && (

@@ -38,7 +38,10 @@ function isExhibition(
     isOptionalString(
       candidate.startDate,
     ) &&
-    isOptionalString(candidate.endDate)
+    isOptionalString(candidate.endDate) &&
+    isOptionalString(
+      candidate.driveFolderId,
+    )
   );
 }
 

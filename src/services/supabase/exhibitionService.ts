@@ -37,8 +37,14 @@ export async function getExhibition(
 export async function createExhibition(
   exhibition: Omit<
     Exhibition,
-    "id" | "created_at" | "updated_at"
-  >,
+    | "id"
+    | "created_at"
+    | "updated_at"
+    | "drive_folder_id"
+  > & {
+    // Omitted for an exhibition without a bound Drive folder.
+    drive_folder_id?: string | null;
+  },
 ): Promise<Exhibition> {
   const { data, error } = await supabase
     .from("exhibitions")

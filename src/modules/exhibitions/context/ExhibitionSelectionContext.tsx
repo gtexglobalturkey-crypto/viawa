@@ -12,6 +12,7 @@ import {
 import { getExhibitions } from "../../../services/supabase/exhibitionService";
 import type { Exhibition as DatabaseExhibition } from "../../../types/database";
 import type { Exhibition } from "../models/Exhibition";
+import { normalizeDriveFolderId } from "../models/ExhibitionDriveFolder";
 import {
   loadExhibitions,
   loadSelectedExhibitionId,
@@ -66,6 +67,10 @@ function mapDatabaseExhibition(
       row.country?.trim() || undefined,
     startDate: row.start_date || undefined,
     endDate: row.end_date || undefined,
+    driveFolderId:
+      normalizeDriveFolderId(
+        row.drive_folder_id,
+      ) ?? undefined,
     createdAt: row.created_at,
   };
 }
