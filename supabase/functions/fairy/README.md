@@ -4,10 +4,10 @@ Local implementation of VIAWA's read-only operational assistant. The authenticat
 `/fairy` page calls `fairyService.ts`, which invokes this Edge Function. It returns
 `{ "answer": "..." }`; failures return a fixed `{ "error": "...", "code": "..." }`.
 
-The function follows `organizer-report` authorization: verify the caller token
-with `auth.getUser`, then require that caller's `application_users.is_active` is
-literally `true`. A service-role client retrieves shared operational records only
-after authorization. It does not read owner/admin-only tables or perform writes.
+The function verifies the caller token with `auth.getUser`, then requires that
+caller's `application_users.is_active` is literally `true`. Its only Supabase
+client uses the public anon key with the caller's own JWT, so row level security
+decides every read. Fairy never uses the service role and performs no writes.
 
 `_shared/fairyContext.ts` reads explicit columns from companies, exhibitions,
 opportunities, reminders, timeline events and stored emails. Current activity and
@@ -50,7 +50,7 @@ staging schema availability.
 Deployment and secret configuration require a separate authorized step. Use an
 isolated staging Supabase project with the existing VIAWA schema, an active test
 member and representative operational records. The function needs server-side
-`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `OPENAI_API_KEY`; the OpenAI project
+`SUPABASE_URL`, `SUPABASE_ANON_KEY` and `OPENAI_API_KEY`; the OpenAI project
 must have access to `gpt-5.6-terra`. Never put the OpenAI key in Vite variables.
 Point the staging frontend's existing public Supabase configuration at that
 project. No migration or new package is required for Fairy.

@@ -8,6 +8,8 @@ import { createFairyHandler } from "./fairyHandler.ts";
 
 const TOKEN = "offline-caller-session-token";
 const API_KEY = "offline-server-only-openai-key";
+const ANON_KEY = "offline-public-anon-key";
+// Present in every test environment to prove Fairy never reads or sends it.
 const SERVICE_KEY = "offline-server-only-service-key";
 const PRIVATE_DETAIL = "PRIVATE upstream diagnostic that must never leave the server";
 const SNAPSHOT = {
@@ -30,15 +32,19 @@ test("the full handler and context loader use only authenticated GETs through th
   };
   const providerCalls = [];
   const handler = createFairyHandler({
-    env: (name) => ({ SUPABASE_URL: "https://offline.invalid", SUPABASE_SERVICE_ROLE_KEY: SERVICE_KEY, OPENAI_API_KEY: API_KEY })[name],
+    env: (name) => ({ SUPABASE_URL: "https://offline.invalid", SUPABASE_ANON_KEY: ANON_KEY, SUPABASE_SERVICE_ROLE_KEY: SERVICE_KEY, OPENAI_API_KEY: API_KEY })[name],
     createClient,
     async supabaseFetch(input, init) {
       const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
       assert.equal(url.origin, "https://offline.invalid");
       assert.equal(init.method, "GET", "database/auth must never mutate in Fairy");
       databaseCalls.push({ url, init });
+      // Every auth and data request is the caller's: anon key + caller JWT.
+      const sent = new Headers(init.headers);
+      assert.equal(sent.get("authorization"), `Bearer ${TOKEN}`, "reads must run under the caller JWT");
+      assert.equal(sent.get("apikey"), ANON_KEY, "reads must use the public anon key");
+      assert.equal([...sent.values()].some((value) => value.includes(SERVICE_KEY)), false, "service role must never be sent");
       if (url.pathname === "/auth/v1/user") {
-        assert.equal(new Headers(init.headers).get("authorization"), `Bearer ${TOKEN}`);
         return Response.json({ id: "verified-user" });
       }
       assert.ok(url.pathname.startsWith("/rest/v1/"));
@@ -84,7 +90,7 @@ test("the real Supabase SDK cannot log raw transport failures or malformed auth 
       let databaseCalls = 0;
       let providerCalls = 0;
       const handler = createFairyHandler({
-        env: (name) => ({ SUPABASE_URL: "https://offline.invalid", SUPABASE_SERVICE_ROLE_KEY: SERVICE_KEY, OPENAI_API_KEY: API_KEY })[name],
+        env: (name) => ({ SUPABASE_URL: "https://offline.invalid", SUPABASE_ANON_KEY: ANON_KEY, SUPABASE_SERVICE_ROLE_KEY: SERVICE_KEY, OPENAI_API_KEY: API_KEY })[name],
         createClient,
         async supabaseFetch(input, init) {
           const url = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
@@ -140,6 +146,7 @@ function setup(options = {}) {
   const mutations = [];
   const envValues = {
     SUPABASE_URL: "https://offline.invalid",
+    SUPABASE_ANON_KEY: ANON_KEY,
     SUPABASE_SERVICE_ROLE_KEY: SERVICE_KEY,
     OPENAI_API_KEY: API_KEY,
     ...options.env,
@@ -298,7 +305,7 @@ test("membership errors override even an active row and never permit provider wo
 });
 
 test("missing Supabase configuration prevents client creation", async (t) => {
-  for (const name of ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]) {
+  for (const name of ["SUPABASE_URL", "SUPABASE_ANON_KEY"]) {
     await t.test(name, async () => {
       const fixture = setup({ env: { [name]: undefined } });
       await failure(await fixture.handler(request()), 503, "FAIRY_NOT_CONFIGURED");
@@ -393,6 +400,12 @@ test("success authenticates before context and uses stateless Responses with sep
   const clientOptions = actions(fixture, "createClient")[0].authOptions;
   assert.deepEqual(clientOptions.auth, { persistSession: false, autoRefreshToken: false });
   assert.equal(typeof clientOptions.global.fetch, "function");
+  // One RLS-bound client: anon key + the caller's JWT. No privileged client exists.
+  assert.equal(actions(fixture, "createClient").length, 1);
+  assert.equal(actions(fixture, "createClient")[0].key, ANON_KEY);
+  assert.deepEqual(clientOptions.global.headers, { Authorization: `Bearer ${TOKEN}` });
+  assert.equal(actions(fixture, "env").some((call) => call.name === "SUPABASE_SERVICE_ROLE_KEY"), false);
+  assert.equal(JSON.stringify(actions(fixture, "createClient")).includes(SERVICE_KEY), false);
   assert.deepEqual(actions(fixture, "context")[0].input, {
     message: "Şimdi neden?",
     conversation: [{ role: "user", content: "Önceki sorum" }, { role: "assistant", content: "Önceki öneri" }],
@@ -490,7 +503,7 @@ test("missing, failed, empty and incomplete Responses cannot be presented as an 
 test("provider output containing any server key or caller token is never returned or logged", async (t) => {
   const logs = [];
   for (const method of ["log", "warn", "error"]) t.mock.method(console, method, (...args) => logs.push(args));
-  for (const secret of [API_KEY, SERVICE_KEY, TOKEN]) {
+  for (const secret of [API_KEY, ANON_KEY, TOKEN]) {
     const fixture = setup({ providerBody: completed(`This must be rejected: ${secret}`) });
     await failure(await fixture.handler(request()), 502, "AI_UNAVAILABLE");
     assert.deepEqual(fixture.mutations, []);

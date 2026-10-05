@@ -26,7 +26,7 @@ type FairyDependencies = {
   env: (name: string) => string | undefined;
   createClient: (url: string, key: string, options: {
     auth: { persistSession: false; autoRefreshToken: false };
-    global: { fetch: typeof fetch };
+    global: { fetch: typeof fetch; headers: { Authorization: string } };
   }) => SupabaseClient;
   fetch: typeof fetch;
   supabaseFetch?: typeof fetch;
@@ -44,12 +44,15 @@ export function createFairyHandler(dependencies: FairyDependencies) {
       if (!bearer) throw new FairyError("UNAUTHENTICATED");
       const token = bearer[1];
       const url = dependencies.env("SUPABASE_URL");
-      const serviceKey = dependencies.env("SUPABASE_SERVICE_ROLE_KEY");
-      if (!url || !serviceKey) throw new FairyError("FAIRY_NOT_CONFIGURED");
+      const anonKey = dependencies.env("SUPABASE_ANON_KEY");
+      if (!url || !anonKey) throw new FairyError("FAIRY_NOT_CONFIGURED");
 
-      const admin = dependencies.createClient(url, serviceKey, {
+      // The only Supabase client: public anon key plus the caller's own JWT, so
+      // row level security decides every read. Fairy never uses the service role.
+      const caller = dependencies.createClient(url, anonKey, {
         auth: { persistSession: false, autoRefreshToken: false },
         global: {
+          headers: { Authorization: `Bearer ${token}` },
           async fetch(input, init) {
             try {
               return await (dependencies.supabaseFetch ?? globalThis.fetch)(input, init);
@@ -61,10 +64,10 @@ export function createFairyHandler(dependencies: FairyDependencies) {
           },
         },
       });
-      // Same authorization boundary as organizer-report: verified JWT, then active membership.
+      // Verified JWT, then active membership read from the caller's own row.
       let userId: string;
       try {
-        const { data, error } = await admin.auth.getUser(token);
+        const { data, error } = await caller.auth.getUser(token);
         if (error || !data.user) throw new FairyError("UNAUTHENTICATED");
         userId = data.user.id;
       } catch (error) {
@@ -73,7 +76,7 @@ export function createFairyHandler(dependencies: FairyDependencies) {
       }
 
       try {
-        const { data: member, error } = await admin.from("application_users")
+        const { data: member, error } = await caller.from("application_users")
           .select("id,is_active")
           .eq("id", userId)
           .maybeSingle();
@@ -93,7 +96,7 @@ export function createFairyHandler(dependencies: FairyDependencies) {
         const reader: FairyReadClient = {
           // Explicit row typing avoids recursive SDK inference for dynamic column
           // lists; the context loader validates results and projects each field.
-          from: (table) => ({ select: (columns) => admin.from(table).select<string, Record<string, unknown>>(columns) }),
+          from: (table) => ({ select: (columns) => caller.from(table).select<string, Record<string, unknown>>(columns) }),
         };
         context = await (dependencies.loadContext ?? loadFairyContext)(reader, input);
       } catch {
@@ -127,7 +130,7 @@ export function createFairyHandler(dependencies: FairyDependencies) {
       }
 
       const answer = extractFairyAnswer(providerBody);
-      if ([apiKey, serviceKey, token].some((secret) => secret.length >= 8 && answer.includes(secret))) {
+      if ([apiKey, anonKey, token].some((secret) => secret.length >= 8 && answer.includes(secret))) {
         throw new FairyError("AI_UNAVAILABLE");
       }
       return json({ answer });
