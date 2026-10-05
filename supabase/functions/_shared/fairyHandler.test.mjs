@@ -513,7 +513,7 @@ test("Responses output parsing returns only assistant text and joins multiple te
   });
 });
 
-test("OpenAI rate-limit and server errors return sanitized structured failures without logging", async (t) => {
+test("OpenAI rate-limit and server errors return sanitized structured failures and log the status alone for raw bodies", async (t) => {
   const logs = [];
   for (const method of ["log", "warn", "error"]) t.mock.method(console, method, (...args) => logs.push(args));
   for (const [status, expectedStatus, code] of [[429, 429, "AI_RATE_LIMITED"], [500, 502, "AI_UNAVAILABLE"], [401, 502, "AI_UNAVAILABLE"]]) {
@@ -521,7 +521,87 @@ test("OpenAI rate-limit and server errors return sanitized structured failures w
     await failure(await fixture.handler(request()), expectedStatus, code);
     assert.equal(actions(fixture, "provider").length, 1);
   }
-  assert.deepEqual(logs, []);
+  // A non-JSON provider body is never logged: only the HTTP status is.
+  assert.deepEqual(logs.map((args) => JSON.parse(args[0])), [429, 500, 401].map((httpStatus) => (
+    { stage: "fairy_provider_error", httpStatus, errorType: "none", errorCode: "none", errorMessage: httpStatus === 401 ? "[authentication error message omitted]" : "none" }
+  )));
+});
+
+test("provider diagnostics log only status, type, code and a sanitized message; never secrets, headers, prompt or data", async (t) => {
+  const logs = [];
+  for (const method of ["log", "warn", "error"]) t.mock.method(console, method, (...args) => logs.push(format(...args)));
+  const QUESTION = "Gizli soru metni: Örnek Firma teklifi";
+  const ask = (options) => setup(options).handler(request({ body: { message: QUESTION } }));
+  const last = () => JSON.parse(logs.at(-1));
+  const neverLogged = [API_KEY, ANON_KEY, SERVICE_KEY, TOKEN, "Bearer", "Authorization", QUESTION, "Örnek Firma", "opportunity-1", PRIVATE_DETAIL];
+
+  // 1. A normal provider error is logged with its exact reason; the user message is unchanged.
+  await failure(await ask({ providerResponse: Response.json({ error: {
+    message: "The model `gpt-5.6-terra` does not exist or you do not have access to it.",
+    type: "invalid_request_error", code: "model_not_found", param: "model",
+  } }, { status: 404 }) }), 502, "AI_UNAVAILABLE");
+  assert.deepEqual(last(), {
+    stage: "fairy_provider_error", httpStatus: 404, errorType: "invalid_request_error", errorCode: "model_not_found",
+    errorMessage: "The model `gpt-5.6-terra` does not exist or you do not have access to it.",
+  });
+
+  // 2. Credentials echoed by the provider are removed before logging.
+  await failure(await ask({ providerResponse: Response.json({ error: {
+    message: `Incorrect API key provided: ${API_KEY}.`, type: "invalid_request_error", code: "invalid_api_key",
+  } }, { status: 401 }) }), 502, "AI_UNAVAILABLE");
+  assert.equal(last().errorCode, "invalid_api_key");
+  assert.equal(last().errorMessage, "[authentication error message omitted]");
+  await failure(await ask({ providerResponse: Response.json({ error: {
+    message: `Rejected header Authorization: Bearer ${TOKEN} for key ${ANON_KEY}`, type: "auth error with spaces", code: { nested: true },
+  } }, { status: 403 }) }), 502, "AI_UNAVAILABLE");
+  assert.deepEqual(last(), { stage: "fairy_provider_error", httpStatus: 403, errorType: "none", errorCode: "none", errorMessage: "[authentication error message omitted]" });
+
+  // 3. Long messages are clipped; prompt or record text outside error.message is never read.
+  await failure(await ask({ providerResponse: Response.json({
+    error: { message: "x".repeat(5000), type: "server_error", code: null },
+    input: QUESTION, output: [{ content: PRIVATE_DETAIL }],
+  }, { status: 500 }) }), 502, "AI_UNAVAILABLE");
+  assert.ok(last().errorMessage.length <= 240);
+  assert.equal(last().errorCode, "none");
+
+  // 4. A thrown request: name and sanitized message only.
+  await failure(await ask({ fetchThrows: new TypeError(`connect failed for Bearer ${API_KEY}`) }), 502, "AI_UNAVAILABLE");
+  assert.deepEqual(last(), { stage: "fairy_provider_exception", phase: "request", name: "TypeError", message: "connect failed for [redacted]" });
+  await failure(await ask({ fetchThrows: new DOMException("The operation timed out", "TimeoutError") }), 504, "AI_TIMEOUT");
+  assert.deepEqual(last(), { stage: "fairy_provider_exception", phase: "request", name: "TimeoutError", message: "The operation timed out" });
+
+  // 5. An unparsable 200 body: the parser message could quote content, so it is omitted.
+  await failure(await ask({ providerResponse: new Response(`invalid ${PRIVATE_DETAIL} ${QUESTION}`) }), 502, "AI_UNAVAILABLE");
+  assert.deepEqual(last(), { stage: "fairy_provider_exception", phase: "response_body", name: "SyntaxError", message: "none" });
+
+  // 6. A 200 that cannot be shown: envelope facts only, never the content.
+  await failure(await ask({ providerBody: {
+    ...completed(`Partial answer about Örnek Firma ${PRIVATE_DETAIL}`), status: "incomplete",
+    incomplete_details: { reason: "max_output_tokens" }, usage: { output_tokens: 6000, output_tokens_details: { reasoning_tokens: 5900 } },
+  } }), 502, "AI_INCOMPLETE");
+  assert.deepEqual(last(), {
+    stage: "fairy_provider_unusable", fairyCode: "AI_INCOMPLETE", responseStatus: "incomplete", incompleteReason: "max_output_tokens",
+    errorType: "none", errorCode: "none", outputTokens: 6000, reasoningTokens: 5900,
+  });
+  await failure(await ask({ providerBody: { status: "failed", error: { message: PRIVATE_DETAIL, type: "server_error", code: "server_error" } } }), 502, "AI_UNAVAILABLE");
+  assert.deepEqual(last(), {
+    stage: "fairy_provider_unusable", fairyCode: "AI_UNAVAILABLE", responseStatus: "failed", incompleteReason: "none",
+    errorType: "server_error", errorCode: "server_error", outputTokens: null, reasoningTokens: null,
+  });
+
+  assert.equal(logs.length, 9, "exactly one diagnostic line per failed provider call");
+  for (const line of logs) {
+    for (const secret of neverLogged) assert.equal(line.includes(secret), false, `diagnostic log must not contain ${secret.slice(0, 12)}…`);
+    assert.ok(Object.keys(JSON.parse(line)).every((key) => [
+      "stage", "httpStatus", "errorType", "errorCode", "errorMessage", "phase", "name", "message",
+      "fairyCode", "responseStatus", "incompleteReason", "outputTokens", "reasoningTokens",
+    ].includes(key)));
+  }
+
+  // A successful answer logs nothing at all.
+  const before = logs.length;
+  assert.equal((await ask({})).status, 200);
+  assert.equal(logs.length, before);
 });
 
 test("network exceptions and redirect errors do not expose provider diagnostics", async () => {
@@ -571,6 +651,61 @@ test("provider output containing any server key or caller token is never returne
     assert.deepEqual(fixture.mutations, []);
   }
   assert.deepEqual(logs, []);
+});
+
+test("provider error messages can never expose an API key or any credential-like value, even partly masked", async (t) => {
+  const logs = [];
+  for (const method of ["log", "warn", "error"]) t.mock.method(console, method, (...args) => logs.push(format(...args)));
+  const last = () => JSON.parse(logs.at(-1));
+  const HEAD = "Qz7Lm2Xa";
+  const TAIL = "wX9k";
+  const LONG = `${HEAD}Rp4Vn8Ty1Uc6Bd3Hs5Jf0Gk2We${TAIL}`;
+  const credentials = [
+    `sk-${LONG}`, `sk-proj-${LONG}`, `sk-svcacct-${LONG}`, `sb_secret_${LONG}`, `sbp_${LONG}`,
+    // what a provider prints when it masks the key it was given
+    `sk-proj-${HEAD}************************${TAIL}`, `sk-${HEAD}...${TAIL}`, `sk-proj-********************************${TAIL}`,
+    `${HEAD}********${TAIL}`, `${HEAD}...${TAIL}`, `${HEAD}…${TAIL}`,
+    `Bearer ${LONG}`, `bearer ${HEAD}`,
+    `eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ${HEAD}In0.${LONG}`,
+    LONG, `${LONG.toLowerCase()}`, `req-${LONG}`,
+  ];
+  // An authentication failure never logs the provider message at all, whatever it contains.
+  for (const [status, type, code] of [[401, "invalid_request_error", "invalid_api_key"], [403, "permission_error", null], [400, "authentication_error", "none_given"], [400, "invalid_request_error", "invalid_api_key"]]) {
+    for (const credential of credentials) {
+      const response = await setup({ providerResponse: Response.json({ error: { message: `Incorrect API key provided: ${credential}. Find your key at the dashboard.`, type, code } }, { status }) }).handler(request());
+      await failure(response, 502, "AI_UNAVAILABLE");
+      assert.equal(last().httpStatus, status);
+      assert.equal(last().errorMessage, "[authentication error message omitted]");
+    }
+  }
+  // Any other provider error keeps a readable message with the credential removed.
+  for (const credential of credentials) {
+    await failure(await setup({ providerResponse: Response.json({ error: {
+      message: `Request ${credential} was rejected because the model is overloaded.`, type: "server_error", code: "overloaded",
+    } }, { status: 503 }) }).handler(request()), 502, "AI_UNAVAILABLE");
+    const entry = last();
+    assert.deepEqual({ status: entry.httpStatus, type: entry.errorType, code: entry.errorCode }, { status: 503, type: "server_error", code: "overloaded" });
+    assert.ok(entry.errorMessage === "[Credential-like text omitted]" || /^Request \[redacted\].*overloaded\.$/.test(entry.errorMessage), entry.errorMessage);
+  }
+  // A thrown request and credential-like type/code values are covered by the same rules.
+  for (const credential of credentials) {
+    await failure(await setup({ fetchThrows: new TypeError(`connection refused using ${credential}`) }).handler(request()), 502, "AI_UNAVAILABLE");
+    assert.equal(last().name, "TypeError");
+    await failure(await setup({ providerResponse: Response.json({ error: { message: "bad", type: credential, code: credential } }, { status: 500 }) }).handler(request()), 502, "AI_UNAVAILABLE");
+    assert.deepEqual({ type: last().errorType, code: last().errorCode }, { type: "none", code: "none" });
+  }
+  const everything = logs.join("\n");
+  for (const fragment of [LONG, LONG.toLowerCase(), HEAD, TAIL, "sk-", "sb_secret_", "sbp_", "eyJ", "Bearer", "bearer", "***", API_KEY, ANON_KEY, TOKEN]) {
+    assert.equal(everything.includes(fragment), false, `diagnostic logs must not contain "${fragment.slice(0, 10)}"`);
+  }
+  // Ordinary diagnostics stay readable.
+  await failure(await setup({ providerResponse: Response.json({ error: {
+    message: "You exceeded your current quota, please check your plan and billing details.", type: "insufficient_quota", code: "insufficient_quota",
+  } }, { status: 429 }) }).handler(request()), 429, "AI_RATE_LIMITED");
+  assert.deepEqual(last(), {
+    stage: "fairy_provider_error", httpStatus: 429, errorType: "insufficient_quota", errorCode: "insufficient_quota",
+    errorMessage: "You exceeded your current quota, please check your plan and billing details.",
+  });
 });
 
 test("unexpected client construction exceptions use the generic internal error", async () => {
